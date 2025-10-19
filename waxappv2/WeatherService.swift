@@ -112,10 +112,20 @@ final class WeatherServiceClient {
     func fetchWeatherAndAssessSnow(for coordinate: CLLocationCoordinate2D) async throws -> WeatherAndSnowpackSummary {
         // WeatherKit expects a CLLocation for fetching weather.
         let clLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        let weather = try await service.weather(for: clLocation)
+        // let weather = try await service.weather(for: clLocation)
+        
+        // Specify the date range for the last 7 days
+        let calendar = Calendar.current
+        // end date tomorrow
+        let endDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
+        
+        let startDate = calendar.date(byAdding: .day, value: -7, to: endDate)!
+        
+        // Fetch hourly weather data
+        let weather = try await service.weather(for: clLocation, including: .daily(startDate: startDate, endDate: endDate), .hourly(startDate: startDate, endDate: endDate))
 
         // Build WeatherSummary
-        let summary = buildWeatherSummary(from: weather)
+        let summary = buildWeatherSummary(dailyWeather: weather.0, hourlyWeather: weather.1)
 
         // Build assessments for past daily (historical) using daily summaries
         let pastDailyAssessments = assessPastDaily(pastDaily: summary.pastDaily)
@@ -132,13 +142,14 @@ final class WeatherServiceClient {
 
     // MARK: - Build WeatherSummary
 
-    private func buildWeatherSummary(from weather: Weather) -> WeatherSummary {
+    private func buildWeatherSummary(dailyWeather: Forecast<DayWeather>, hourlyWeather: Forecast<HourWeather>) -> WeatherSummary {
         let calendar = Calendar(identifier: .gregorian)
         let now = Date()
         let today = calendar.startOfDay(for: now)
-
+        
+        
         // Past daily: include only days strictly before today, newest first, up to 10
-        let pastDaily = weather.dailyForecast
+        let pastDaily = dailyWeather.forecast
             .filter { calendar.startOfDay(for: $0.date) < today }
             .sorted { $0.date > $1.date }
             .prefix(10)
@@ -155,7 +166,7 @@ final class WeatherServiceClient {
             }
 
         // Next 24 hours from now
-        let next24Hours = weather.hourlyForecast
+        let next24Hours = hourlyWeather.forecast
             .filter { $0.date >= now }
             .prefix(24)
             .map { hour in

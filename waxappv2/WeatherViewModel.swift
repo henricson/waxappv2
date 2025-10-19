@@ -1,4 +1,3 @@
-//
 //  WeatherViewModel.swift
 //  waxappv2
 //
@@ -13,6 +12,7 @@ import Combine
 final class WeatherViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    // Uses information for the next
     @Published var currentAssessment: SnowSurfaceAssessment?
     @Published var pastDailyAssessments: [SnowSurfaceAssessment] = []
 

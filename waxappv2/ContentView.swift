@@ -12,88 +12,79 @@ struct ContentView: View {
     @EnvironmentObject var locationManager: LocationManager
     @StateObject private var viewModel = WeatherViewModel()
 
-    // User preference: auto-update location continuously
-    @AppStorage("autoUpdateLocation") private var autoUpdateLocation: Bool = false
-
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                headerSection
-
-                // Location status and controls
-                Group {
-                    switch locationManager.authorizationStatus {
-                    case .authorizedAlways, .authorizedWhenInUse:
-                        authorizedSection
-                    case .notDetermined:
-                        Text("Requesting permission…")
-                            .foregroundStyle(.secondary)
-                    case .denied, .restricted:
-                        deniedSection
-                    @unknown default:
-                        Text("Unknown authorization state")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let error = locationManager.errorDescription, !error.isEmpty {
-                    Text(error).foregroundColor(.red)
-                }
-
-                Divider()
-
-                // Weather fetch controls
-                HStack(spacing: 12) {
-                    Button {
-                        locationManager.fetchLocationOnce()
-                    } label: {
-                        Label("Get Location", systemImage: "location")
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        Task {
-                            if let loc = locationManager.lastLocation {
-                                await viewModel.fetch(for: loc)
-                            }
+            ScrollView {
+                VStack(spacing: 16) {
+                    WaxCanGraphic(
+                        bodyFill: LinearGradient(colors: [.blue, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        
+                    )
+                    headerSection
+                    
+                    
+                    
+                    // Location status and controls
+                    Group {
+                        switch locationManager.authorizationStatus {
+                        case .authorizedAlways, .authorizedWhenInUse:
+                            authorizedSection
+                        case .notDetermined:
+                            Text("Requesting permission…")
+                                .foregroundStyle(.secondary)
+                        case .denied, .restricted:
+                            deniedSection
+                        @unknown default:
+                            Text("Unknown authorization state")
+                                .foregroundStyle(.secondary)
                         }
-                    } label: {
-                        Label("Fetch Forecast", systemImage: "cloud.sun")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(locationManager.lastLocation == nil)
+                    
+                    if let error = locationManager.errorDescription, !error.isEmpty {
+                        Text(error).foregroundColor(.red)
+                    }
+                    
+                    Divider()
+                    
+                    // Location control (one-shot)
+                    HStack(spacing: 12) {
+                        Button {
+                            locationManager.fetchLocationOnce()
+                        } label: {
+                            Label("Get Location", systemImage: "location")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    
+                    if viewModel.isLoading {
+                        ProgressView("Fetching weather…")
+                    }
+                    
+                    if let err = viewModel.errorMessage {
+                        Text(err).foregroundStyle(.red)
+                    }
+                    
+                    // Results
+                    resultsSection
                 }
-
-                if viewModel.isLoading {
-                    ProgressView("Fetching weather…")
+                .padding()
+                .onChange(of: locationManager.authorizationStatus) { _, _ in
+                    // Ensure auth flow is applied if needed
+                    locationManager.requestAuthorizationIfNeeded()
                 }
-
-                if let err = viewModel.errorMessage {
-                    Text(err).foregroundStyle(.red)
+                .onChange(of: locationManager.lastLocation) { _, newLoc in
+                    // Automatically fetch forecast whenever a new location is available
+                    guard let loc = newLoc else { return }
+                    Task { await viewModel.fetch(for: loc) }
                 }
-
-                // Results
-                resultsSection
-            }
-            .padding()
-            .navigationTitle("Snow surface")
-            .onChange(of: autoUpdateLocation) { _, newValue in
-                handleAutoUpdateToggle(newValue)
-            }
-            .onChange(of: locationManager.authorizationStatus) { _, _ in
-                // Apply current auto-update preference when auth changes
-                handleAutoUpdateToggle(autoUpdateLocation)
-            }
-            .onChange(of: locationManager.lastLocation) { _, newLoc in
-                // When auto-update is ON, fetch automatically on new location
-                guard autoUpdateLocation, let loc = newLoc else { return }
-                Task { await viewModel.fetch(for: loc) }
-            }
-            .onAppear {
-                // Ensure auth flow is initiated if needed
-                locationManager.requestAuthorizationIfNeeded()
-                // Apply auto-update setting on appear
-                handleAutoUpdateToggle(autoUpdateLocation)
+                .onAppear {
+                    // Ensure auth flow is initiated if needed
+                    locationManager.requestAuthorizationIfNeeded()
+                    // If a location is already available on appear, fetch immediately
+                    if let loc = locationManager.lastLocation {
+                        Task { await viewModel.fetch(for: loc) }
+                    }
+                }
             }
         }
     }
@@ -111,10 +102,6 @@ struct ContentView: View {
 
     private var authorizedSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $autoUpdateLocation) {
-                Label("Auto-update location", systemImage: "location.circle")
-            }
-
             if let loc = locationManager.lastLocation {
                 Text(String(format: "Lat: %.4f, Lon: %.4f", loc.coordinate.latitude, loc.coordinate.longitude))
                     .font(.callout)
@@ -135,7 +122,7 @@ struct ContentView: View {
         VStack(spacing: 8) {
             Text("Location permission is not granted.")
             Button("Open Settings") {
-                locationManager.openAppSettings()
+                //locationManager.openAppSettings()
             }
             .buttonStyle(.borderedProminent)
         }
@@ -185,19 +172,6 @@ struct ContentView: View {
                     }
                 }
             }
-        }
-    }
-
-    private func handleAutoUpdateToggle(_ enabled: Bool) {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            if enabled {
-                locationManager.startUpdating()
-            } else {
-                locationManager.stopUpdating()
-            }
-        default:
-            break
         }
     }
 }

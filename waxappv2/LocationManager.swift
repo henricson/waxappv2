@@ -17,6 +17,17 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var lastLocation: CLLocation?
     @Published var errorDescription: String?
 
+    // Manual override (user-picked location)
+    @Published var manualLocation: CLLocation?
+    @Published private(set) var isManualOverride: Bool = false
+
+    // A single effective location the app should use:
+    // - manualLocation if set
+    // - otherwise lastLocation from CLLocationManager
+    var effectiveLocation: CLLocation? {
+        manualLocation ?? lastLocation
+    }
+
     // Configuration: set to true if you want to automatically perform a one-shot fetch
     // immediately after the user grants permission.
     var autoFetchAfterGrant: Bool = true
@@ -33,7 +44,7 @@ final class LocationManager: NSObject, ObservableObject {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         manager.distanceFilter = 100
 
-        // Only request authorization if needed; no continuous updates.
+        // Only request authorization if needed.
         requestAuthorizationIfNeeded()
     }
 
@@ -50,6 +61,21 @@ final class LocationManager: NSObject, ObservableObject {
         @unknown default:
             break
         }
+    }
+
+    // MARK: - Manual override
+
+    /// Set a user-selected location as the manual override.
+    func setManualLocation(_ location: CLLocation) {
+        manualLocation = location
+        isManualOverride = true
+        errorDescription = nil
+    }
+
+    /// Clear the manual override and fall back to automatic location.
+    func clearManualOverride() {
+        manualLocation = nil
+        isManualOverride = false
     }
 
     // MARK: - One-shot location fetch
@@ -74,29 +100,12 @@ final class LocationManager: NSObject, ObservableObject {
             break
         }
     }
-
-    // MARK: - Optional continuous updates (not used by default)
-
-    func startUpdating() {
-        manager.startUpdatingLocation()
-    }
-
-    func stopUpdating() {
-        manager.stopUpdatingLocation()
-    }
-
-    // MARK: - Settings
-
-    func openAppSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString),
-              UIApplication.shared.canOpenURL(url) else { return }
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
-    }
 }
 
 // MARK: - CLLocationManagerDelegate
 
 extension LocationManager: CLLocationManagerDelegate {
+    // Here authorization status changed
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
 
@@ -116,14 +125,17 @@ extension LocationManager: CLLocationManagerDelegate {
         }
     }
 
+    // Here comes a new location
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let latest = locations.last else { return }
         lastLocation = latest
         errorDescription = nil
     }
 
+    // Here it failed
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         // locationUnknown is transient with requestLocation(); retry can be initiated by user
         errorDescription = error.localizedDescription
     }
 }
+
