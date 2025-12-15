@@ -17,6 +17,9 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var lastLocation: CLLocation?
     @Published var errorDescription: String?
 
+    // New: Human-readable place name (e.g., city, locality, administrative area)
+    @Published var placeName: String?
+
     // Manual override (user-picked location)
     @Published var manualLocation: CLLocation?
     @Published private(set) var isManualOverride: Bool = false
@@ -33,6 +36,12 @@ final class LocationManager: NSObject, ObservableObject {
     var autoFetchAfterGrant: Bool = true
 
     private let manager: CLLocationManager
+    private let geocoder = CLGeocoder()
+
+    // To avoid excessive reverse geocoding, only geocode if we moved more than this distance
+    private let geocodeDistanceThreshold: CLLocationDistance = 200 // meters
+    private var lastGeocodedLocation: CLLocation?
+
     private var pendingOneShotRequest: Bool = false
 
     override init() {
@@ -70,12 +79,35 @@ final class LocationManager: NSObject, ObservableObject {
         manualLocation = location
         isManualOverride = true
         errorDescription = nil
+        // Update name for manual location
+        Task { await reverseGeocodeIfNeeded(for: location, force: true) }
     }
 
     /// Clear the manual override and fall back to automatic location.
     func clearManualOverride() {
         manualLocation = nil
         isManualOverride = false
+        // When clearing, try to resolve name for the last known device location
+        if let loc = lastLocation {
+            Task { await reverseGeocodeIfNeeded(for: loc, force: true) }
+        }
+    }
+
+    /// Fully reset location state so UI shows "Fetch location".
+    func resetToNoLocation() {
+        // Stop any geocoding
+        if geocoder.isGeocoding {
+            geocoder.cancelGeocode()
+        }
+        // Prevent any pending auto-fetch flow
+        pendingOneShotRequest = false
+        // Clear all location-related state
+        manualLocation = nil
+        isManualOverride = false
+        lastLocation = nil
+        lastGeocodedLocation = nil
+        placeName = nil
+        errorDescription = nil
     }
 
     // MARK: - One-shot location fetch
@@ -99,6 +131,73 @@ final class LocationManager: NSObject, ObservableObject {
         @unknown default:
             break
         }
+    }
+
+    // MARK: - Reverse geocoding
+
+    /// Public helper to refresh the human-readable place name for the current effective location.
+    func refreshPlaceName() {
+        guard let loc = effectiveLocation else { return }
+        Task { await reverseGeocodeIfNeeded(for: loc, force: true) }
+    }
+
+    /// Reverse geocode the given location if it moved sufficiently or when forced.
+    private func shouldGeocode(for location: CLLocation, force: Bool) -> Bool {
+        if force || lastGeocodedLocation == nil { return true }
+        guard let prev = lastGeocodedLocation else { return true }
+        return location.distance(from: prev) > geocodeDistanceThreshold
+    }
+
+    private func updatePlaceName(from placemark: CLPlacemark?) {
+        guard let pm = placemark else {
+            placeName = nil
+            return
+        }
+
+        // Prefer locality (city/town), then subAdministrativeArea, then administrativeArea, then country
+        let components: [String?] = [
+            pm.locality,
+            pm.subLocality,
+            pm.administrativeArea,
+            pm.country
+        ]
+        let name = components.compactMap { $0 }.first
+        placeName = name
+    }
+
+    private func cancelGeocodeIfNeeded() {
+        if geocoder.isGeocoding {
+            geocoder.cancelGeocode()
+        }
+    }
+
+    private func reverseGeocode(loc: CLLocation) async {
+        // CLGeocoder has no async API; bridge with continuation
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            geocoder.reverseGeocodeLocation(loc) { [weak self] placemarks, error in
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
+                if let error = error as NSError?, error.code == CLError.Code.geocodeFoundNoResult.rawValue {
+                    // No result is not critical; clear name
+                    self.placeName = nil
+                } else if let error = error {
+                    // Keep previous name, but log error
+                    self.errorDescription = error.localizedDescription
+                } else {
+                    self.updatePlaceName(from: placemarks?.first)
+                    self.lastGeocodedLocation = loc
+                }
+                continuation.resume()
+            }
+        }
+    }
+
+    private func reverseGeocodeIfNeeded(for location: CLLocation, force: Bool = false) async {
+        guard shouldGeocode(for: location, force: force) else { return }
+        cancelGeocodeIfNeeded()
+        await reverseGeocode(loc: location)
     }
 }
 
@@ -130,6 +229,9 @@ extension LocationManager: CLLocationManagerDelegate {
         guard let latest = locations.last else { return }
         lastLocation = latest
         errorDescription = nil
+
+        // Resolve place name for the new location
+        Task { await reverseGeocodeIfNeeded(for: latest) }
     }
 
     // Here it failed
@@ -138,4 +240,3 @@ extension LocationManager: CLLocationManagerDelegate {
         errorDescription = error.localizedDescription
     }
 }
-

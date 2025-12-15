@@ -11,41 +11,6 @@ import CoreLocation
 
 // MARK: - Public Models
 
-public enum SnowSurfaceGroup: String, Sendable, CaseIterable, Identifiable {
-    case group1 // Fallende/nylig falt snø med skarpe krystaller
-    case group2 // Mellomstadiet / finkornet
-    case group3 // Gammel snø / avrundet og bundet
-    case group4 // Våt snø
-    case group5 // Frosset / refrosset (skare/is)
-
-    public var id: String { rawValue }
-
-    public var titleNo: String {
-        switch self {
-        case .group1: return "Gruppe 1"
-        case .group2: return "Gruppe 2"
-        case .group3: return "Gruppe 3"
-        case .group4: return "Gruppe 4"
-        case .group5: return "Gruppe 5"
-        }
-    }
-
-    public var descriptionNo: String {
-        switch self {
-        case .group1:
-            return "Fallende og nylig falt snø preget av relativt skarpe krystaller; krever relativt hard ski-voks."
-        case .group2:
-            return "Mellomstadium i transformasjonen, ofte kalt finkornet snø."
-        case .group3:
-            return "Siste stadiet i transformasjonen: uniforme, avrundede, bundne korn (gammel snø)."
-        case .group4:
-            return "Våt snø: når snø i gruppe 1–3 utsettes for varmt vær."
-        case .group5:
-            return "Frosset/refrosset: våt snø som har frosset til, ofte hard/isete (skare)."
-        }
-    }
-}
-
 public struct DailyHistorySummary: Sendable, Identifiable {
     public var id: Date { date }
     public let date: Date
@@ -70,10 +35,11 @@ public struct WeatherSummary: Sendable {
     public let next24Hours: [HourlyForecastEntry] // starting from now
 }
 
+// Updated to use SwixSnowGroup from Data.swift
 public struct SnowSurfaceAssessment: Sendable, Identifiable {
     public var id: Date { date }
     public let date: Date
-    public let group: SnowSurfaceGroup
+    public let group: SnowType
     public let reasons: [String] // brief heuristic rationale (Norwegian)
     // Supporting metrics (for debugging/inspection)
     public let recentSnowCM: Double?
@@ -100,8 +66,8 @@ final class WeatherServiceClient {
     private let wetTempCThreshold: Double = 0.0         // above freezing
     private let wetHoursThreshold: Int = 2              // hours above freezing to count as “wet”
     private let refreezeNightBelowC: Double = -1.0      // night min <= -1°C counts as refreeze
-    private let daysWithoutSnowForGroup2: Int = 1       // 1–3 days without snow tends to group 2
-    private let daysWithoutSnowForGroup3: Int = 4       // >=4–5 days without snow tends to group 3
+    private let daysWithoutSnowForFine: Int = 1         // 0–1 days -> fineGrained
+    private let daysWithoutSnowForOld: Int = 4          // >=4–5 days -> oldGrained
 
     // MARK: Public API
 
@@ -110,27 +76,22 @@ final class WeatherServiceClient {
     }
 
     func fetchWeatherAndAssessSnow(for coordinate: CLLocationCoordinate2D) async throws -> WeatherAndSnowpackSummary {
-        // WeatherKit expects a CLLocation for fetching weather.
         let clLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        // let weather = try await service.weather(for: clLocation)
-        
-        // Specify the date range for the last 7 days
+
+        // Specify the date range for the last 7 days + tomorrow
         let calendar = Calendar.current
-        // end date tomorrow
         let endDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
-        
         let startDate = calendar.date(byAdding: .day, value: -7, to: endDate)!
-        
-        // Fetch hourly weather data
-        let weather = try await service.weather(for: clLocation, including: .daily(startDate: startDate, endDate: endDate), .hourly(startDate: startDate, endDate: endDate))
 
-        // Build WeatherSummary
+        // Fetch daily and hourly weather data
+        let weather = try await service.weather(
+            for: clLocation,
+            including: .daily(startDate: startDate, endDate: endDate),
+            .hourly(startDate: startDate, endDate: endDate)
+        )
+
         let summary = buildWeatherSummary(dailyWeather: weather.0, hourlyWeather: weather.1)
-
-        // Build assessments for past daily (historical) using daily summaries
         let pastDailyAssessments = assessPastDaily(pastDaily: summary.pastDaily)
-
-        // Current assessment from the most recent hourly entry (now or next)
         let currentAssessment = assessCurrentFromHourly(next24: summary.next24Hours)
 
         return WeatherAndSnowpackSummary(
@@ -146,8 +107,7 @@ final class WeatherServiceClient {
         let calendar = Calendar(identifier: .gregorian)
         let now = Date()
         let today = calendar.startOfDay(for: now)
-        
-        
+
         // Past daily: include only days strictly before today, newest first, up to 10
         let pastDaily = dailyWeather.forecast
             .filter { calendar.startOfDay(for: $0.date) < today }
@@ -156,7 +116,6 @@ final class WeatherServiceClient {
             .map { day in
                 DailyHistorySummary(
                     date: day.date,
-                    // highTemperature and lowTemperature are non-optional Measurement<UnitTemperature>
                     temperatureMinC: day.lowTemperature.converted(to: .celsius).value,
                     temperatureMaxC: day.highTemperature.converted(to: .celsius).value,
                     totalPrecipitationMM: Self.mm(from: day.precipitationAmount),
@@ -185,10 +144,9 @@ final class WeatherServiceClient {
         )
     }
 
-    // MARK: - Assessments
+    // MARK: - Assessments (mapped to SwixSnowGroup)
 
     private func assessPastDaily(pastDaily: [DailyHistorySummary]) -> [SnowSurfaceAssessment] {
-        // We’ll scan from newest to oldest, tracking “days since last snow”
         var daysSinceSnow = 0
         var assessments: [SnowSurfaceAssessment] = []
 
@@ -198,40 +156,65 @@ final class WeatherServiceClient {
             let maxC = day.temperatureMaxC
 
             var reasons: [String] = []
-            var group: SnowSurfaceGroup = .group3 // default bias to “older/rounded” if nothing else stands out
+            var group: SnowType = .fineGrained // neutral default leaning to fine
 
-            // Detect wetness/refreeze heuristically using daily min/max
             let wasWet = (maxC ?? -100) > wetTempCThreshold
             let refroze = wasWet && (minC ?? 100) <= refreezeNightBelowC
 
             // New/Recent snow detection
             if let snow = snowCM, snow >= recentSnowThresholdCM {
-                group = .group1
-                reasons.append("Nylig snøfall ca. \(Self.format(snow, unit: "cm")).")
+                // If near or above 0°C we consider moist new fallen
+                if (maxC ?? -100) >= -1 {
+                    group = .moistNewFallen
+                    reasons.append("Nylig snøfall ca. \(Self.format(snow, unit: "cm")), fuktig/omkring 0 °C.")
+                } else {
+                    group = .newFallen
+                    reasons.append("Nylig snøfall ca. \(Self.format(snow, unit: "cm")).")
+                }
                 daysSinceSnow = 0
             } else {
                 daysSinceSnow += 1
             }
 
-            if group != .group1 {
+            if group != .newFallen && group != .moistNewFallen {
                 if wasWet {
-                    group = .group4
-                    reasons.append("Dagtemperatur over 0 °C indikerer våt snø.")
+                    // Wet spectrum
                     if refroze {
-                        group = .group5
-                        reasons.append("Påfølgende natt under \(Int(refreezeNightBelowC)) °C indikerer refrysing/skare.")
+                        group = .frozenCorn
+                        reasons.append("Varm dag fulgt av natt ≤ \(Int(refreezeNightBelowC)) °C: refrysing/skare.")
+                    } else {
+                        // Distinguish wetness roughly by max temp
+                        if (maxC ?? 0) >= 3 {
+                            group = .veryWetCorn
+                            reasons.append("Svært våt/slush: høy temperatur over 0 °C.")
+                        } else {
+                            group = .wetCorn
+                            reasons.append("Våt snø: dagtemperatur over 0 °C.")
+                        }
                     }
                 } else {
-                    // Dry surface, no recent snow: evolve from group 2 to 3 with time
-                    if daysSinceSnow <= daysWithoutSnowForGroup2 {
-                        group = .group2
-                        reasons.append("Lite/ingen nysnø siste \(daysSinceSnow) d. og kaldt: finkornet mellomstadium.")
-                    } else if daysSinceSnow >= daysWithoutSnowForGroup3 {
-                        group = .group3
+                    // Dry surface, no recent snow: evolve from fine to old
+                    if daysSinceSnow <= daysWithoutSnowForFine {
+                        // Around 0 with humidity but not wet -> transformed/moist fine
+                        if let maxC, maxC >= -1 && maxC < 1 {
+                            group = .transformedMoistFine
+                            reasons.append("Nær 0 °C, fuktig/omvandlet finkornet.")
+                        } else {
+                            group = .fineGrained
+                            reasons.append("Lite/ingen nysnø siste \(daysSinceSnow) d. og kaldt: finkornet.")
+                        }
+                    } else if daysSinceSnow >= daysWithoutSnowForOld {
+                        group = .oldGrained
                         reasons.append("Flere dager uten nysnø og kaldt: gammel/avrundet snø.")
                     } else {
-                        group = .group2
-                        reasons.append("Noe tid uten nysnø: finkornet utvikling.")
+                        // intermediate dry-but-not-old yet; if slightly humid choose moistFineGrained
+                        if let maxC, maxC >= -2 && maxC <= 0 {
+                            group = .moistFineGrained
+                            reasons.append("Fuktig finkornet nær 0 °C.")
+                        } else {
+                            group = .fineGrained
+                            reasons.append("Noe tid uten nysnø: finkornet utvikling.")
+                        }
                     }
                 }
             }
@@ -255,31 +238,43 @@ final class WeatherServiceClient {
     private func assessCurrentFromHourly(next24: [HourlyForecastEntry]) -> SnowSurfaceAssessment? {
         guard let first = next24.first else { return nil }
 
-        // Look back/around “now” within the next few hours window (we only have forward hours here).
-        // We’ll infer wetness if current temp is above freezing or forecast soon.
         let hoursAboveZero = next24.prefix(6).filter { $0.temperatureC > wetTempCThreshold }.count
         let nowWet = first.temperatureC > wetTempCThreshold || hoursAboveZero >= wetHoursThreshold
 
-        // Precip type/probability near now to detect ongoing snowfall
+        // Snow imminent/ongoing
         let precipNowSnowy = (first.precipitation == .snow || first.precipitation == .mixed) && first.precipitationChance >= 0.3
 
         var reasons: [String] = []
-        var group: SnowSurfaceGroup = .group3 // neutral default
+        var group: SnowType = .fineGrained
 
         if precipNowSnowy {
-            group = .group1
-            reasons.append("Pågående/snarlig snøfall.")
-        } else if nowWet {
-            group = .group4
-            reasons.append("Temperatur over 0 °C de nærmeste timene indikerer våt snø.")
-        } else {
-            // If it’s cold and no new snow imminently, pick 2 or 3 based on “how cold” and humidity
-            if first.temperatureC <= -8 {
-                group = .group3
-                reasons.append("Kaldt og tørt; overflaten kan være eldre/avrundet.")
+            if first.temperatureC >= -1 {
+                group = .moistNewFallen
+                reasons.append("Pågående/snarlig snøfall i fuktige/varme forhold.")
             } else {
-                group = .group2
-                reasons.append("Ingen umiddelbar nysnø; overflaten i mellomstadiet (finkornet).")
+                group = .newFallen
+                reasons.append("Pågående/snarlig snøfall.")
+            }
+        } else if nowWet {
+            // Distinguish wetness level by temperature trend
+            if hoursAboveZero >= 4 || first.temperatureC >= 3 {
+                group = .veryWetCorn
+                reasons.append("Svært våt/slush de nærmeste timene.")
+            } else {
+                group = .wetCorn
+                reasons.append("Temperatur over 0 °C indikerer våt snø.")
+            }
+        } else {
+            // Dry: choose between fine vs old vs transformed near 0
+            if first.temperatureC <= -8 {
+                group = .oldGrained
+                reasons.append("Kaldt og tørt; overflaten kan være eldre/avrundet.")
+            } else if first.temperatureC >= -1 && first.temperatureC <= 1 {
+                group = .transformedMoistFine
+                reasons.append("Nær 0 °C og fuktig; omvandlet finkornet.")
+            } else {
+                group = .fineGrained
+                reasons.append("Ingen umiddelbar nysnø; finkornet.")
             }
         }
 
@@ -314,10 +309,8 @@ final class WeatherServiceClient {
 
         switch precipitation {
         case .snow:
-            // Approximate 1 mm water ~ 1 cm snow (very rough; density varies widely)
-            return totalMM // cm
+            return totalMM // cm (approx)
         case .mixed:
-            // Assume half snow, half rain
             return totalMM * 0.5
         default:
             return nil
@@ -334,7 +327,6 @@ final class WeatherServiceClient {
 // MARK: - Internal test shim
 
 extension WeatherServiceClient {
-    // Expose assessment logic to the test target without making it public.
     internal func test_assessPastDaily(_ pastDaily: [DailyHistorySummary]) -> [SnowSurfaceAssessment] {
         return assessPastDaily(pastDaily: pastDaily)
     }

@@ -82,6 +82,29 @@ struct WaxCanBody: Shape {
     }
 }
 
+// 4) Optional diagonal band (extracted from the user's MyIcon second subpath)
+struct WaxCanDiagonalBand: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.size.width
+        let h = rect.size.height
+
+        path.move(to: CGPoint(x: 0.95116 * w, y: 0.29358 * h))
+        path.addLine(to: CGPoint(x: 0.95116 * w, y: 0.40298 * h))
+        path.addLine(to: CGPoint(x: 0.20515 * w, y: 0.97073 * h))
+        path.addCurve(to: CGPoint(x: 0.05116 * w, y: 0.88142 * h),
+                      control1: CGPoint(x: 0.11078 * w, y: 0.94900 * h),
+                      control2: CGPoint(x: 0.05116 * w, y: 0.91704 * h))
+        path.addLine(to: CGPoint(x: 0.05116 * w, y: 0.77756 * h))
+        path.addLine(to: CGPoint(x: 0.62064 * w, y: 0.34415 * h))
+        path.addCurve(to: CGPoint(x: 0.95116 * w, y: 0.29358 * h),
+                      control1: CGPoint(x: 0.76672 * w, y: 0.33736 * h),
+                      control2: CGPoint(x: 0.88746 * w, y: 0.31853 * h))
+        path.closeSubpath()
+
+        return path
+    }
+}
 
 // MARK: - View
 
@@ -94,6 +117,15 @@ struct WaxCanGraphic: View {
     // Lighting configuration
     var bodyIllumination: LinearGradient
     var bodySpecular: LinearGradient
+
+    // Optional band configuration
+    var showBand: Bool
+    var bandPrimaryColor: Color
+    var bandSecondaryColor: Color?
+
+    // Aspect ratio (width:height). Default based on prior 200x300 size -> 2:3.
+    private let aspect: CGFloat = 2.0 / 3.0
+
     init(
         // Stronger, clearer illumination on the lid (top ellipse)
         topFill: LinearGradient = LinearGradient(
@@ -141,30 +173,72 @@ struct WaxCanGraphic: View {
             startPoint: .leading,
             endPoint: .trailing
         ),
-
+        // Band options
+        showBand: Bool = false,
+        bandPrimaryColor: Color = .white,
+        bandSecondaryColor: Color? = nil
     ) {
         self.topFill = topFill
         self.middleFill = middleFill
         self.bodyFill = AnyShapeStyle(bodyFill)
         self.bodyIllumination = bodyIllumination
         self.bodySpecular = bodySpecular
+        self.showBand = showBand
+        self.bandPrimaryColor = bandPrimaryColor
+        self.bandSecondaryColor = bandSecondaryColor
     }
 
     var body: some View {
         GeometryReader { geo in
-            let h = geo.size.height
-            let w = geo.size.width
+            // Use all available height from the parent, compute width from aspect.
+            let availableHeight = geo.size.height
+            let width = availableHeight * aspect
 
             ZStack {
                 // Base body fill
                 WaxCanBody()
                     .fill(bodyFill)
+                
+                    
+
+                // Optional band base (prefer secondary color; fallback to primary)
+                if showBand {
+                    WaxCanDiagonalBand()
+                        .fill(bandSecondaryColor ?? bandPrimaryColor)
+                }
 
                 // Body illumination overlay (soft light)
                 WaxCanBody()
                     .fill(bodyIllumination)
                     .blendMode(.overlay)
                     .opacity(0.75)
+
+                // If band is present, illuminate it too
+                if showBand {
+                    WaxCanDiagonalBand()
+                        .fill(bodyIllumination)
+                        .blendMode(.overlay)
+                        .opacity(0.75)
+
+                    // Specular on band: reuse the same horizontal strip idea
+                    WaxCanDiagonalBand()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(stops: [
+                                    .init(color: .clear, location: 0.0),
+                                    .init(color: .clear, location: 0.20),
+                                    .init(color: .white.opacity(0.55), location: 0.33),
+                                    .init(color: .white.opacity(0.15), location: 0.43),
+                                    .init(color: .clear, location: 0.55),
+                                    .init(color: .clear, location: 1.0)
+                                ]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .opacity(0.8)
+                        .blendMode(.screen)
+                }
 
                 // Specular highlight strip on the body (narrow band near left third)
                 WaxCanBody()
@@ -193,18 +267,35 @@ struct WaxCanGraphic: View {
                 WaxCanTopEllipse()
                     .fill(topFill)
             }
-            .frame(width: w, height: h)
+            // Constrain content to computed width and full available height,
+            // and center it horizontally within the GeometryReader width.
+            .frame(width: width, height: availableHeight, alignment: .center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .drawingGroup() // nicer gradients/antialiasing
         }
-        .frame(width: 200, height: 300)
+        // Remove the fixed size; allow parent to dictate height.
+        // You can still cap it from the outside using .frame(height: ...) where used.
     }
 }
 
 #Preview {
 
+    VStack(spacing: 24) {
+        // Parent controls height; width follows
         WaxCanGraphic(
             bodyFill: LinearGradient(colors: [.blue, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
-        
+            showBand: true,
+            bandPrimaryColor: .red,
+            bandSecondaryColor: .yellow
         )
+        .frame(height: 300)
 
+        WaxCanGraphic(
+            bodyFill: LinearGradient(colors: [.blue, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+            showBand: true,
+            bandPrimaryColor: .red
+        )
+        .frame(height: 220)
+    }
+    .padding()
 }

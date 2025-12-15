@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="430px" height="106px" viewBox="0 0 430 106" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Oval</title>
+    <g id="Smøreappen" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Frame" transform="translate(-223, -153)" fill="#D8D8D8">
+            <g transform="translate(223, 153)" id="Oval">
+                <ellipse cx="215" cy="53" rx="215" ry="53"></ellipse>
+            </g>
+        </g>
+    </g>
+</svg>
