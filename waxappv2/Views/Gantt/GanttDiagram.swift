@@ -16,9 +16,9 @@ struct ScrollItem: Identifiable, Hashable {
 struct GanttDiagram: View {
     // Incoming binding from parent
     @Binding var temperature: Int
+    @Binding var snowType: SnowType
     
     // MARK: - Constants
-    private let snowType: SnowType = .fineGrained
     private let scaleFactor: Int = 50
     private let minValue: Int = -35
     private let maxValue: Int = 35
@@ -47,20 +47,26 @@ struct GanttDiagram: View {
     @State private var layout: LayoutCache
     
     // Init to compute layout once
-    init(temperature: Binding<Int>) {
+    init(temperature: Binding<Int>, snowType: Binding<SnowType>) {
         self._temperature = temperature
+        self._snowType = snowType
         // Precompute layout once in init
-        let waxes = returnWaxesForSnowType(snowType: .fineGrained)
+        let initialLayout = GanttDiagram.computeLayout(for: snowType.wrappedValue)
+        self._layout = State(initialValue: initialLayout)
+    }
+    
+    private static func computeLayout(for type: SnowType) -> LayoutCache {
+        let waxes = returnWaxesForSnowType(snowType: type)
         let tasks = waxes.map { wax in
             GanttTask(
                 id: UUID(),
-                start: Int(wax.minValue(for: .fineGrained)),
-                end: Int(wax.maxValue(for: .fineGrained)),
+                start: Int(wax.minValue(for: type)),
+                end: Int(wax.maxValue(for: type)),
                 renderItem: wax
             )
         }
         let assigned = assignRows(tasks: tasks, padding: 0)
-        self._layout = State(initialValue: LayoutCache(placements: assigned.placements, rowsCount: assigned.rowsCount))
+        return LayoutCache(placements: assigned.placements, rowsCount: assigned.rowsCount)
     }
     
     var body: some View {
@@ -120,6 +126,9 @@ struct GanttDiagram: View {
                     }
                 }
             }
+            .onChange(of: snowType) { _, newType in
+                layout = GanttDiagram.computeLayout(for: newType)
+            }
         }
     }
 }
@@ -159,14 +168,14 @@ private struct GanttContent: View, Equatable {
         let width = CGFloat(item.end - item.start) * CGFloat(scaleFactor)
         let wax = item.renderItem
         
-        let waxIcon = WaxCanGraphic(
+        let waxIcon : any View = wax.kind == .hardwax ? WaxCanGraphic(
             bodyFill: AnyShapeStyle(Color(hex: wax.primaryColor) ?? .gray),
             bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
             bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
             showBand: true,
             bandPrimaryColor: Color(hex: wax.primaryColor) ?? .white,
             bandSecondaryColor: (wax.secondaryColor.flatMap { Color(hex: $0) }) ?? .blue
-        )
+        ) : KlisterCanView(bodyColor: (Color(hex: wax.primaryColor) ?? .gray))
         
         return GanttItem(primaryColor: Color(hex: wax.primaryColor) ?? .white, icon: AnyView(waxIcon), title: wax.name)
             .frame(width: width, height: rowHeight)
@@ -177,6 +186,7 @@ private struct GanttContent: View, Equatable {
 // MARK: - Preview
 
 #Preview {
+    @Previewable @State var snowType: SnowType = .fineGrained
     @Previewable @State var temperature: Int = 0
-    GanttDiagram(temperature: $temperature)
+    GanttDiagram(temperature: $temperature, snowType: $snowType)
 }

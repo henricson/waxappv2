@@ -20,6 +20,33 @@ struct GanttItem: View {
         self.secondaryColor = secondaryColor // keep optional
     }
     
+    // Choose text color based on background contrast
+    private var adaptiveTextColor: Color {
+        // Convert the primary color to sRGB components if possible
+        #if canImport(UIKit)
+        let uiColor = UIColor(primaryColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            // Perceived luminance (WCAG-ish): 0 (black) - 1 (white)
+            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            // If background is bright, prefer black text; otherwise white
+            return luminance > 0.6 ? .black : .white
+        } else {
+            return .white
+        }
+        #elseif canImport(AppKit)
+        let nsColor = NSColor(primaryColor)
+        let converted = nsColor.usingColorSpace(.sRGB) ?? nsColor
+        let r = converted.redComponent
+        let g = converted.greenComponent
+        let b = converted.blueComponent
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        return luminance > 0.6 ? .black : .white
+        #else
+        return .white
+        #endif
+    }
+    
     var body : some View {
         HStack(spacing: 6) {
             if let icon {
@@ -29,7 +56,7 @@ struct GanttItem: View {
             }
             Text(title)
                 .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(adaptiveTextColor)
                 .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
         }
         .padding(.horizontal, 8)
@@ -67,3 +94,4 @@ struct GanttItem: View {
         }
     }
 }
+

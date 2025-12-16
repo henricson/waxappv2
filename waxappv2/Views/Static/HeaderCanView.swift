@@ -37,16 +37,25 @@ struct HeaderCanView : View {
         var body : some View {
 
                 VStack {
-                    WaxCanGraphic(
-                        // Use defaults for topFill and middleFill to keep lid white/metallic
-                        bodyFill: AnyShapeStyle(headerPrimary),
-                        bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
-                        showBand: true,
-                        bandPrimaryColor: headerBandColor,
-                        bandSecondaryColor: headerSecondary
-                    )
-                    .frame(height: 200)
+                    if recommendedWax.kind == .hardwax {
+                        WaxCanGraphic(
+                            // Use defaults for topFill and middleFill to keep lid white/metallic
+                            bodyFill: AnyShapeStyle(headerPrimary),
+                            bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
+                            showBand: true,
+                            bandPrimaryColor: headerBandColor,
+                            bandSecondaryColor: headerSecondary
+                        )
+                        .frame(height: 200)
+
+                    }else if recommendedWax.kind == .klister {
+                        KlisterCanView(bodyColor: headerPrimary)
+                            .frame(height: 200)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5)
+                            
+
+                    }
                     Spacer(minLength: 20)
                     VStack(spacing: 2) {
                         Text("\(recommendedWax.code) \(recommendedWax.name)")
@@ -61,10 +70,18 @@ struct HeaderCanView : View {
     }
 }
 
-#Preview {
-    let recommendedWax = swixWaxes[2]
+#Preview("Wax") {
+    let recommendedWax = swixWaxes.filter({$0.kind == .hardwax}).first!
     
     HeaderCanView(recommendedWax: recommendedWax)
+   
+    
+}
+
+#Preview("Klister") {
+    let recommendedKlister = swixWaxes.filter({$0.kind == .klister}).first!
+    
+    HeaderCanView(recommendedWax: recommendedKlister)
    
     
 }

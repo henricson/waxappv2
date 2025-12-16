@@ -61,6 +61,21 @@ public enum SnowType: CaseIterable, Identifiable, Sendable {
             return "Svært våt/slush; høy vanninnhold."
         }
     }
+
+    // SF Symbol name for this snow type
+    public var iconName: String {
+        switch self {
+        case .newFallen: return "snow"
+        case .moistNewFallen: return "cloud.snow"
+        case .fineGrained: return "hexagon"
+        case .moistFineGrained: return "hexagon.lefthalf.filled"
+        case .oldGrained: return "circle.grid.2x1"
+        case .transformedMoistFine: return "rhombus"
+        case .frozenCorn: return "snowflake"
+        case .wetCorn: return "drop"
+        case .veryWetCorn: return "drop.fill"
+        }
+    }
 }
 
 // If this playground block causes build issues in app target, comment it out.
@@ -300,7 +315,8 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-5, 3)],
             .wetCorn: [TempRangeC(-5, 3)]
         ],
-        notes: "Changeable, damp–wet transformed; above/below freezing"
+        notes: "Changeable, damp–wet transformed; above/below freezing",
+        primaryColor: "#D8D8D8"
     ),
 
     .init(
@@ -309,13 +325,15 @@ public let swixWaxes: [SwixWax] = [
             .frozenCorn: [TempRangeC(-3, 10)],
             .wetCorn: [TempRangeC(-3, 10)]
         ],
-        notes: "Coarse/old snow from ice/crust to wet"
+        notes: "Coarse/old snow from ice/crust to wet",
+        primaryColor: "#D8D8D8"
     ),
 
     .init(
         code: "KX20", name: "Green Base Klister", series: "KX", kind: .base,
         ranges: [:],
-        notes: "Base/binder klister (iron in) for durability on ice & aggressive tracks"
+        notes: "Base/binder klister (iron in) for durability on ice & aggressive tracks",
+        primaryColor: "#71B152"
     ),
 
     .init(
@@ -323,7 +341,8 @@ public let swixWaxes: [SwixWax] = [
         ranges: [
             .frozenCorn: [TempRangeC(-12, 0)]
         ],
-        notes: "Icy/frozen coarse tracks; also as underlayer"
+        notes: "Icy/frozen coarse tracks; also as underlayer",
+        primaryColor: "0x204F9A"
     ),
 
     .init(
@@ -331,7 +350,8 @@ public let swixWaxes: [SwixWax] = [
         ranges: [
             .transformedMoistFine: [TempRangeC(-8, 0)]
         ],
-        notes: "Fine/coarse old snow near and below 0°C"
+        notes: "Fine/coarse old snow near and below 0°C",
+        primaryColor: "0x204F9A"
     ),
 
     .init(
@@ -427,3 +447,4 @@ func returnWaxesForSnowType(snowType: SnowType) -> [SwixWax] {
         return !rangesForType.isEmpty
     }
 }
+

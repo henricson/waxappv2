@@ -15,13 +15,14 @@ enum Tabs {
 struct ContentView: View {
     @State private var selectedTab: Tabs = .waxes
     
-
     var body: some View {
             TabView(selection: $selectedTab) {
-                Tab("Wax", systemImage: "snow", value: .waxes) {                WaxRecommendView()
+                Tab("Wax", systemImage: "snow", value: .waxes) {
+                    WaxRecommendView()
                 }
                 Tab("About", systemImage: "gear", value: .about) {
                     Text("Hello")
+                    
                 }
             }
         
@@ -30,8 +31,7 @@ struct ContentView: View {
 
 #Preview {
     @Previewable @StateObject var locationManager = LocationManager()
-    NavigationStack {
         ContentView()
             .environmentObject(locationManager)
-    }
+    
 }

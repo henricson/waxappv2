@@ -32,6 +32,7 @@ final class WeatherViewModel: ObservableObject {
             let summary = try await service.fetchWeatherAndAssessSnow(for: location)
             currentAssessment = summary.currentAssessment
             pastDailyAssessments = summary.pastDailyAssessments
+            print(currentAssessment.debugDescription)
             
             // Derive current temperature from the first hourly entry (now/next)
             if let firstHour = summary.weather.next24Hours.first {

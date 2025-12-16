@@ -16,25 +16,46 @@ struct WaxRecommendView: View {
     // User override
     @State private var userSelectedGroup: SnowType?
     
+    // Binding that drives the SnowTypeButtons
+    private var selectedGroupBinding: Binding<SnowType> {
+        Binding<SnowType>(
+            get: {
+                userSelectedGroup
+                ?? weather.currentAssessment?.group
+                ?? .fineGrained // default fallback when nothing available
+            },
+            set: { newValue in
+                // Get snowType based of weather
+                let weatherValue = weather.currentAssessment?.group
+                // If the set snowType is not same as weather
+                if weatherValue == nil || weatherValue != newValue {
+                    // Manual override
+                    userSelectedGroup = newValue
+                    // Reset location information
+                    locationManager.resetToNoLocation()
+                } else {
+                    // Re-selected the weather-derived value: clear override
+                    userSelectedGroup = nil
+                }
+                // Update recommendations when user picks
+                recVM.snowType = newValue
+            }
+        )
+    }
+    
     var body: some View {
         NavigationStack {
             VStack {
                 ScrollView(.vertical) {
                     VStack(spacing: 0) {
                         if let recommended = recVM.recommended.first {
-                            HeaderCanView(recommendedWax: recommended)
-                            
-                            
-                            
+                            HeaderCanView(recommendedWax: recommended.wax)
                         }else {
-                            HeaderCanView(recommendedWax: swixWaxes.first!)
+                            Text("Outside of range")
+                                .frame(height: 200)
                         }
-                        
-                        
-                        
-                        // Horizontal button-like picker
                         ZStack {
-                            GanttDiagram(temperature: $weather.temperature)
+                            GanttDiagram(temperature: $weather.temperature, snowType: selectedGroupBinding)
                             
                             TemperatureGauge(temperature: $weather.temperature)
                             
@@ -46,8 +67,6 @@ struct WaxRecommendView: View {
                             .padding(10)
                             .cornerRadius(50)
                             .glassEffect()
-                        
-                        
                     }
                     
                     .onChange(of: locationManager.authorizationStatus) { _, _ in
@@ -57,16 +76,14 @@ struct WaxRecommendView: View {
                         guard let loc = newLoc else { return }
                         Task { await weather.fetch(for: loc) }
                     }
-                    .onChange(of: effectiveGroup) { _, newGroup in
-                        recVM.effectiveGroup = newGroup
-                    }
                     .onChange(of: weather.temperature) {
-                        recVM.weatherTempC = $0
+                        recVM.temperature = weather.temperature
                     }
+
                     .onAppear {
-                        // Seed recommendation inputs
-                        recVM.set(group: effectiveGroup, tempC: weather.temperature)
-                        
+                        recVM.temperature = weather.temperature
+                        recVM.snowType = selectedGroupBinding.wrappedValue
+                    
                         // Don’t auto-fetch on appear if the user has overridden the snow type.
                         guard userSelectedGroup == nil else { return }
                         locationManager.requestAuthorizationIfNeeded()
@@ -83,17 +100,17 @@ struct WaxRecommendView: View {
 
                         if let recommended = recVM.recommended.first {
                             LinearGradient(
-                                colors: [Color(hex: recommended.primaryColor) ?? .blue, .black],
+                                colors: [Color(hex: recommended.wax.primaryColor) ?? .blue, .black],
                                 startPoint: .top, endPoint: .bottom
                             )
                             .ignoresSafeArea(edges: .top)
                             .transition(.opacity)
                             // Key the view so SwiftUI treats a new recommendation as a new view
-                            .id(recommended.primaryColor)
+                            .id(recommended.wax.primaryColor)
                         }
                     }
                     // Animate when the identifier (primaryColor) changes
-                    .animation(.easeIn, value: recVM.recommended.first?.primaryColor)
+                    .animation(.easeIn, value: recVM.recommended.first?.wax.primaryColor)
                 )
             }
             .navigationTitle("Kirkenes")
@@ -105,8 +122,12 @@ struct WaxRecommendView: View {
                     }
                 }
                 ToolbarItem() {
-                    Button("Snowtype", systemImage: "snowflake") {
-                        
+                    Menu("Snowtype", systemImage: "snowflake") {
+                        Picker("Snow Type", selection: selectedGroupBinding) {
+                            ForEach(SnowType.allCases, id: \.self) { group in
+                                Label(group.titleNo, systemImage: group.iconName).tag(group)
+                            }
+                        }
                     }
                 }
                 ToolbarItem {
@@ -128,33 +149,7 @@ struct WaxRecommendView: View {
 
 
 
-    // Binding that drives the SnowTypeButtons
-    private var selectedGroupBinding: Binding<SnowType> {
-        Binding<SnowType>(
-            get: {
-                userSelectedGroup
-                ?? weather.currentAssessment?.group
-                ?? .fineGrained // default fallback when nothing available
-            },
-            set: { newValue in
-                let weatherValue = weather.currentAssessment?.group
-                if weatherValue == nil || weatherValue != newValue {
-                    // User override: store it and reset location state so the button reads "Fetch location"
-                    userSelectedGroup = newValue
-                    locationManager.resetToNoLocation()
-                } else {
-                    // Re-selected the weather-derived value: clear override
-                    userSelectedGroup = nil
-                }
-                // Update recommendations when user picks
-                recVM.effectiveGroup = newValue
-            }
-        )
-    }
-
-    private var effectiveGroup: SnowType {
-        userSelectedGroup ?? weather.currentAssessment?.group ?? .fineGrained
-    }
+   
 }
 
 
