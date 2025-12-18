@@ -22,7 +22,6 @@ struct ContentView: View {
                 }
                 Tab("About", systemImage: "gear", value: .about) {
                     Text("Hello")
-                    
                 }
             }
         

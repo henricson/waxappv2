@@ -38,35 +38,70 @@ final class RecommendedWaxesViewModel: ObservableObject {
 
     private func recompute() {
         var newRecommendations: [WaxRecommendation] = []
+        let currentTemp = Double(temperature)
         
         for wax in swixWaxes {
             guard let range = tempRange(for: wax, group: snowType) else { continue }
             
+            // Check strict containment first
             if range.min <= temperature && temperature <= range.max {
                 let min = Double(range.min)
                 let max = Double(range.max)
-                let temp = Double(temperature)
                 
+                // Calculate the "ideal" center of this wax's range
                 let center = (min + max) / 2.0
+                
+                // Calculate absolute distance from current temp to the center
+                let distanceToCenter = abs(currentTemp - center)
+                
+                // We want to normalize this for sorting purposes.
+                // A "perfect" match has distance 0.
+                // We can use the distance directly for sorting (ascending),
+                // or convert to a "score" (descending).
+                
+                // Let's create a score where 100% is dead center.
+                // We use the half-width to determine how "far" out we are relative to the wax's tolerance.
                 let halfWidth = (max - min) / 2.0
                 
-                let percentage: Double
-                if halfWidth == 0 {
-                    percentage = 1.0
+                let matchScore: Double
+                if halfWidth > 0 {
+                    // 1.0 = center, 0.0 = at the very edge of the range
+                    matchScore = 1.0 - (distanceToCenter / halfWidth)
                 } else {
-                    let distance = abs(temp - center)
-                    percentage = Swift.max(0.0, 1.0 - (distance / halfWidth))
+                    // Range is a single point (min == max) and we matched it
+                    matchScore = 1.0
                 }
                 
                 newRecommendations.append(WaxRecommendation(
                     wax: wax,
                     reason: "",
-                    percentageMatch: percentage
+                    percentageMatch: matchScore
                 ))
             }
         }
         
-        recommended = newRecommendations.sorted { $0.percentageMatch > $1.percentageMatch }
+        // SORT PRIORITY:
+        // 1. Highest Match Score (Closer to center relative to its own range width)
+        // 2. Tie-breaker: If scores are very close, prefer the wax with the narrower range (more specific)?
+        //    Or just strictly by score.
+        
+        recommended = newRecommendations.sorted { (lhs, rhs) -> Bool in
+            // If the match percentages are significantly different, use that
+            if abs(lhs.percentageMatch - rhs.percentageMatch) > 0.01 {
+                return lhs.percentageMatch > rhs.percentageMatch
+            }
+            
+            // TIE BREAKER:
+            // If two waxes are equally "centered" (e.g. both perfect matches),
+            // usually the one with the narrower range is the "better" specific choice.
+            let rangeL = tempRange(for: lhs.wax, group: snowType)!
+            let widthL = rangeL.max - rangeL.min
+            
+            let rangeR = tempRange(for: rhs.wax, group: snowType)!
+            let widthR = rangeR.max - rangeR.min
+            
+            return widthL < widthR
+        }
     }
 
     private func tempRange(for wax: SwixWax, group: SnowType) -> TempRangeC? {

@@ -36,8 +36,9 @@ public struct WeatherSummary: Sendable {
 }
 
 // Updated to use SwixSnowGroup from Data.swift
-public struct SnowSurfaceAssessment: Sendable, Identifiable {
-    public var id: Date { date }
+public struct SnowSurfaceAssessment: Sendable, Identifiable, Equatable {
+    public var id: UUID
+    
     public let date: Date
     public let group: SnowType
     public let reasons: [String] // brief heuristic rationale (Norwegian)
@@ -62,7 +63,7 @@ final class WeatherServiceClient {
     private let service = WeatherKit.WeatherService()
 
     // Tunable thresholds (metric)
-    private let recentSnowThresholdCM: Double = 2.0     // >= 2 cm deemed “new/noticeable”
+    private let recentSnowThresholdCM: Double = 1.0     // >= 2 cm deemed “new/noticeable”
     private let wetTempCThreshold: Double = 0.0         // above freezing
     private let wetHoursThreshold: Int = 2              // hours above freezing to count as “wet”
     private let refreezeNightBelowC: Double = -1.0      // night min <= -1°C counts as refreeze
@@ -220,6 +221,7 @@ final class WeatherServiceClient {
             }
 
             let assessment = SnowSurfaceAssessment(
+                id: UUID(),
                 date: day.date,
                 group: group,
                 reasons: reasons,
@@ -279,6 +281,7 @@ final class WeatherServiceClient {
         }
 
         return SnowSurfaceAssessment(
+            id: UUID(),
             date: first.date,
             group: group,
             reasons: reasons,

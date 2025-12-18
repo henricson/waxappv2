@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5EB94F342EA53E0800413682 /* WaxApp Composer Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5EB94F332EA53E0800413682 /* WaxApp Composer Icon.icon */; };
+		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,7 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5EB94F332EA53E0800413682 /* WaxApp Composer Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "WaxApp Composer Icon.icon"; sourceTree = "<group>"; };
+		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
 		5EFB6CF02EA40981005C4E5D /* waxappv2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = waxappv2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EFB6CFD2EA40982005C4E5D /* waxappv2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = waxappv2Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EFB6D072EA40982005C4E5D /* waxappv2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = waxappv2UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,7 +97,7 @@
 				5EFB6D002EA40982005C4E5D /* waxappv2Tests */,
 				5EFB6D0A2EA40982005C4E5D /* waxappv2UITests */,
 				5EFB6CF12EA40981005C4E5D /* Products */,
-				5EB94F332EA53E0800413682 /* WaxApp Composer Icon.icon */,
+				5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -231,7 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5EB94F342EA53E0800413682 /* WaxApp Composer Icon.icon in Resources */,
+				5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,7 +412,7 @@
 		5EFB6D122EA40982005C4E5D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "WaxApp Composer Icon";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Revised WaxApp";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = waxappv2/waxappv2.entitlements;
@@ -483,7 +483,7 @@
 		5EFB6D132EA40982005C4E5D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "WaxApp Composer Icon";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Revised WaxApp";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = waxappv2/waxappv2.entitlements;

@@ -47,12 +47,12 @@ struct HeaderCanView : View {
                             bandPrimaryColor: headerBandColor,
                             bandSecondaryColor: headerSecondary
                         )
-                        .frame(height: 200)
-
                     }else if recommendedWax.kind == .klister {
                         KlisterCanView(bodyColor: headerPrimary)
-                            .frame(height: 200)
                             .shadow(color: Color.black.opacity(0.1), radius: 5)
+                            .mask(
+                                LinearGradient(gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]), startPoint: .center, endPoint: .bottom)
+                            )
                             
 
                     }

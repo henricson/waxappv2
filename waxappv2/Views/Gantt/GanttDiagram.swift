@@ -16,7 +16,7 @@ struct ScrollItem: Identifiable, Hashable {
 struct GanttDiagram: View {
     // Incoming binding from parent
     @Binding var temperature: Int
-    @Binding var snowType: SnowType
+    var snowType: SnowType
     
     // MARK: - Constants
     private let scaleFactor: Int = 50
@@ -47,11 +47,11 @@ struct GanttDiagram: View {
     @State private var layout: LayoutCache
     
     // Init to compute layout once
-    init(temperature: Binding<Int>, snowType: Binding<SnowType>) {
+    init(temperature: Binding<Int>, snowType: SnowType) {
         self._temperature = temperature
-        self._snowType = snowType
+        self.snowType = snowType
         // Precompute layout once in init
-        let initialLayout = GanttDiagram.computeLayout(for: snowType.wrappedValue)
+        let initialLayout = GanttDiagram.computeLayout(for: snowType)
         self._layout = State(initialValue: initialLayout)
     }
     
@@ -99,6 +99,7 @@ struct GanttDiagram: View {
                     }
                 }
             }
+            .coordinateSpace(name: "ganttScroll")
             .sensoryFeedback(.increase, trigger: scrollPosition)
 
             .scrollTargetBehavior(.viewAligned)
@@ -186,7 +187,7 @@ private struct GanttContent: View, Equatable {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var snowType: SnowType = .fineGrained
     @Previewable @State var temperature: Int = 0
-    GanttDiagram(temperature: $temperature, snowType: $snowType)
+    var snowType: SnowType = .fineGrained
+    GanttDiagram(temperature: $temperature, snowType: snowType)
 }

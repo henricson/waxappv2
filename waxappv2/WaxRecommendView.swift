@@ -13,34 +13,19 @@ struct WaxRecommendView: View {
     @StateObject private var weather = WeatherViewModel()
     @StateObject private var recVM = RecommendedWaxesViewModel()
     
-    // User override
+    // UI State
     @State private var userSelectedGroup: SnowType?
+    @State private var showMapSelection = false
+    @State private var showLocationPermissionAlert = false
     
-    // Binding that drives the SnowTypeButtons
-    private var selectedGroupBinding: Binding<SnowType> {
-        Binding<SnowType>(
-            get: {
-                userSelectedGroup
-                ?? weather.currentAssessment?.group
-                ?? .fineGrained // default fallback when nothing available
-            },
-            set: { newValue in
-                // Get snowType based of weather
-                let weatherValue = weather.currentAssessment?.group
-                // If the set snowType is not same as weather
-                if weatherValue == nil || weatherValue != newValue {
-                    // Manual override
-                    userSelectedGroup = newValue
-                    // Reset location information
-                    locationManager.resetToNoLocation()
-                } else {
-                    // Re-selected the weather-derived value: clear override
-                    userSelectedGroup = nil
-                }
-                // Update recommendations when user picks
-                recVM.snowType = newValue
-            }
-        )
+    private var currentSnowType : SnowType {
+        userSelectedGroup
+        ?? recVM.snowType
+    }
+    
+    private var isOverridenSnowTypeOrTemperature : Bool {
+        return (weather.temperature != recVM.temperature)
+        || userSelectedGroup != nil
     }
     
     var body: some View {
@@ -48,56 +33,42 @@ struct WaxRecommendView: View {
             VStack {
                 ScrollView(.vertical) {
                     VStack(spacing: 0) {
-                        if let recommended = recVM.recommended.first {
-                            HeaderCanView(recommendedWax: recommended.wax)
-                        }else {
-                            Text("Outside of range")
-                                .frame(height: 200)
-                        }
-                        ZStack {
-                            GanttDiagram(temperature: $weather.temperature, snowType: selectedGroupBinding)
-                            
-                            TemperatureGauge(temperature: $weather.temperature)
-                            
-                        }.contentMargins(.top, 20)
-                            .padding(.top, 20)
+                        Group {
+                            if let recommended = recVM.recommended.first {
+                                HeaderCanView(recommendedWax: recommended.wax)
+                                    .id(recommended.wax.id)
+                            } else {
+                                Text("Outside of range")
+                            }
+                        }.frame(height: 200)
                         
-                        Text("\(weather.temperature)°C")
+                        SnowTypeSelector(selectedGroupBinding: Binding(
+                            get: {
+                                currentSnowType
+                            },
+                            set: { newValue in
+                                handleSnowTypeChange(newValue)
+                            }))
+                        .padding(.vertical, 20)
+                        
+                        
+                        Text("\(recVM.temperature)°C")
                             .font(.title2)
                             .padding(10)
                             .cornerRadius(50)
                             .glassEffect()
-                    }
-                    
-                    .onChange(of: locationManager.authorizationStatus) { _, _ in
-                        locationManager.requestAuthorizationIfNeeded()
-                    }
-                    .onChange(of: locationManager.lastLocation) { _, newLoc in
-                        guard let loc = newLoc else { return }
-                        Task { await weather.fetch(for: loc) }
-                    }
-                    .onChange(of: weather.temperature) {
-                        recVM.temperature = weather.temperature
-                    }
-
-                    .onAppear {
-                        recVM.temperature = weather.temperature
-                        recVM.snowType = selectedGroupBinding.wrappedValue
-                    
-                        // Don’t auto-fetch on appear if the user has overridden the snow type.
-                        guard userSelectedGroup == nil else { return }
-                        locationManager.requestAuthorizationIfNeeded()
-                        if let loc = locationManager.lastLocation {
-                            Task { await weather.fetch(for: loc) }
+                        
+                        ZStack {
+                            GanttDiagram(temperature: $recVM.temperature, snowType: currentSnowType)
+                                .id(currentSnowType)
+                                .padding(.top, 10)
+                            TemperatureGauge(temperature: recVM.temperature)
                         }
-                    }
+                        }
                 }
                 .background(
                     ZStack {
-                        // Base background
-                        Color.clear
-                            .ignoresSafeArea(edges: .top)
-
+                        Color.clear.ignoresSafeArea(edges: .top)
                         if let recommended = recVM.recommended.first {
                             LinearGradient(
                                 colors: [Color(hex: recommended.wax.primaryColor) ?? .blue, .black],
@@ -105,61 +76,118 @@ struct WaxRecommendView: View {
                             )
                             .ignoresSafeArea(edges: .top)
                             .transition(.opacity)
-                            // Key the view so SwiftUI treats a new recommendation as a new view
                             .id(recommended.wax.primaryColor)
                         }
                     }
-                    // Animate when the identifier (primaryColor) changes
                     .animation(.easeIn, value: recVM.recommended.first?.wax.primaryColor)
                 )
             }
-            .navigationTitle("Kirkenes")
+            .navigationTitle(locationManager.placeName ?? "")
+            
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // MARK: - Left: Map Selection
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Map", systemImage: "map") {
-                        
+                        showMapSelection = true
                     }
                 }
-                ToolbarItem() {
-                    Menu("Snowtype", systemImage: "snowflake") {
-                        Picker("Snow Type", selection: selectedGroupBinding) {
-                            ForEach(SnowType.allCases, id: \.self) { group in
-                                Label(group.titleNo, systemImage: group.iconName).tag(group)
-                            }
-                        }
+            
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        handleFetchLocationAndSetWeather()
+                    } label: {
+                        Image(systemName: isOverridenSnowTypeOrTemperature ? "location.slash.fill" : "location.fill")
                     }
                 }
-                ToolbarItem {
-                    LocationButton()
-                        .onChange(of: locationManager.lastLocation) { _, newLoc in
-                            if newLoc != nil {
-                                userSelectedGroup = nil
-                            }
-                        }
+            }
+            // MARK: - Modals & Alerts
+            .sheet(isPresented: $showMapSelection) {
+                MapSelectView()
+            }
+            .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
                 }
-          
+            } message: {
+                Text("Please enable location services in settings to use your GPS position.")
+            }
+            // MARK: - Logic Observers
+            .onChange(of: locationManager.authorizationStatus) { _, _ in
+                locationManager.requestAuthorizationIfNeeded()
+            }
+            .onChange(of: locationManager.lastLocation) { _, newLoc in
+                guard let loc = newLoc else { return }
+                Task { await weather.fetch(for: loc) }
+            }
+            // Add observer for manual location specifically
+            .onChange(of: locationManager.manualLocation) { _, newLoc in
+                guard let loc = newLoc else { return }
+                Task { await weather.fetch(for: loc) }
+            }
+            .onChange(of: weather.temperature) {
+                recVM.temperature = weather.temperature
+            }
+            .onChange(of: weather.currentAssessment) { _, newAssessment in
+                guard let newGroup = newAssessment?.group else { return }
+                userSelectedGroup = nil
+                recVM.snowType = newGroup
+            }
+            .onAppear {
+                recVM.temperature = weather.temperature
+                handleFetchLocationAndSetWeather()
             }
         }
     }
-    
-    
 
     
-
-
-
-   
+    /**
+     When snowType changes due to user selection, resetLocationInfo
+     */
+    private func handleSnowTypeChange(_ newValue: SnowType) {
+        let weatherValue = weather.currentAssessment?.group
+        
+        if weatherValue == nil || weatherValue != newValue {
+            userSelectedGroup = newValue
+            locationManager.resetToNoLocation()
+        } else {
+            // If they selected what was already the weather recommendation,
+            // we might want to clear the manual override
+            userSelectedGroup = nil
+        }
+        recVM.snowType = newValue
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func handleFetchLocationAndSetWeather() {
+        switch locationManager.authorizationStatus {
+        case .denied, .restricted:
+            showLocationPermissionAlert = true
+        case .notDetermined:
+            locationManager.requestAuthorizationIfNeeded()
+        case .authorizedAlways, .authorizedWhenInUse:
+            // 1. Clear any manual map selection
+            locationManager.clearManualOverride()
+            // 2. Clear manual snow type
+            userSelectedGroup = nil
+            // 3. Force a refresh of GPS
+            locationManager.fetchLocationOnce()
+            // 4. Reset temperature override
+            recVM.temperature = weather.temperature
+            
+        @unknown default:
+            break
+        }
+    }
 }
-
-
 
 #Preview {
     @Previewable @StateObject var locationManager = LocationManager()
 
-        
-        WaxRecommendView()
-            .environmentObject(locationManager)
-    
+    WaxRecommendView()
+        .environmentObject(locationManager)
 }
-

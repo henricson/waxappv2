@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="160px" height="31px" viewBox="0 0 160 31" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>WaxLid Top</title>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="WaxCan-Icon" transform="translate(0, -20)" fill="#D7D7D7">
+            <g id="Wax-lid" transform="translate(0, 20.5276)">
+                <ellipse id="WaxLid-Top" cx="80" cy="15.1256281" rx="80" ry="15.1256281"></ellipse>
+            </g>
+        </g>
+    </g>
+</svg>

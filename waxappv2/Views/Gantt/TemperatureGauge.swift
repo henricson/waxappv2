@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TemperatureGauge: View {
-    @Binding var temperature : Int
+    var temperature : Int
 
     var body: some View {
             Rectangle()
@@ -19,5 +19,5 @@ struct TemperatureGauge: View {
 }
 
 #Preview {
-    TemperatureGauge(temperature: .constant(-5))
+    TemperatureGauge(temperature: -5)
 }

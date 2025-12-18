@@ -1,0 +1,161 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "solid" : "extended-gray:1.00000,1.00000"
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : "automatic"
+    }
+  ],
+  "groups" : [
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "srgb:0.66422,0.66424,0.66423,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "WaxLid Bottom.svg",
+          "name" : "WaxLid Bottom",
+          "position" : {
+            "scale" : 2.2,
+            "translation-in-points" : [
+              0,
+              -11.506675133795497
+            ]
+          }
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "srgb:0.66422,0.66424,0.66423,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "WaxLid Top.svg",
+          "name" : "WaxLid Top",
+          "position" : {
+            "scale" : 2.2,
+            "translation-in-points" : [
+              0,
+              -68.41016768004565
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "name" : "Group",
+      "position" : {
+        "scale" : 2.2,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "overlay"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "display-p3:0.10130,0.35144,0.96783,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.28976,0.51488,1.06963,1.00000",
+                  "display-p3:0.10130,0.35144,0.96783,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 1,
+                    "y" : 0.3303769965876463
+                  },
+                  "stop" : {
+                    "x" : 0,
+                    "y" : 0.32495793303037196
+                  }
+                }
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "WaxBody.svg",
+          "name" : "WaxBody",
+          "position" : {
+            "scale" : 2.2,
+            "translation-in-points" : [
+              7.787220152997861,
+              300.43106481909496
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "position" : {
+        "scale" : 2.2,
+        "translation-in-points" : [
+          -19.378234010009237,
+          -265.39859025731926
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
