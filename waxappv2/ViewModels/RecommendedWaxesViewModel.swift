@@ -23,7 +23,7 @@ final class RecommendedWaxesViewModel: ObservableObject {
     @Published var snowType: SnowType = .fineGrained {
         didSet { recompute() }
     }
-    @Published var temperature: Int = 0 {
+    @Published var temperature: Int = -5 {
         didSet { recompute() }
     }
 

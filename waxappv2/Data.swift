@@ -4,7 +4,10 @@ import Playgrounds
 public struct TempRangeC: Sendable, Equatable {
     public let min: Int  // inclusive, °C
     public let max: Int  // inclusive, °C
-    public init(_ min: Int, _ max: Int) { self.min = min; self.max = max }
+    public init(_ min: Int, _ max: Int) {
+        self.min = min
+        self.max = max
+    }
 }
 
 public enum WaxKind: String, Sendable { case hardwax, klister, base }
@@ -24,7 +27,7 @@ public enum SnowType: CaseIterable, Identifiable, Sendable {
     case veryWetCorn              // Very wet corn snow (slushy)
 
     // Norwegian display name for UI
-    public var titleNo: String {
+    public var title: String {
         switch self {
         case .newFallen: return "Nysnø"
         case .moistNewFallen: return "Fuktig nysnø"
@@ -39,7 +42,7 @@ public enum SnowType: CaseIterable, Identifiable, Sendable {
     }
 
     // Optional: brief Norwegian description for tooltips/details
-    public var descriptionNo: String {
+    public var description: String {
         switch self {
         case .newFallen:
             return "Nylig falt, tørre krystaller (skarpe); krever relativt hard voks."
@@ -316,7 +319,7 @@ public let swixWaxes: [SwixWax] = [
             .wetCorn: [TempRangeC(-5, 3)]
         ],
         notes: "Changeable, damp–wet transformed; above/below freezing",
-        primaryColor: "#D8D8D8"
+        primaryColor: "#BDBDBD", secondaryColor: "#5071B0"
     ),
 
     .init(
@@ -326,14 +329,14 @@ public let swixWaxes: [SwixWax] = [
             .wetCorn: [TempRangeC(-3, 10)]
         ],
         notes: "Coarse/old snow from ice/crust to wet",
-        primaryColor: "#D8D8D8"
+        primaryColor: "#CCCECB", secondaryColor: "#C14D40"
     ),
 
     .init(
         code: "KX20", name: "Green Base Klister", series: "KX", kind: .base,
         ranges: [:],
         notes: "Base/binder klister (iron in) for durability on ice & aggressive tracks",
-        primaryColor: "#71B152"
+        primaryColor: "#6AAC45", secondaryColor: "#82B45B"
     ),
 
     .init(
@@ -342,7 +345,7 @@ public let swixWaxes: [SwixWax] = [
             .frozenCorn: [TempRangeC(-12, 0)]
         ],
         notes: "Icy/frozen coarse tracks; also as underlayer",
-        primaryColor: "0x204F9A"
+        primaryColor: "#509CD6", secondaryColor: "#59A9DF"
     ),
 
     .init(
@@ -351,7 +354,7 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-8, 0)]
         ],
         notes: "Fine/coarse old snow near and below 0°C",
-        primaryColor: "0x204F9A"
+        primaryColor: "#2C68BD", secondaryColor: "#614AA7"
     ),
 
     .init(
@@ -360,7 +363,8 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-4, 2)],
             .wetCorn: [TempRangeC(-4, 2)]
         ],
-        notes: "Transformed & fine-grained; slightly wet above 0°C"
+        notes: "Transformed & fine-grained; slightly wet above 0°C",
+        primaryColor: "#95989E", secondaryColor: "#612A6A"
     ),
 
     .init(
@@ -369,7 +373,8 @@ public let swixWaxes: [SwixWax] = [
             .frozenCorn: [TempRangeC(-2, 4)],
             .wetCorn: [TempRangeC(-2, 4)]
         ],
-        notes: "All-around for wet/coarse & frozen corn"
+        notes: "All-around for wet/coarse & frozen corn",
+        primaryColor: "#773C89", secondaryColor: "#4294D2"
     ),
 
     .init(
@@ -378,7 +383,8 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-6, 4)],
             .wetCorn: [TempRangeC(-6, 4)]
         ],
-        notes: "Moist transformed to wet/coarse"
+        notes: "Moist transformed to wet/coarse",
+        primaryColor: "#C63B66", secondaryColor: "#D79D4B"
     ),
 
     .init(
@@ -386,7 +392,8 @@ public let swixWaxes: [SwixWax] = [
         ranges: [
             .wetCorn: [TempRangeC(1, 5)]
         ],
-        notes: "Damp → wet, granular/coarse warm snow"
+        notes: "Damp → wet, granular/coarse warm snow",
+        primaryColor: "#D23A2B", secondaryColor: "#D66B60"
     ),
 
     .init(
@@ -394,7 +401,8 @@ public let swixWaxes: [SwixWax] = [
         ranges: [
             .veryWetCorn: [TempRangeC(2, 15)]
         ],
-        notes: "Very wet/slushy; highest water content"
+        notes: "Very wet/slushy; highest water content",
+        primaryColor: "#D5452F", secondaryColor: "#DFB53E"
     ),
 
     .init(
@@ -403,7 +411,8 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-7, 1)],
             .wetCorn: [TempRangeC(-7, 1)]
         ],
-        notes: "Racing klister w/ anti-icing; variable conditions"
+        notes: "Racing klister w/ anti-icing; variable conditions",
+        primaryColor: "#000000", secondaryColor: "#BD74BF"
     ),
 
     .init(
@@ -412,7 +421,8 @@ public let swixWaxes: [SwixWax] = [
             .transformedMoistFine: [TempRangeC(-3, 5)],
             .wetCorn: [TempRangeC(-3, 5)]
         ],
-        notes: "Warmer Nero; humid transformed/wet"
+        notes: "Warmer Nero; humid transformed/wet",
+        primaryColor: "#000000", secondaryColor: "#972921"
     )
 ]
 

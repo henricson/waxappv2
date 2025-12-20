@@ -35,7 +35,7 @@ struct SnowTypeButtons: View {
                                     proxy.scrollTo(group, anchor: .center)
                                 }
                             } label: {
-                                Label(group.titleNo, systemImage: icon(for: group))
+                                Label(group.title, systemImage: icon(for: group))
                                     .foregroundColor(isSel ? .blue : .white)
 
                             }

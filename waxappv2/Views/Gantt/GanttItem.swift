@@ -119,10 +119,17 @@ struct GanttItem: View {
             .padding(.trailing, 8)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .background(primaryColor)
-            .cornerRadius(50)
+            .background(
+                ZStack {
+                    Capsule()
+                        .fill(.regularMaterial)
+                    Capsule()
+                        .fill(primaryColor.opacity(0.8))
+                }
+            )
+            .clipShape(Capsule())
             .overlay(
-                RoundedRectangle(cornerRadius: 50)
+                Capsule()
                     .stroke(isDarkBackground ? Color.white.opacity(0.9) : Color.clear, lineWidth: 0.75)
             )
             .shadow(color: isDarkBackground ? Color.white.opacity(0.25) : Color.clear, radius: 1, x: 0, y: 0)

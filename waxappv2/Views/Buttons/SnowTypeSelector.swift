@@ -14,7 +14,7 @@ struct SnowTypeSelector: View {
         Menu {
             Picker("Snow Type", selection: $selectedGroupBinding) {
                 ForEach(SnowType.allCases, id: \.self) { group in
-                    Label(group.titleNo, systemImage: group.iconName).tag(group)
+                    Label(group.title, systemImage: group.iconName).tag(group)
                 }
             }
             // Optional: This style often looks better in menus
@@ -22,7 +22,7 @@ struct SnowTypeSelector: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: $selectedGroupBinding.wrappedValue.iconName)
-                Text($selectedGroupBinding.wrappedValue.titleNo)
+                Text($selectedGroupBinding.wrappedValue.title)
                     .fontWeight(.medium)
                 
                 // Chevron indicates this is a dropdown/menu

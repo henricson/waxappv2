@@ -50,20 +50,13 @@ struct WaxRecommendView: View {
                                 handleSnowTypeChange(newValue)
                             }))
                         .padding(.vertical, 20)
-                        
-                        
-                        Text("\(recVM.temperature)°C")
-                            .font(.title2)
-                            .padding(10)
-                            .cornerRadius(50)
-                            .glassEffect()
-                        
                         ZStack {
                             GanttDiagram(temperature: $recVM.temperature, snowType: currentSnowType)
                                 .id(currentSnowType)
-                                .padding(.top, 10)
+                                .padding(.top, 50)
                             TemperatureGauge(temperature: recVM.temperature)
                         }
+                        
                         }
                 }
                 .background(
@@ -115,10 +108,11 @@ struct WaxRecommendView: View {
             } message: {
                 Text("Please enable location services in settings to use your GPS position.")
             }
-            // MARK: - Logic Observers
             .onChange(of: locationManager.authorizationStatus) { _, _ in
                 locationManager.requestAuthorizationIfNeeded()
             }
+            
+            // Update of users location
             .onChange(of: locationManager.lastLocation) { _, newLoc in
                 guard let loc = newLoc else { return }
                 Task { await weather.fetch(for: loc) }
@@ -128,16 +122,24 @@ struct WaxRecommendView: View {
                 guard let loc = newLoc else { return }
                 Task { await weather.fetch(for: loc) }
             }
+            
+            // Set the temperature when weather forecast is fetched
             .onChange(of: weather.temperature) {
-                recVM.temperature = weather.temperature
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    recVM.temperature = weather.temperature
+                }
             }
+            
+            // Set the snow type when weather forecast is fetched (and assessed)
             .onChange(of: weather.currentAssessment) { _, newAssessment in
                 guard let newGroup = newAssessment?.group else { return }
+                // Remove any user override of snow type
                 userSelectedGroup = nil
                 recVM.snowType = newGroup
             }
+            
             .onAppear {
-                recVM.temperature = weather.temperature
+                //recVM.temperature = weather.temperature
                 handleFetchLocationAndSetWeather()
             }
         }

@@ -5,7 +5,7 @@ struct KlisterCanView: View {
     var tipColor: Color = .black
     var bodyColor: Color = Color(red: 0.85, green: 0.85, blue: 0.85) // #D8D8D8
     var eraserColor: Color = .black
-    var stripeColor: Color = Color(red: 0.11, green: 0.11, blue: 0.11) // #1C1C1C
+    var stripeColor: Color = Color(red: 0.5, green: 0.5, blue: 0.5) // #1C1C1C
     var middleSectionGradient: LinearGradient = LinearGradient(
         gradient: Gradient(colors: [Color(red: 0.13, green: 0.13, blue: 0.13), Color(red: 0.05, green: 0.05, blue: 0.05)]),
         startPoint: .leading,
