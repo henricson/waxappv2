@@ -74,12 +74,12 @@ struct LocationButton: View {
         }
         if isNotDetermined {
             // Ask for permission; your manager will prompt
-            locationManager.fetchLocationOnce(autoRequestPermission: true)
+            locationManager.fetchLocationOnce()
             return
         }
         if isAuthorized {
             // Fetch immediately
-            locationManager.fetchLocationOnce(autoRequestPermission: false)
+            locationManager.fetchLocationOnce()
             return
         }
         // Fallback

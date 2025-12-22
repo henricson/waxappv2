@@ -15,15 +15,6 @@ struct waxappv2App: App {
         WindowGroup {
             ContentView()
                 .environmentObject(locationManager)
-                .task {
-                    // At launch: attempt one-shot fetch.
-                    // - If authorized: performs requestLocation()
-                    // - If notDetermined: shows prompt and auto-fetches once after grant
-                    // - If denied/restricted: shows message; user can open Settings from UI
-                    await MainActor.run {
-                        locationManager.fetchLocationOnce(autoRequestPermission: true)
-                    }
-                }
         }
     }
 }

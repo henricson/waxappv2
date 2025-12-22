@@ -35,11 +35,13 @@ final class WeatherViewModel: ObservableObject {
             
             // Derive current temperature from the first hourly entry (now/next)
             if let firstHour = summary.weather.next24Hours.first {
-                temperature = Int(firstHour.temperatureC)
+                let newTemp = Int(firstHour.temperatureC)
+                print("WeatherViewModel: Fetched temperature \(newTemp) (was \(temperature))")
+                temperature = newTemp
             }
         } catch {
+            print("WeatherViewModel: Error fetching weather: \(error)")
             errorMessage = error.localizedDescription
         }
     }
 }
-

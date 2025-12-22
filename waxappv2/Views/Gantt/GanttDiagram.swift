@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct ScrollItem: Identifiable, Hashable {
+struct ScrollItem:  Identifiable, Hashable {
     var id: UUID
     var value: Int
 }
@@ -16,7 +16,7 @@ struct ScrollItem: Identifiable, Hashable {
 struct GanttDiagram: View {
     // Incoming binding from parent
     @Binding var temperature: Int
-    var snowType: SnowType
+    var snowType:  SnowType
     
     // MARK: - Constants
     private let scaleFactor: Int = 50
@@ -27,47 +27,14 @@ struct GanttDiagram: View {
     
     // Use stable, static IDs so the scroll targets don't churn on re-render
     private static let stableScrollItems: [ScrollItem] = (-35...35).map { value in
-        ScrollItem(id: UUID(), value: value)
+        ScrollItem(id:  UUID(), value: value)
     }
     private let scrollItems = GanttDiagram.stableScrollItems
     
-    // Drive scroll without recomputing the heavy content
     @State private var scrollPosition: ScrollItem?
-    
-    // Cache heavy layout once; keep identity stable so Equatable subview can skip updates
-    struct LayoutCache: Equatable {
-        static func == (lhs: GanttDiagram.LayoutCache, rhs: GanttDiagram.LayoutCache) -> Bool {
-            return lhs.id == rhs.id
-        }
-        
-        let id = UUID()
-        let placements: [PlacedGanttTask<UUID, SwixWax>]
-        let rowsCount: Int
-    }
-    @State private var layout: LayoutCache
-    
-    // Init to compute layout once
-    init(temperature: Binding<Int>, snowType: SnowType) {
-        self._temperature = temperature
-        self.snowType = snowType
-        // Precompute layout once in init
-        let initialLayout = GanttDiagram.computeLayout(for: snowType)
-        self._layout = State(initialValue: initialLayout)
-    }
-    
-    private static func computeLayout(for type: SnowType) -> LayoutCache {
-        let waxes = returnWaxesForSnowType(snowType: type)
-        let tasks = waxes.map { wax in
-            GanttTask(
-                id: UUID(),
-                start: Int(wax.minValue(for: type)),
-                end: Int(wax.maxValue(for: type)),
-                renderItem: wax
-            )
-        }
-        let assigned = assignRows(tasks: tasks, padding: 0)
-        return LayoutCache(placements: assigned.placements, rowsCount: assigned.rowsCount)
-    }
+    @State private var placements: [PlacedGanttTask<String, SwixWax>] = []
+    @State private var rowsCount: Int = 0
+    @State private var layoutId = UUID() // Used to trigger transitions
     
     var body: some View {
         HStack {
@@ -78,18 +45,19 @@ struct GanttDiagram: View {
                         ForEach(scrollItems) { item in
                             Color.clear
                                 .frame(width: CGFloat(scaleFactor))
-                        
                                 .id(item)
                         }
                     }
                     .scrollTargetLayout()
+                    
                     VStack {
-                        
                         GanttContent(
-                            layout: layout,
+                            placements: placements,
+                            rowsCount: rowsCount,
                             minValue: minValue,
                             scaleFactor: scaleFactor,
-                            rowHeight: rowHeight
+                            rowHeight: rowHeight,
+                            layoutId: layoutId
                         )
                         .equatable()
                         
@@ -101,10 +69,10 @@ struct GanttDiagram: View {
             }
             .coordinateSpace(name: "ganttScroll")
             .sensoryFeedback(.increase, trigger: scrollPosition)
-
             .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollPosition, anchor: UnitPoint(x: 0.5625, y: 0))
+            .scrollPosition(id: $scrollPosition, anchor:  UnitPoint(x: 0.5625, y: 0))
             .onAppear {
+                updateLayout()
                 // Initialize scroll position from parent temperature
                 if let target = scrollItems.first(where: { $0.value == temperature }) {
                     scrollPosition = target
@@ -118,32 +86,50 @@ struct GanttDiagram: View {
             }
             .onChange(of: temperature) { _, newValue in
                 // When parent pushes a new temperature, update the scroll target
-                // This will not re-render the heavy content (isolated in Equatable subview)
                 if let target = scrollItems.first(where: { $0.value == newValue }),
                    target != scrollPosition {
-                    withAnimation(.easeIn) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
                         scrollPosition = target
-
                     }
                 }
             }
-            .onChange(of: snowType) { _, newType in
-                layout = GanttDiagram.computeLayout(for: newType)
+            .onChange(of: snowType) { _, _ in
+                updateLayout()
             }
+        }
+    }
+    
+    private func updateLayout() {
+        let waxes = returnWaxesForSnowType(snowType: snowType)
+        let tasks = waxes.map { wax in
+            GanttTask(
+                id: wax.id,
+                start: Int(wax.minValue(for: snowType)),
+                end: Int(wax.maxValue(for: snowType)),
+                renderItem: wax
+            )
+        }
+        let assigned = assignRows(tasks: tasks, padding: 0)
+        
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.75, blendDuration: 0)) {
+            placements = assigned.placements
+            rowsCount = assigned.rowsCount
+            layoutId = UUID() // Trigger transition
         }
     }
 }
 
 // MARK: - Heavy Content (Equatable to skip body recomputation)
 private struct GanttContent: View, Equatable {
-    let layout: GanttDiagram.LayoutCache
+    let placements: [PlacedGanttTask<String, SwixWax>]
+    let rowsCount: Int
     let minValue: Int
     let scaleFactor: Int
     let rowHeight: CGFloat
+    let layoutId: UUID
     
     static func == (lhs: GanttContent, rhs: GanttContent) -> Bool {
-        // Layout and config are effectively immutable; if equal, skip body updates
-        lhs.layout.id == rhs.layout.id &&
+        lhs.layoutId == rhs.layoutId &&
         lhs.minValue == rhs.minValue &&
         lhs.scaleFactor == rhs.scaleFactor &&
         lhs.rowHeight == rhs.rowHeight
@@ -151,12 +137,12 @@ private struct GanttContent: View, Equatable {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(0..<layout.rowsCount, id: \.self) { rowIndex in
+            ForEach(0..<rowsCount, id: \.self) { rowIndex in
                 ZStack(alignment: .leading) {
-                    let items = layout.placements.filter { $0.row == rowIndex }
+                    let items = placements.filter { $0.row == rowIndex }
                     
                     ForEach(items) { item in
-                        renderGanttItem(item: item)
+                        renderGanttItem(item: item, rowIndex: rowIndex)
                     }
                 }
             }
@@ -164,7 +150,7 @@ private struct GanttContent: View, Equatable {
         .allowsHitTesting(false) // Overlay only; scroll interactions belong to the scale
     }
     
-    private func renderGanttItem(item: PlacedGanttTask<UUID, SwixWax>) -> some View {
+    private func renderGanttItem(item: PlacedGanttTask<String, SwixWax>, rowIndex: Int) -> some View {
         let xStart = CGFloat(item.start - minValue) * CGFloat(scaleFactor)
         let width = CGFloat(item.end - item.start) * CGFloat(scaleFactor)
         let wax = item.renderItem
@@ -174,17 +160,26 @@ private struct GanttContent: View, Equatable {
             bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
             bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
             showBand: true,
-            bandPrimaryColor: Color(hex: wax.primaryColor) ?? .white,
+            bandPrimaryColor: Color(hex:  wax.primaryColor) ?? .white,
             bandSecondaryColor: (wax.secondaryColor.flatMap { Color(hex: $0) }) ?? .blue
         ) : KlisterCanView(bodyColor: (Color(hex: wax.primaryColor) ?? .gray))
         
         return GanttItem(primaryColor: Color(hex: wax.primaryColor) ?? .white, icon: AnyView(waxIcon), title: wax.name)
             .frame(width: width, height: rowHeight)
             .position(x: xStart + width/2, y: rowHeight/2)
+            .transition(. asymmetric(
+                insertion:  .scale(scale: 0.92).combined(with: .opacity),
+                removal: .scale(scale: 0.96).combined(with: .opacity)
+            ))
+            .animation(
+                .spring(response: 0.5, dampingFraction: 0.75)
+                    . delay(Double(rowIndex) * 0.05),
+                value: layoutId
+            )
     }
 }
 
-// MARK: - Preview
+// MARK:  - Preview
 
 #Preview {
     @Previewable @State var temperature: Int = 0

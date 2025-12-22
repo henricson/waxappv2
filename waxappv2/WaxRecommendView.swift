@@ -179,7 +179,9 @@ struct WaxRecommendView: View {
             // 3. Force a refresh of GPS
             locationManager.fetchLocationOnce()
             // 4. Reset temperature override
-            recVM.temperature = weather.temperature
+            withAnimation(.easeInOut(duration: 0.35)) {
+                recVM.temperature = weather.temperature
+            }
             
         @unknown default:
             break
