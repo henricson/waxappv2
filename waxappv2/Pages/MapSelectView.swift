@@ -11,7 +11,7 @@ import Combine
 
 struct MapSelectView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var locationManager: LocationManager
+    @EnvironmentObject var locationStore: LocationStore
     
     // Default to a zoomed-out view if no location exists
     @State private var position: MapCameraPosition = .automatic
@@ -34,7 +34,6 @@ struct MapSelectView: View {
                         }
                     }
                     .mapStyle(.standard(elevation: .realistic))
-                    .ignoresSafeArea()
                     .gesture(
                         SpatialTapGesture()
                             .onEnded { value in
@@ -126,7 +125,7 @@ struct MapSelectView: View {
     
     private func setupInitialMapState() {
         // If we already have a location (manual or GPS), center the map there
-        if let currentLoc = locationManager.effectiveLocation {
+        if let currentLoc = locationStore.location {
             let region = MKCoordinateRegion(
                 center: currentLoc.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -134,7 +133,7 @@ struct MapSelectView: View {
             position = .region(region)
             
             // If it is a manual override, pre-select the pin
-            if locationManager.isManualOverride {
+            if locationStore.isManualOverride {
                 selectedCoordinate = currentLoc.coordinate
             }
         }
@@ -143,18 +142,19 @@ struct MapSelectView: View {
     private func confirmLocation() {
         guard let coordinate = selectedCoordinate else { return }
         
-        let newLocation = CLLocation(
-            latitude: coordinate.latitude,
-            longitude: coordinate.longitude
+        let newLocation = AppLocation(
+            lat: coordinate.latitude,
+            lon: coordinate.longitude,
+            placeName: nil // will be fetched
         )
         
         // Update the manager with the manual override
-        locationManager.setManualLocation(newLocation)
+        locationStore.setManualLocation(newLocation)
         dismiss()
     }
     
     private func useCurrentLocation() {
-        guard let loc = locationManager.effectiveLocation else { return }
+        guard let loc = locationStore.location else { return }
         let region = MKCoordinateRegion(
             center: loc.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -203,7 +203,7 @@ struct MapSelectView: View {
 
 #Preview {
     MapSelectView()
-        .environmentObject(LocationManager())
+        .environmentObject(AppState().location)
 }
 
 final class PlaceSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
@@ -235,4 +235,3 @@ final class PlaceSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompl
         }
     }
 }
-

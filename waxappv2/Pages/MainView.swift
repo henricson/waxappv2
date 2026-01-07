@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  MainView.swift
 //  waxappv2
 //
 //  Created by Herman Henriksen on 18/10/2025.
@@ -10,26 +10,13 @@ import CoreLocation
 import TipKit
 
 struct MainView: View {
-    @EnvironmentObject var locationManager: LocationManager
-    @StateObject private var weather = WeatherViewModel()
-    @StateObject private var recVM = RecommendationViewModel()
-    
-   
+    @EnvironmentObject var recStore: RecommendationStore
+    @EnvironmentObject var locStore: LocationStore
+    @EnvironmentObject var weatherStore: WeatherStore
     
     // UI State
-    @State private var userSelectedGroup: SnowType?
     @State private var showMapSelection = false
     @State private var showLocationPermissionAlert = false
-    
-    private var currentSnowType : SnowType {
-        userSelectedGroup
-        ?? recVM.snowType
-    }
-    
-    private var isOverridenSnowTypeOrTemperature : Bool {
-        return (weather.temperature != recVM.temperature)
-        || userSelectedGroup != nil
-    }
     
     var body: some View {
         NavigationStack {
@@ -37,7 +24,7 @@ struct MainView: View {
                 ScrollView(.vertical) {
                     VStack(spacing: 0) {
                         Group {
-                            if let recommended = recVM.recommended.first {
+                            if let recommended = recStore.recommended.first {
                                 HeaderCanView(recommendedWax: recommended.wax)
                                     .id(recommended.wax.id)
                             } else {
@@ -48,13 +35,13 @@ struct MainView: View {
                                             .font(.headline)
                                             .multilineTextAlignment(.center)
                                     }
-                                    if let target = nearestRecommendedTemperature(for: currentSnowType, from: recVM.temperature) {
+                                    if let target = recStore.nearestRecommendedTemperature(from: recStore.temperature) {
                                         Button {
                                             withAnimation(.easeInOut(duration: 0.35)) {
-                                                recVM.temperature = target
+                                                recStore.temperature = target
                                             }
                                         } label: {
-                                            Label("Move back", systemImage: target > recVM.temperature ? "arrow.right" : "arrow.left",)
+                                            Label("Move back", systemImage: target > recStore.temperature ? "arrow.right" : "arrow.left",)
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.regular)
@@ -66,19 +53,19 @@ struct MainView: View {
                         }.frame(height: 200)
                         
                         SnowTypeButtons(selected: Binding(
-                            get: {
-                                currentSnowType
-                            },
+                            get: { recStore.snowType },
                             set: { newValue in
-                                handleSnowTypeChange(newValue)
+                                // If the user taps the same as weather, maybe clear override?
+                                // For now, just set the override.
+                                recStore.userSelectedSnowType = newValue
                             }))
                         .padding(.vertical, 20)
                         
                         ZStack {
-                            GanttDiagram(temperature: $recVM.temperature, snowType: currentSnowType)
-                                .id(currentSnowType)
+                            GanttDiagram(temperature: $recStore.temperature, snowType: recStore.snowType)
+                                .id(recStore.snowType)
                                 .padding(.top, 50)
-                            TemperatureGauge(temperature: recVM.temperature)
+                            TemperatureGauge(temperature: recStore.temperature)
                         }
                         
                     }
@@ -86,7 +73,7 @@ struct MainView: View {
                 .background(
                     ZStack {
                         Color.clear.ignoresSafeArea(edges: .top)
-                        if let recommended = recVM.recommended.first {
+                        if let recommended = recStore.recommended.first {
                             LinearGradient(
                                 colors: [Color(hex: recommended.wax.primaryColor) ?? .blue, .black],
                                 startPoint: .top, endPoint: .bottom
@@ -96,10 +83,10 @@ struct MainView: View {
                             .id(recommended.wax.primaryColor)
                         }
                     }
-                        .animation(.easeIn, value: recVM.recommended.first?.wax.primaryColor)
+                        .animation(.easeIn, value: recStore.recommended.first?.wax.primaryColor)
                 )
             }
-            .navigationTitle(locationManager.placeName ?? "")
+            .navigationTitle(locStore.location?.placeName ?? "")
             
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -115,9 +102,9 @@ struct MainView: View {
                         
                         
                         Button {
-                            handleFetchLocationAndSetWeather()
+                            handleReset()
                         } label: {
-                            Image(systemName: isOverridenSnowTypeOrTemperature ? "location.slash.fill" : "location.fill")
+                            Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
                             
                         }
                 }
@@ -138,107 +125,38 @@ struct MainView: View {
             } message: {
                 Text("Please enable location services in settings to use your GPS position.")
             }
-            .onChange(of: locationManager.authorizationStatus) { _, _ in
-                locationManager.requestAuthorizationIfNeeded()
+            .onChange(of: locStore.authorizationStatus) { _, _ in
+                locStore.requestAuthorization()
             }
             
-            // Update of users location
-            .onChange(of: locationManager.lastLocation) { _, newLoc in
-                guard let loc = newLoc else { return }
-                Task { await weather.fetch(for: loc) }
-            }
-            // Add observer for manual location specifically
-            .onChange(of: locationManager.manualLocation) { _, newLoc in
-                guard let loc = newLoc else { return }
-                Task { await weather.fetch(for: loc) }
-            }
-            
-            // Set the temperature when weather forecast is fetched
-            .onChange(of: weather.temperature) {
-                withAnimation(.easeInOut(duration: 0.35)) {
-                    recVM.temperature = weather.temperature
-                }
-            }
-            
-            // Set the snow type when weather forecast is fetched (and assessed)
-            .onChange(of: weather.currentAssessment) { _, newAssessment in
-                guard let newGroup = newAssessment?.group else { return }
-                // Remove any user override of snow type
-                userSelectedGroup = nil
-                recVM.snowType = newGroup
-            }
+            // Note: Stores handle their own interconnection (Location -> Weather -> Recs),
+            // so we don't need manual .onChange chains here anymore!
             
             .onAppear {
-                //recVM.temperature = weather.temperature
-                handleFetchLocationAndSetWeather()
-             
+                if locStore.authorizationStatus == .notDetermined {
+                    locStore.requestAuthorization()
+                }
+                locStore.requestLocation()
             }
            
         }
     }
     
-    
     // MARK: - Helper Methods
     
-    private func nearestRecommendedTemperature(for snowType: SnowType, from current: Int) -> Int? {
-        // Gather all ranges for the given snow type
-        let ranges: [TempRangeC] = swixWaxes.flatMap { wax in
-            wax.ranges[snowType] ?? []
-        }
-        guard !ranges.isEmpty else { return nil }
-        
-        // Find the nearest point on any range to the current temperature
-        var bestTarget: Int = current
-        var bestDistance: Int = Int.max
-        
-        for r in ranges {
-            // Clamp the current temp to this range to get the nearest point on the interval
-            let clamped = max(r.min, min(current, r.max))
-            let distance = abs(clamped - current)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestTarget = clamped
-            }
-        }
-        return bestTarget
-    }
-    
-    /**
-     When snowType changes due to user selection, resetLocationInfo
-     */
-    private func handleSnowTypeChange(_ newValue: SnowType) {
-        let weatherValue = weather.currentAssessment?.group
-        
-        if weatherValue == nil || weatherValue != newValue {
-            userSelectedGroup = newValue
-            locationManager.resetToNoLocation()
-        } else {
-            // If they selected what was already the weather recommendation,
-            // we might want to clear the manual override
-            userSelectedGroup = nil
-        }
-        recVM.snowType = newValue
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func handleFetchLocationAndSetWeather() {
-        switch locationManager.authorizationStatus {
+    private func handleReset() {
+        switch locStore.authorizationStatus {
         case .denied, .restricted:
             showLocationPermissionAlert = true
         case .notDetermined:
-            locationManager.requestAuthorizationIfNeeded()
+            locStore.requestAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
             // 1. Clear any manual map selection
-            locationManager.clearManualOverride()
-            // 2. Clear manual snow type
-            userSelectedGroup = nil
+            locStore.clearManualLocation()
+            // 2. Clear overrides (snow type & temp)
+            recStore.resetOverrides()
             // 3. Force a refresh of GPS
-            locationManager.fetchLocationOnce()
-            // 4. Reset temperature override
-            withAnimation(.easeInOut(duration: 0.35)) {
-                recVM.temperature = weather.temperature
-            }
+            locStore.requestLocation()
             
         @unknown default:
             break
@@ -247,8 +165,9 @@ struct MainView: View {
 }
 
 #Preview {
-    @Previewable @StateObject var locationManager = LocationManager()
-    
+    let app = AppState()
     MainView()
-        .environmentObject(locationManager)
+        .environmentObject(app.location)
+        .environmentObject(app.weather)
+        .environmentObject(app.recommendation)
 }

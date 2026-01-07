@@ -17,7 +17,7 @@ struct ContentView: View {
     
     var body: some View {
             TabView(selection: $selectedTab) {
-                Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
+                Tab("Wax", systemImage: "snow", value: .waxes) {
                     MainView()
                 }
                 Tab("About", systemImage: "info.circle", value: .about) {
@@ -28,8 +28,9 @@ struct ContentView: View {
 }
 
 #Preview {
-    @Previewable @StateObject var locationManager = LocationManager()
-        ContentView()
-            .environmentObject(locationManager)
-    
+    let app = AppState()
+    ContentView()
+        .environmentObject(app.location)
+        .environmentObject(app.weather)
+        .environmentObject(app.recommendation)
 }

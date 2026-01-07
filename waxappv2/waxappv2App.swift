@@ -9,12 +9,14 @@ import SwiftUI
 
 @main
 struct waxappv2App: App {
-    @StateObject private var locationManager = LocationManager()
+    @StateObject private var appState = AppState()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(locationManager)
+                .environmentObject(appState.location)
+                .environmentObject(appState.weather)
+                .environmentObject(appState.recommendation)
         }
     }
 }
