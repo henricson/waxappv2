@@ -21,7 +21,7 @@ struct SnowTypeButtons: View {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: interItemSpacing) {
-                        // Leading spacer to allow centering the first items
+                        // Leading spacer to allow centering the first items (safe content margin)
                         Color.clear
                             .frame(width: sidePadding, height: 1)
                             .accessibilityHidden(true)
@@ -36,14 +36,26 @@ struct SnowTypeButtons: View {
                                 }
                             } label: {
                                 Label(group.title, systemImage: icon(for: group))
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundColor(isSel ? .blue : .white)
-
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(isSel ? Color.accentColor.opacity(0.6) : Color.white.opacity(0.15), lineWidth: isSel ? 1.25 : 0.75)
+                                    )
+                                    .shadow(color: Color.black.opacity(0.08), radius: 1, x: 0, y: 1)
+                                    .contentShape(Capsule())
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.plain)
                             .id(group) // make scroll targetable
-                            .glassEffect()
                         }
 
+                        // Trailing spacer to allow centering the last items (safe content margin)
+                        Color.clear
+                            .frame(width: sidePadding, height: 1)
+                            .accessibilityHidden(true)
                     }
                     .padding(.vertical, verticalPadding)
                 }
@@ -94,3 +106,4 @@ struct SnowTypeButtons: View {
     }
     .padding()
 }
+

@@ -121,18 +121,52 @@ struct GanttItem: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background(
                 ZStack {
+                    // Subtle material lets the environment color influence the item
                     Capsule()
-                        .fill(.regularMaterial)
+                        .fill(.ultraThinMaterial)
+
+                    // Base fill with depth via light/dark gradient overlays
                     Capsule()
-                        .fill(primaryColor.opacity(0.8))
+                        .fill(primaryColor)
+                        .overlay(
+                            // Top-left sheen
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(isDarkBackground ? 0.18 : 0.10),
+                                            Color.clear
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .center
+                                    )
+                                )
+                                .blendMode(.screen)
+                        )
+                        .overlay(
+                            // Bottom edge shading
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.black.opacity(0.0),
+                                            Color.black.opacity(isDarkBackground ? 0.35 : 0.20)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        )
                 }
             )
             .clipShape(Capsule())
+            .compositingGroup()
             .overlay(
+                // Subtle rim only on lighter backgrounds (avoid white outline on dark)
                 Capsule()
-                    .stroke(isDarkBackground ? Color.white.opacity(0.9) : Color.clear, lineWidth: 0.75)
+                    .strokeBorder(isDarkBackground ? Color.clear : Color.white.opacity(0.12), lineWidth: 0.75)
             )
-            .shadow(color: isDarkBackground ? Color.white.opacity(0.25) : Color.clear, radius: 1, x: 0, y: 0)
+            .shadow(color: Color.black.opacity(isDarkBackground ? 0.45 : 0.25), radius: isDarkBackground ? 2.5 : 1.5, x: 0, y: 1)
         }
         .frame(height: 30) // approximate height to fit icon and padding
     }

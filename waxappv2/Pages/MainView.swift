@@ -7,11 +7,14 @@
 
 import SwiftUI
 import CoreLocation
+import TipKit
 
-struct WaxRecommendView: View {
+struct MainView: View {
     @EnvironmentObject var locationManager: LocationManager
     @StateObject private var weather = WeatherViewModel()
     @StateObject private var recVM = RecommendationViewModel()
+    
+   
     
     // UI State
     @State private var userSelectedGroup: SnowType?
@@ -38,11 +41,31 @@ struct WaxRecommendView: View {
                                 HeaderCanView(recommendedWax: recommended.wax)
                                     .id(recommended.wax.id)
                             } else {
-                                Text("Outside of range")
+                                VStack(spacing: 20) {
+                                    HStack {
+                                        Image(systemName: "info.triangle")
+                                        Text("Outside of range")
+                                            .font(.headline)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    if let target = nearestRecommendedTemperature(for: currentSnowType, from: recVM.temperature) {
+                                        Button {
+                                            withAnimation(.easeInOut(duration: 0.35)) {
+                                                recVM.temperature = target
+                                            }
+                                        } label: {
+                                            Label("Move back", systemImage: target > recVM.temperature ? "arrow.right" : "arrow.left",)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.regular)
+                                        .accessibilityHint("Scrolls the temperature scale to the nearest range with recommendations")
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
                         }.frame(height: 200)
                         
-                        SnowTypeDropdown(selectedGroupBinding: Binding(
+                        SnowTypeButtons(selected: Binding(
                             get: {
                                 currentSnowType
                             },
@@ -50,6 +73,7 @@ struct WaxRecommendView: View {
                                 handleSnowTypeChange(newValue)
                             }))
                         .padding(.vertical, 20)
+                        
                         ZStack {
                             GanttDiagram(temperature: $recVM.temperature, snowType: currentSnowType)
                                 .id(currentSnowType)
@@ -57,7 +81,7 @@ struct WaxRecommendView: View {
                             TemperatureGauge(temperature: recVM.temperature)
                         }
                         
-                        }
+                    }
                 }
                 .background(
                     ZStack {
@@ -72,7 +96,7 @@ struct WaxRecommendView: View {
                             .id(recommended.wax.primaryColor)
                         }
                     }
-                    .animation(.easeIn, value: recVM.recommended.first?.wax.primaryColor)
+                        .animation(.easeIn, value: recVM.recommended.first?.wax.primaryColor)
                 )
             }
             .navigationTitle(locationManager.placeName ?? "")
@@ -85,14 +109,20 @@ struct WaxRecommendView: View {
                         showMapSelection = true
                     }
                 }
-            
+                
+                
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        handleFetchLocationAndSetWeather()
-                    } label: {
-                        Image(systemName: isOverridenSnowTypeOrTemperature ? "location.slash.fill" : "location.fill")
-                    }
+                        
+                        
+                        Button {
+                            handleFetchLocationAndSetWeather()
+                        } label: {
+                            Image(systemName: isOverridenSnowTypeOrTemperature ? "location.slash.fill" : "location.fill")
+                            
+                        }
                 }
+                
+
             }
             // MARK: - Modals & Alerts
             .sheet(isPresented: $showMapSelection) {
@@ -141,10 +171,37 @@ struct WaxRecommendView: View {
             .onAppear {
                 //recVM.temperature = weather.temperature
                 handleFetchLocationAndSetWeather()
+             
             }
+           
         }
     }
-
+    
+    
+    // MARK: - Helper Methods
+    
+    private func nearestRecommendedTemperature(for snowType: SnowType, from current: Int) -> Int? {
+        // Gather all ranges for the given snow type
+        let ranges: [TempRangeC] = swixWaxes.flatMap { wax in
+            wax.ranges[snowType] ?? []
+        }
+        guard !ranges.isEmpty else { return nil }
+        
+        // Find the nearest point on any range to the current temperature
+        var bestTarget: Int = current
+        var bestDistance: Int = Int.max
+        
+        for r in ranges {
+            // Clamp the current temp to this range to get the nearest point on the interval
+            let clamped = max(r.min, min(current, r.max))
+            let distance = abs(clamped - current)
+            if distance < bestDistance {
+                bestDistance = distance
+                bestTarget = clamped
+            }
+        }
+        return bestTarget
+    }
     
     /**
      When snowType changes due to user selection, resetLocationInfo
@@ -191,7 +248,7 @@ struct WaxRecommendView: View {
 
 #Preview {
     @Previewable @StateObject var locationManager = LocationManager()
-
-    WaxRecommendView()
+    
+    MainView()
         .environmentObject(locationManager)
 }

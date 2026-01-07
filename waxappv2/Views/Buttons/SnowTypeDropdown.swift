@@ -17,31 +17,29 @@ struct SnowTypeDropdown: View {
                     Label(group.title, systemImage: group.iconName).tag(group)
                 }
             }
-            // Optional: This style often looks better in menus
-            // .pickerStyle(.inline)
+            .pickerStyle(.inline)
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 8) {
                 Image(systemName: $selectedGroupBinding.wrappedValue.iconName)
+                    .imageScale(.medium)
                 Text($selectedGroupBinding.wrappedValue.title)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 
-                // Chevron indicates this is a dropdown/menu
-                Image(systemName: "chevron.down")
-                    .font(.caption2)
+                Image(systemName: "chevron.up.chevron.down")
+                    .imageScale(.small)
                     .foregroundStyle(.secondary)
             }
-            .font(.subheadline)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
-            .background(.regularMaterial, in: Capsule())
-            // Add a border or stroke to make it pop slightly more if needed
-            .overlay(
-                Capsule()
-                    .strokeBorder(.separator, lineWidth: 0.5)
-            )
+            .font(.headline)
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Snow Type")
+            .accessibilityValue($selectedGroupBinding.wrappedValue.title)
+            .accessibilityAddTraits(.isButton)
         }
-        // Ensure the button style doesn't override our custom label colors
-        .buttonStyle(.plain)
+        .controlSize(.regular)
+        .buttonStyle(.bordered)
     }
 }
 

@@ -17,10 +17,10 @@ struct ContentView: View {
     
     var body: some View {
             TabView(selection: $selectedTab) {
-                Tab("Wax", systemImage: "snow", value: .waxes) {
-                    WaxRecommendView()
+                Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
+                    MainView()
                 }
-                Tab("About", systemImage: "gear", value: .about) {
+                Tab("About", systemImage: "info.circle", value: .about) {
                     AboutView()
                 }
             }
