@@ -1,76 +1,99 @@
 import SwiftUI
 
 struct WaxSelectionView: View {
-    @EnvironmentObject private var waxSelection: WaxSelectionStore
-
-    private let seriesOrder: [WaxSeries] = [.V, .VP, .K, .KX, .KN, .other]
+    @EnvironmentObject var store: WaxSelectionStore
+    
+    // Default expanded state: V-series is expanded
+    @State private var expandedSeries: Set<WaxSeries> = [.V]
 
     var body: some View {
         List {
-            Section {
-                Button {
-                    waxSelection.resetToAllSelected()
-                } label: {
-                    Label("Reset to all viewed", systemImage: "arrow.counterclockwise")
-                }
-            }
-
-            ForEach(seriesOrder) { series in
-                let waxesInSeries = swixWaxes
-                    .filter { $0.waxSeries == series }
-                    .sorted { $0.code < $1.code }
-
-                if !waxesInSeries.isEmpty {
-                    Section {
-                        seriesToggleRow(series: series, waxesInSeries: waxesInSeries)
-
-                        ForEach(waxesInSeries) { wax in
-                            Toggle(isOn: Binding(
-                                get: { waxSelection.isSelected(wax) },
-                                set: { waxSelection.setSelected($0, for: wax) }
-                            )) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("\(wax.code) \(wax.name)")
-                                    Text(wax.kindDisplay)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+            ForEach(WaxSeries.allCases) { series in
+                let waxes = swixWaxes.filter { $0.waxSeries == series }
+                
+                if !waxes.isEmpty {
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedSeries.contains(series) },
+                            set: { isExpanded in
+                                withAnimation {
+                                    if isExpanded {
+                                        expandedSeries.insert(series)
+                                    } else {
+                                        expandedSeries.remove(series)
+                                    }
                                 }
                             }
+                        )
+                    ) {
+                        ForEach(waxes) { wax in
+                            WaxRow(wax: wax, isSelected: store.isSelected(wax)) {
+                                store.setSelected(!store.isSelected(wax), for: wax)
+                            }
                         }
-                    } header: {
+                    } label: {
                         Text(series.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
                     }
                 }
             }
         }
-        .navigationTitle("Visible waxes")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Select Waxes")
+    }
+}
+
+struct WaxRow: View {
+    let wax: SwixWax
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                // Checkbox
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(isSelected ? .blue : .gray)
+                
+                // Icon
+                waxIcon
+                    .frame(width: 30, height: 45)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wax.code)
+                        .font(.headline)
+                    Text(wax.name)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
-    private func seriesToggleRow(series: WaxSeries, waxesInSeries: [SwixWax]) -> some View {
-        let state = waxSelection.selectionState(for: series)
-        let isOn = (state == .all)
-
-        Toggle(isOn: Binding(
-            get: { isOn },
-            set: { waxSelection.setAllSelected($0, in: series) }
-        )) {
-            HStack {
-                Text("All \(series.title)")
-                Spacer()
-                if state == .some {
-                    Text("Some")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    var waxIcon: some View {
+        if wax.kind == .hardwax {
+            WaxCanGraphic(
+                bodyFill: AnyShapeStyle(Color(hex: wax.primaryColor) ?? .gray),
+                bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
+                showBand: true,
+                bandPrimaryColor: Color(hex: wax.primaryColor) ?? .white,
+                bandSecondaryColor: (wax.secondaryColor.flatMap { Color(hex: $0) }) ?? .blue
+            )
+        } else {
+            KlisterCanView(bodyColor: Color(hex: wax.primaryColor) ?? .white)
         }
     }
 }
 
 #Preview {
-    NavigationStack {
+    NavigationView {
         WaxSelectionView()
             .environmentObject(WaxSelectionStore())
     }
