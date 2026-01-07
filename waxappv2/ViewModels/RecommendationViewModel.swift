@@ -18,7 +18,7 @@ struct WaxRecommendation {
 }
 
 @MainActor
-final class RecommendedWaxesViewModel: ObservableObject {
+final class RecommendationViewModel: ObservableObject {
     // Inputs
     @Published var snowType: SnowType = .fineGrained {
         didSet { recompute() }

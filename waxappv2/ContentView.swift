@@ -21,7 +21,7 @@ struct ContentView: View {
                     WaxRecommendView()
                 }
                 Tab("About", systemImage: "gear", value: .about) {
-                    Text("Hello")
+                    AboutView()
                 }
             }
     }

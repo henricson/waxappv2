@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SnowTypeSelector: View {
+struct SnowTypeDropdown: View {
     @Binding var selectedGroupBinding : SnowType
     
     var body: some View {
@@ -47,5 +47,5 @@ struct SnowTypeSelector: View {
 
 #Preview {
     @Previewable @State var selectedGroupBinding : SnowType = .allCases.first!
-    SnowTypeSelector(selectedGroupBinding: $selectedGroupBinding)
+    SnowTypeDropdown(selectedGroupBinding: $selectedGroupBinding)
 }

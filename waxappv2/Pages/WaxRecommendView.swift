@@ -11,7 +11,7 @@ import CoreLocation
 struct WaxRecommendView: View {
     @EnvironmentObject var locationManager: LocationManager
     @StateObject private var weather = WeatherViewModel()
-    @StateObject private var recVM = RecommendedWaxesViewModel()
+    @StateObject private var recVM = RecommendationViewModel()
     
     // UI State
     @State private var userSelectedGroup: SnowType?
@@ -42,7 +42,7 @@ struct WaxRecommendView: View {
                             }
                         }.frame(height: 200)
                         
-                        SnowTypeSelector(selectedGroupBinding: Binding(
+                        SnowTypeDropdown(selectedGroupBinding: Binding(
                             get: {
                                 currentSnowType
                             },
