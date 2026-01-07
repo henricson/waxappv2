@@ -5,15 +5,18 @@ import Combine
 final class AppState: ObservableObject {
     let location: LocationStore
     let weather: WeatherStore
+    let waxSelection: WaxSelectionStore
     let recommendation: RecommendationStore
 
     init() {
         let location = LocationStore()
         let weather = WeatherStore(locationStore: location)
-        let recommendation = RecommendationStore(weatherStore: weather)
+        let waxSelection = WaxSelectionStore()
+        let recommendation = RecommendationStore(weatherStore: weather, waxSelectionStore: waxSelection)
         
         self.location = location
         self.weather = weather
+        self.waxSelection = waxSelection
         self.recommendation = recommendation
     }
 }

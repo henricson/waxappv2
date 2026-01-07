@@ -63,7 +63,6 @@ struct MainView: View {
                         
                         ZStack {
                             GanttDiagram(temperature: $recStore.temperature, snowType: recStore.snowType)
-                                .id(recStore.snowType)
                                 .padding(.top, 50)
                             TemperatureGauge(temperature: recStore.temperature)
                         }

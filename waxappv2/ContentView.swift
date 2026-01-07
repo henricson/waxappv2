@@ -32,5 +32,6 @@ struct ContentView: View {
     ContentView()
         .environmentObject(app.location)
         .environmentObject(app.weather)
+        .environmentObject(app.waxSelection)
         .environmentObject(app.recommendation)
 }

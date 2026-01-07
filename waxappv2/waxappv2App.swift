@@ -16,6 +16,7 @@ struct waxappv2App: App {
             ContentView()
                 .environmentObject(appState.location)
                 .environmentObject(appState.weather)
+                .environmentObject(appState.waxSelection)
                 .environmentObject(appState.recommendation)
         }
     }

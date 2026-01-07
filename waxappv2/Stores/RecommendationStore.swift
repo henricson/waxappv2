@@ -7,7 +7,7 @@ import SwiftUI // For Animation if needed, but stores should be UI agnostic most
 //    let wax: SwixWax
 //    let reason: String
 //    let percentageMatch: Double
-//    
+//
 //    // Equatable for SwiftUI diffing
 //    static func == (lhs: WaxRecommendation, rhs: WaxRecommendation) -> Bool {
 //        lhs.wax.id == rhs.wax.id && lhs.percentageMatch == rhs.percentageMatch
@@ -50,12 +50,22 @@ final class RecommendationStore: ObservableObject {
     @Published private(set) var recommended: [WaxRecommendation] = []
     
     private var cancellables = Set<AnyCancellable>()
-    
-    init(weatherStore: WeatherStore) {
+    private let waxSelectionStore: WaxSelectionStore
+
+    init(weatherStore: WeatherStore, waxSelectionStore: WaxSelectionStore) {
+        self.waxSelectionStore = waxSelectionStore
+
         weatherStore.$summary
             .receive(on: RunLoop.main)
             .sink { [weak self] summary in
                 self?.handleWeatherUpdate(summary)
+            }
+            .store(in: &cancellables)
+
+        waxSelectionStore.$selectedWaxIDs
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.recompute()
             }
             .store(in: &cancellables)
     }
@@ -71,8 +81,10 @@ final class RecommendationStore: ObservableObject {
     }
     
     func nearestRecommendedTemperature(from current: Int) -> Int? {
+        let eligibleWaxes = swixWaxes.filter { waxSelectionStore.selectedWaxIDs.contains($0.id) }
+
         // Gather all ranges for the given snow type
-        let ranges: [TempRangeC] = swixWaxes.flatMap { wax in
+        let ranges: [TempRangeC] = eligibleWaxes.flatMap { wax in
             wax.ranges[snowType] ?? []
         }
         guard !ranges.isEmpty else { return nil }
@@ -107,7 +119,7 @@ final class RecommendationStore: ObservableObject {
         if let assessment = summary.currentAssessment {
              self.weatherSnowType = assessment.group
              // Reset override on new assessment
-             self.userSelectedSnowType = nil 
+             self.userSelectedSnowType = nil
              self.snowType = assessment.group
         }
     }
@@ -115,8 +127,10 @@ final class RecommendationStore: ObservableObject {
     private func recompute() {
         var newRecommendations: [WaxRecommendation] = []
         let currentTemp = Double(temperature)
-        
-        for wax in swixWaxes {
+
+        let eligibleWaxes = swixWaxes.filter { waxSelectionStore.selectedWaxIDs.contains($0.id) }
+
+        for wax in eligibleWaxes {
             guard let range = tempRange(for: wax, group: snowType) else { continue }
             
             // Check strict containment first

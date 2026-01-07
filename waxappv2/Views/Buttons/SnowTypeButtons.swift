@@ -30,10 +30,8 @@ struct SnowTypeButtons: View {
                             let isSel = isSelected(group)
 
                             Button {
-                                withAnimation(.easeInOut) {
-                                    selected = group
-                                    proxy.scrollTo(group, anchor: .center)
-                                }
+                                // Update selection (no implicit animation). The onChange handler will do the scroll.
+                                selected = group
                             } label: {
                                 Label(group.title, systemImage: icon(for: group))
                                     .font(.subheadline.weight(.semibold))
@@ -106,4 +104,3 @@ struct SnowTypeButtons: View {
     }
     .padding()
 }
-

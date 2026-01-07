@@ -458,3 +458,41 @@ func returnWaxesForSnowType(snowType: SnowType) -> [SwixWax] {
     }
 }
 
+public enum WaxSeries: String, CaseIterable, Identifiable, Sendable {
+    public var id: Self { self }
+
+    case V
+    case VP
+    case K
+    case KX
+    case KN
+
+    case other
+
+    public var title: String {
+        switch self {
+        case .V: return "V"
+        case .VP: return "VP"
+        case .K: return "K"
+        case .KX: return "KX"
+        case .KN: return "KN"
+        case .other: return "Other"
+        }
+    }
+
+    public static func from(seriesString: String) -> WaxSeries {
+        WaxSeries(rawValue: seriesString.uppercased()) ?? .other
+    }
+}
+
+public extension SwixWax {
+    var waxSeries: WaxSeries {
+        WaxSeries.from(seriesString: series)
+    }
+}
+
+public extension Array where Element == SwixWax {
+    func groupedBySeries() -> [WaxSeries: [SwixWax]] {
+        Dictionary(grouping: self) { $0.waxSeries }
+    }
+}

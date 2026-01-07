@@ -17,6 +17,8 @@ struct GanttDiagram: View {
     // Incoming binding from parent
     @Binding var temperature: Int
     var snowType:  SnowType
+
+    @EnvironmentObject private var waxSelectionStore: WaxSelectionStore
     
     // MARK: - Constants
     private let scaleFactor: Int = 50
@@ -33,8 +35,9 @@ struct GanttDiagram: View {
     
     @State private var scrollPosition: ScrollItem?
     @State private var placements: [PlacedGanttTask<String, SwixWax>] = []
-    @State private var rowsCount: Int = 0
     @State private var layoutId = UUID() // Used to trigger transitions
+    
+    @State private var placementsByRow: [[PlacedGanttTask<String, SwixWax>]] = []
     
     var body: some View {
         HStack {
@@ -52,8 +55,7 @@ struct GanttDiagram: View {
                     
                     VStack {
                         GanttContent(
-                            placements: placements,
-                            rowsCount: rowsCount,
+                            placementsByRow: placementsByRow,
                             minValue: minValue,
                             scaleFactor: scaleFactor,
                             rowHeight: rowHeight,
@@ -72,7 +74,7 @@ struct GanttDiagram: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $scrollPosition, anchor:  UnitPoint(x: 0.5625, y: 0))
             .onAppear {
-                updateLayout()
+                updateLayout(for: snowType)
                 // Initialize scroll position from parent temperature
                 if let target = scrollItems.first(where: { $0.value == temperature }) {
                     scrollPosition = target
@@ -93,14 +95,21 @@ struct GanttDiagram: View {
                     }
                 }
             }
-            .onChange(of: snowType) { _, _ in
-                updateLayout()
+            .onChange(of: snowType) { _, newValue in
+                updateLayout(for: newValue)
+            }
+            .onChange(of: waxSelectionStore.selectedWaxIDs) { _, _ in
+                updateLayout(for: snowType)
             }
         }
     }
     
-    private func updateLayout() {
+    @MainActor
+    private func updateLayout(for snowType: SnowType) {
+        // Derive layout data. Keep it cheap: group placements once to reduce render cost.
         let waxes = returnWaxesForSnowType(snowType: snowType)
+            .filter { waxSelectionStore.isSelected($0) }
+            
         let tasks = waxes.map { wax in
             GanttTask(
                 id: wax.id,
@@ -110,19 +119,27 @@ struct GanttDiagram: View {
             )
         }
         let assigned = assignRows(tasks: tasks, padding: 0)
-        
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.75, blendDuration: 0)) {
-            placements = assigned.placements
-            rowsCount = assigned.rowsCount
-            layoutId = UUID() // Trigger transition
+
+        var grouped = Array(repeating: [PlacedGanttTask<String, SwixWax>](), count: max(assigned.rowsCount, 0))
+        if !grouped.isEmpty {
+            for p in assigned.placements {
+                if p.row >= 0 && p.row < grouped.count {
+                    grouped[p.row].append(p)
+                }
+            }
+        }
+
+        // Keep the animation light; avoid per-item delayed animations.
+        withAnimation(.easeInOut(duration: 0.25)) {
+            placementsByRow = grouped
+            layoutId = UUID()
         }
     }
 }
 
 // MARK: - Heavy Content (Equatable to skip body recomputation)
 private struct GanttContent: View, Equatable {
-    let placements: [PlacedGanttTask<String, SwixWax>]
-    let rowsCount: Int
+    let placementsByRow: [[PlacedGanttTask<String, SwixWax>]]
     let minValue: Int
     let scaleFactor: Int
     let rowHeight: CGFloat
@@ -137,9 +154,9 @@ private struct GanttContent: View, Equatable {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(0..<rowsCount, id: \.self) { rowIndex in
+            ForEach(0..<placementsByRow.count, id: \.self) { rowIndex in
                 ZStack(alignment: .leading) {
-                    let items = placements.filter { $0.row == rowIndex }
+                    let items = placementsByRow[rowIndex]
                     
                     ForEach(items) { item in
                         renderGanttItem(item: item, rowIndex: rowIndex)
@@ -148,6 +165,7 @@ private struct GanttContent: View, Equatable {
             }
         }
         .allowsHitTesting(false) // Overlay only; scroll interactions belong to the scale
+        .animation(.easeInOut(duration: 0.25), value: layoutId)
     }
     
     private func renderGanttItem(item: PlacedGanttTask<String, SwixWax>, rowIndex: Int) -> some View {
@@ -167,22 +185,13 @@ private struct GanttContent: View, Equatable {
         return GanttItem(primaryColor: Color(hex: wax.primaryColor) ?? .white, icon: AnyView(waxIcon), title: wax.name)
             .frame(width: width, height: rowHeight)
             .position(x: xStart + width/2, y: rowHeight/2)
-            .transition(. asymmetric(
-                insertion:  .scale(scale: 0.92).combined(with: .opacity),
-                removal: .scale(scale: 0.96).combined(with: .opacity)
-            ))
-            .animation(
-                .spring(response: 0.5, dampingFraction: 0.75)
-                    . delay(Double(rowIndex) * 0.05),
-                value: layoutId
-            )
+            .transition(.opacity)
     }
 }
-
-// MARK:  - Preview
 
 #Preview {
     @Previewable @State var temperature: Int = 0
     var snowType: SnowType = .fineGrained
     GanttDiagram(temperature: $temperature, snowType: snowType)
+        .environmentObject(WaxSelectionStore())
 }
