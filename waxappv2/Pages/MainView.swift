@@ -88,29 +88,32 @@ struct MainView: View {
                 )
             }
             .navigationTitle(locStore.location?.placeName ?? "")
-            
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // MARK: - Location-source tinting
+                // If user overrides temp/snow type, we show both buttons with the default tint.
+                // Otherwise, highlight the active location source.
+                let shouldHighlightLocationSource = !recStore.isOverridden
+                let highlightColor: Color = .blue
+                let mapTint: Color? = (shouldHighlightLocationSource && locStore.isManualOverride) ? highlightColor : nil
+                let locationTint: Color? = (shouldHighlightLocationSource && !locStore.isManualOverride) ? highlightColor : nil
+
                 // MARK: - Left: Map Selection
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Map", systemImage: "map") {
                         showMapSelection = true
                     }
+                    .tint(mapTint)
                 }
-                
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                        
-                        
-                        Button {
-                            handleReset()
-                        } label: {
-                            Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
-                            
-                        }
-                }
-                
 
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        handleReset()
+                    } label: {
+                        Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
+                    }
+                    .tint(locationTint)
+                }
             }
             // MARK: - Modals & Alerts
             .sheet(isPresented: $showMapSelection) {
