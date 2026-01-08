@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
+		5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +30,7 @@
 
 /* Begin PBXFileReference section */
 		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
+		5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5EFB6CF02EA40981005C4E5D /* waxappv2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = waxappv2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EFB6CFD2EA40982005C4E5D /* waxappv2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = waxappv2Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EFB6D072EA40982005C4E5D /* waxappv2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = waxappv2UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -93,6 +95,7 @@
 		5EFB6CE72EA40981005C4E5D = {
 			isa = PBXGroup;
 			children = (
+				5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */,
 				5EFB6CF22EA40981005C4E5D /* waxappv2 */,
 				5EFB6D002EA40982005C4E5D /* waxappv2Tests */,
 				5EFB6D0A2EA40982005C4E5D /* waxappv2UITests */,
@@ -231,6 +234,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */,
 				5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

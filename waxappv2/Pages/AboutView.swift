@@ -8,9 +8,38 @@
 import SwiftUI
 
 struct AboutView: View {
+    @EnvironmentObject var storeManager: StoreManager
+    @State private var showPaywall = false
+    
     var body: some View {
         NavigationStack {
             List {
+                Section("Status") {
+                    if storeManager.isPurchased {
+                        Label("Premium Active", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack {
+                                Label("Free Trial", systemImage: "clock")
+                                Spacer()
+                                if case .warning(let days) = storeManager.trialStatus {
+                                    Text("\(days) days left")
+                                        .foregroundStyle(.red)
+                                } else if storeManager.trialStatus == .expired {
+                                    Text("Expired")
+                                        .foregroundStyle(.red)
+                                } else {
+                                    Text("Active")
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 Section {
                     NavigationLink {
                         WaxSelectionView()
@@ -36,6 +65,9 @@ struct AboutView: View {
             }
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
         }
     }
 }

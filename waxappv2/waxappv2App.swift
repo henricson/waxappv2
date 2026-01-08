@@ -18,6 +18,7 @@ struct waxappv2App: App {
                 .environmentObject(appState.weather)
                 .environmentObject(appState.waxSelection)
                 .environmentObject(appState.recommendation)
+                .environmentObject(appState.storeManager)
         }
     }
 }

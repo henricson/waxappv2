@@ -13,6 +13,8 @@ struct MainView: View {
     @EnvironmentObject var recStore: RecommendationStore
     @EnvironmentObject var locStore: LocationStore
     @EnvironmentObject var weatherStore: WeatherStore
+    @Environment(\.colorScheme) var colorScheme: ColorScheme
+
     
     // UI State
     @State private var showMapSelection = false
@@ -74,7 +76,7 @@ struct MainView: View {
                         Color.clear.ignoresSafeArea(edges: .top)
                         if let recommended = recStore.recommended.first {
                             LinearGradient(
-                                colors: [Color(hex: recommended.wax.primaryColor) ?? .blue, .black],
+                                colors: [Color(hex: recommended.wax.backgroundColor) ?? .blue, colorScheme == .dark ? .black : .white],
                                 startPoint: .top, endPoint: .bottom
                             )
                             .ignoresSafeArea(edges: .top)
@@ -169,4 +171,6 @@ struct MainView: View {
         .environmentObject(app.location)
         .environmentObject(app.weather)
         .environmentObject(app.recommendation)
+        .environmentObject(app.waxSelection)
+    
 }

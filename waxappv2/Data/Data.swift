@@ -137,6 +137,13 @@ public struct SwixWax: Sendable, Identifiable {
         return maxs.max() ?? 0.0
     }
 
+    public var backgroundColor: String {
+        if (series == "VP" || series == "KN"), let secondary = secondaryColor {
+            return secondary
+        }
+        return primaryColor
+    }
+
     // Helper to get the ranges for a specific snow type
     public func ranges(for snowType: SnowType) -> [TempRangeC] {
         ranges[snowType] ?? []
