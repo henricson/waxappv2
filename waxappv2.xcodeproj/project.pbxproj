@@ -443,9 +443,8 @@
 				INFOPLIST_FILE = waxappv2/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GetGrip;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "I want your location.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "I want your location.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "I want your location.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to fetch weather information.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -514,9 +513,8 @@
 				INFOPLIST_FILE = waxappv2/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GetGrip;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "I want your location.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "I want your location.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "I want your location.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to fetch weather information.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

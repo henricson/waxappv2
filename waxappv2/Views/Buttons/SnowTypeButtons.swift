@@ -6,101 +6,134 @@
 //
 import SwiftUI
 
+private struct SnowTypeButtonWidthKey: PreferenceKey {
+    static var defaultValue: [SnowType: CGFloat] = [:]
+
+    static func reduce(value: inout [SnowType: CGFloat], nextValue: () -> [SnowType: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+private struct ViewportWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 1 { value = next }
+    }
+}
+
 struct SnowTypeButtons: View {
     @Binding var selected: SnowType
 
-    // Tune these if your buttons are wider/narrower on average
-    private let estimatedButtonWidth: CGFloat = 140
+    @Environment(\.colorScheme) private var colorScheme
+
     private let interItemSpacing: CGFloat = 8
     private let verticalPadding: CGFloat = 4
+    private let fallbackButtonWidth: CGFloat = 140
+
+    @State private var buttonWidths: [SnowType: CGFloat] = [:]
+    @State private var viewportWidth: CGFloat = 0
+
+    @State private var scrollPosition: SnowType? = nil
 
     var body: some View {
-        GeometryReader { geo in
-            let sidePadding = max(0, (geo.size.width - estimatedButtonWidth) / 2)
+        let widest = buttonWidths.values.max() ?? fallbackButtonWidth
+        let sideMargin = max(0, (viewportWidth - widest) / 2)
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: interItemSpacing) {
-                        // Leading spacer to allow centering the first items (safe content margin)
-                        Color.clear
-                            .frame(width: sidePadding, height: 1)
-                            .accessibilityHidden(true)
-
-                        ForEach(SnowType.allCases) { group in
-                            let isSel = isSelected(group)
-
-                            Button {
-                                // Update selection (no implicit animation). The onChange handler will do the scroll.
-                                selected = group
-                            } label: {
-                                Label(group.title, systemImage: icon(for: group))
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(isSel ? .blue : .white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .overlay(
-                                        Capsule()
-                                            .strokeBorder(isSel ? Color.accentColor.opacity(0.6) : Color.white.opacity(0.15), lineWidth: isSel ? 1.25 : 0.75)
-                                    )
-                                    .shadow(color: Color.black.opacity(0.08), radius: 1, x: 0, y: 1)
-                                    .contentShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .id(group) // make scroll targetable
+        ScrollView(.horizontal) {
+            HStack(spacing: interItemSpacing) {
+                ForEach(SnowType.allCases) { type in
+                    SnowTypeChip(
+                        type: type,
+                        isSelected: type == selected,
+                        colorScheme: colorScheme,
+                        onTap: { selected = type }
+                    )
+                    .id(type)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear
+                                .preference(key: SnowTypeButtonWidthKey.self, value: [type: geo.size.width])
                         }
-
-                        // Trailing spacer to allow centering the last items (safe content margin)
-                        Color.clear
-                            .frame(width: sidePadding, height: 1)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.vertical, verticalPadding)
-                }
-                .onAppear {
-                    // Initial centering of the selected value
-                    DispatchQueue.main.async {
-                        withAnimation(.easeInOut) {
-                            proxy.scrollTo(selected, anchor: .center)
-                        }
-                    }
-                }
-                .onChange(of: selected) { _, newValue in
-                    withAnimation(.easeInOut) {
-                        proxy.scrollTo(newValue, anchor: .center)
-                    }
+                    )
                 }
             }
+            .padding(.vertical, verticalPadding)
+            // Correct placement: targets are the HStack's children.
+            .scrollTargetLayout()
         }
-        // Give the GeometryReader a reasonable intrinsic height
+        .scrollIndicators(.hidden)
+        // Measure the scroll view's own laid out width (works in MainView's nested stacks/scroll views).
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .preference(key: ViewportWidthKey.self, value: geo.size.width)
+            }
+        )
+        .contentMargins(.horizontal, sideMargin, for: .scrollContent)
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $scrollPosition, anchor: .center)
+        .onAppear {
+            scrollPosition = selected
+        }
+        .onChange(of: selected) { _, newValue in
+            withAnimation(.easeInOut) {
+                scrollPosition = newValue
+            }
+        }
+        .onChange(of: scrollPosition) { _, newValue in
+            guard let newValue, newValue != selected else { return }
+            selected = newValue
+        }
+        .onPreferenceChange(ViewportWidthKey.self) { w in
+            guard w > 40, w < 4000 else { return }
+            viewportWidth = w
+        }
+        .onPreferenceChange(SnowTypeButtonWidthKey.self) { widths in
+            buttonWidths = widths
+        }
         .frame(height: 40)
     }
+}
 
-    // MARK: - Helpers
+private struct SnowTypeChip: View {
+    let type: SnowType
+    let isSelected: Bool
+    let colorScheme: ColorScheme
+    let onTap: () -> Void
 
-    private func isSelected(_ group: SnowType) -> Bool {
-        group == selected
-    }
+    var body: some View {
+        let unselectedText: Color = (colorScheme == .dark) ? .white : .primary
 
-    private func icon(for group: SnowType) -> String {
-        switch group {
-        case .newFallen: return "snow"
-        case .moistNewFallen: return "cloud.snow"
-        case .fineGrained: return "hexagon"
-        case .moistFineGrained: return "hexagon.lefthalf.filled"
-        case .oldGrained: return "circle.grid.2x1"
-        case .transformedMoistFine: return "rhombus"
-        case .frozenCorn: return "snowflake"
-        case .wetCorn: return "drop"
-        case .veryWetCorn: return "drop.fill"
+        Button(action: onTap) {
+            Label(type.title, systemImage: type.iconName)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.accentColor : unselectedText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isSelected ? Color.accentColor.opacity(0.6) : Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                            lineWidth: isSelected ? 1.25 : 0.75
+                        )
+                )
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.08), radius: 1, x: 0, y: 1)
+                .contentShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 }
 
 #Preview {
     @Previewable @State var selected: SnowType = .newFallen
-    VStack(alignment: .leading, spacing: 16) {
+
+    VStack(spacing: 24) {
         SnowTypeButtons(selected: $selected)
+        SnowTypeButtons(selected: $selected)
+            .padding(.horizontal, 32)
     }
     .padding()
 }

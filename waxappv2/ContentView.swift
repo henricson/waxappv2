@@ -24,7 +24,7 @@ struct ContentView: View {
                 PaywallView()
             } else {
                 TabView(selection: $selectedTab) {
-                    Tab("Wax", systemImage: "snow", value: .waxes) {
+                    Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
                         MainView()
                     }
                     Tab("About", systemImage: "info.circle", value: .about) {
