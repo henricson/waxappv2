@@ -4,74 +4,85 @@ import StoreKit
 struct PaywallView: View {
     @EnvironmentObject var storeManager: StoreManager
     @Environment(\.dismiss) var dismiss
-    
+
+    private let imageMaxSize: CGFloat = 420
+
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            
-            Image(systemName: "crown.fill")
+        VStack(spacing: 0) {
+            // Top hero image (same style/size as onboarding)
+            Image("post-introduction-background")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 80, height: 80)
-                .foregroundStyle(.yellow)
-            
-            Text("Unlock WaxApp")
-                .font(.largeTitle)
-                .bold()
-            
-            if storeManager.trialStatus == .expired {
-                Text("Your 14-day free trial has ended. Purchase the full version to continue.")
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            } else {
-                 Text("Support the development and unlock all features forever.")
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            
-            Spacer()
-            
+                .frame(maxWidth: imageMaxSize, maxHeight: imageMaxSize)
+                .accessibilityHidden(true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Bottom text + buttons
             VStack(spacing: 16) {
-                if let product = storeManager.products.first {
-                    Button(action: {
-                        Task {
-                            try? await storeManager.purchase(product)
-                        }
-                    }) {
-                        HStack {
-                            Text("Buy Lifetime Access")
-                            Spacer()
-                            Text(product.displayPrice)
-                        }
+                VStack(spacing: 10) {
+                    Text("Unlock GetGrip")
+                        .font(.largeTitle)
                         .bold()
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .multilineTextAlignment(.center)
+
+                    Group {
+                        if storeManager.trialStatus == .expired {
+                            Text("Your 14-day free trial has ended. Purchase the full version to continue.")
+                        } else {
+                            Text("Support the development and unlock all features.")
+                        }
                     }
-                } else {
-                    ProgressView("Loading products...")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.9)
                 }
-                
-                Button("Restore Purchases") {
-                    Task {
-                        await storeManager.restorePurchases()
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+
+                VStack(spacing: 16) {
+                    if let product = storeManager.products.first {
+                        Button {
+                            Task {
+                                try? await storeManager.purchase(product)
+                            }
+                        } label: {
+                            HStack {
+                                Text("Purchase")
+                                Spacer()
+                                Text(product.displayPrice)
+                            }
+                            .bold()
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        ProgressView("Loading products...")
                     }
+
+                    Button("Restore Purchases") {
+                        Task {
+                            await storeManager.restorePurchases()
+                        }
+                    }
+                    .font(.footnote)
+
+                    Text("By continuing, you verify that you are at least 14 years old and agree to our Terms of Service and Privacy Policy.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 6)
                 }
-                .font(.footnote)
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
-            
-            Spacer()
-            
-            Text("By continuing, you verify that you are at least 14 years old and agree to our Terms of Service and Privacy Policy.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding()
+            .padding(.bottom, 24)
         }
-        .padding()
+        .padding(.top, 20)
+        .padding(.horizontal)
         .onChange(of: storeManager.isPurchased) { purchased in
             if purchased {
                 dismiss()

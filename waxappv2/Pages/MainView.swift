@@ -15,11 +15,12 @@ struct MainView: View {
     @EnvironmentObject var weatherStore: WeatherStore
     @Environment(\.colorScheme) var colorScheme: ColorScheme
 
-    
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
+
     // UI State
     @State private var showMapSelection = false
     @State private var showLocationPermissionAlert = false
-    
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -129,30 +130,37 @@ struct MainView: View {
             } message: {
                 Text("Please enable location services in settings to use your GPS position.")
             }
-            .onChange(of: locStore.authorizationStatus) { _, _ in
-                locStore.requestAuthorization()
-            }
-            
+
             // Note: Stores handle their own interconnection (Location -> Weather -> Recs),
             // so we don't need manual .onChange chains here anymore!
-            
+
             .onAppear {
+                // Don't ask for location until onboarding is completed.
+                guard hasSeenOnboarding else { return }
+
                 if locStore.authorizationStatus == .notDetermined {
                     locStore.requestAuthorization()
+                    return
                 }
-                locStore.requestLocation()
+
+                // If already authorized, fetch a one-time location update.
+                if locStore.authorizationStatus == .authorizedAlways || locStore.authorizationStatus == .authorizedWhenInUse {
+                    locStore.requestLocation()
+                }
             }
-           
+
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func handleReset() {
         switch locStore.authorizationStatus {
         case .denied, .restricted:
             showLocationPermissionAlert = true
         case .notDetermined:
+            // Don't ask for location until onboarding is completed.
+            guard hasSeenOnboarding else { return }
             locStore.requestAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
             // 1. Clear any manual map selection
@@ -161,7 +169,7 @@ struct MainView: View {
             recStore.resetOverrides()
             // 3. Force a refresh of GPS
             locStore.requestLocation()
-            
+
         @unknown default:
             break
         }
@@ -175,5 +183,5 @@ struct MainView: View {
         .environmentObject(app.weather)
         .environmentObject(app.recommendation)
         .environmentObject(app.waxSelection)
-    
+
 }

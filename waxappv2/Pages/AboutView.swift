@@ -10,36 +10,43 @@ import SwiftUI
 struct AboutView: View {
     @EnvironmentObject var storeManager: StoreManager
     @State private var showPaywall = false
-    
+
+    private var daysLeftInTrial: Int {
+        max(0, 14 - storeManager.daysSinceStart)
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                Section("Status") {
+                Section("Purchase status") {
                     if storeManager.isPurchased {
                         Label("Premium Active", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(.green)
                     } else {
+                        // Trial status summary
+                        Group {
+                            Label("Free Trial", systemImage: "clock")
+
+                            if storeManager.trialStatus == .expired {
+                                Text("Expired")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.red)
+                            } else {
+                                Text("\(daysLeftInTrial) days left in trial")
+                                    .font(.subheadline)
+                                    .foregroundStyle(daysLeftInTrial <= 4 ? .red : .green)
+                                    .accessibilityLabel("\(daysLeftInTrial) days left in trial")
+                            }
+                        }
+
                         Button {
                             showPaywall = true
                         } label: {
-                            HStack {
-                                Label("Free Trial", systemImage: "clock")
-                                Spacer()
-                                if case .warning(let days) = storeManager.trialStatus {
-                                    Text("\(days) days left")
-                                        .foregroundStyle(.red)
-                                } else if storeManager.trialStatus == .expired {
-                                    Text("Expired")
-                                        .foregroundStyle(.red)
-                                } else {
-                                    Text("Active")
-                                        .foregroundStyle(.green)
-                                }
-                            }
+                            Label("Purchase the app", systemImage: "arrow.up.circle")
                         }
                     }
                 }
-                
+
                 Section {
                     NavigationLink {
                         WaxSelectionView()
@@ -73,6 +80,12 @@ struct AboutView: View {
 }
 
 #Preview {
+    let app = AppState()
+
     AboutView()
-        .environmentObject(WaxSelectionStore())
+        .environmentObject(app.location)
+        .environmentObject(app.weather)
+        .environmentObject(app.waxSelection)
+        .environmentObject(app.recommendation)
+        .environmentObject(app.storeManager)
 }

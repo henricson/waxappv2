@@ -21,7 +21,7 @@ struct KlisterCanView: View {
             let yScale = height / 321
 
             ZStack {
-                
+
                 // 1. Pencil Tip (Black top part)
                 Path { path in
                     path.move(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
@@ -34,10 +34,11 @@ struct KlisterCanView: View {
                     path.closeSubpath()
                 }
                 .fill(tipColor)
-                
+
 
                 // 2. Main Body (Lower Shaft)
-                Path { path in
+                // Base fill + cylindrical shading overlays (vignette + specular highlight)
+                let bodyPath = Path { path in
                     path.move(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
                     path.addCurve(to: CGPoint(x: 101.43 * xScale, y: 91 * yScale), control1: CGPoint(x: 48.10 * xScale, y: 94 * yScale), control2: CGPoint(x: 74.76 * xScale, y: 91 * yScale))
                     path.addCurve(to: CGPoint(x: 181.43 * xScale, y: 100 * yScale), control1: CGPoint(x: 128.10 * xScale, y: 91 * yScale), control2: CGPoint(x: 154.76 * xScale, y: 94 * yScale))
@@ -46,9 +47,65 @@ struct KlisterCanView: View {
                     path.addLine(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
                     path.closeSubpath()
                 }
-                .fill(bodyColor)
-                
-                
+
+                bodyPath
+                    .fill(bodyColor)
+
+                // Edge darkening to imply roundness
+                bodyPath
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .black.opacity(0.18), location: 0.00),
+                                .init(color: .black.opacity(0.00), location: 0.22),
+                                .init(color: .black.opacity(0.00), location: 0.78),
+                                .init(color: .black.opacity(0.16), location: 1.00)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .blendMode(.multiply)
+
+                // Specular highlight strip (slightly left-of-center)
+                bodyPath
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .white.opacity(0.00), location: 0.00),
+                                .init(color: .white.opacity(0.18), location: 0.28),
+                                .init(color: .white.opacity(0.32), location: 0.38),
+                                .init(color: .white.opacity(0.10), location: 0.48),
+                                .init(color: .white.opacity(0.00), location: 0.62),
+                                .init(color: .white.opacity(0.00), location: 1.00)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .blendMode(.screen)
+
+                // Very subtle bottom darkening to add depth
+                bodyPath
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .black.opacity(0.00), location: 0.00),
+                                .init(color: .black.opacity(0.05), location: 0.65),
+                                .init(color: .black.opacity(0.10), location: 1.00)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .blendMode(.multiply)
+
+                // Soft shadow to lift the body slightly from the background
+                bodyPath
+                    .fill(Color.clear)
+                    .shadow(color: .black.opacity(0.10), radius: 5 * xScale, x: 0, y: 2 * yScale)
+
+
                 // 3. Upper Body Connection
                 Path { path in
                     path.move(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
@@ -60,8 +117,7 @@ struct KlisterCanView: View {
                 }
                 .fill(Color(hex: "#D8D8D8")!)
 
-               
-                
+
                 // 5. Stripes (The texture on top of the tip)
                 // Note: I have simplified the repeated lines into a loop for efficiency
                 // The original SVG used a mask, here we just overlay them clipped to the tip shape
@@ -69,7 +125,7 @@ struct KlisterCanView: View {
                     .stroke(stripeColor, lineWidth: 1 * xScale) // Scale line width
                     .mask(
                         Path { path in
-                             // Reusing the tip path for masking
+                            // Reusing the tip path for masking
                             path.move(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
                             path.addCurve(to: CGPoint(x: 103.47 * xScale, y: 0 * yScale), control1: CGPoint(x: 46.68 * xScale, y: 3.67 * yScale), control2: CGPoint(x: 69.56 * xScale, y: 0 * yScale))
                             path.addCurve(to: CGPoint(x: 168.42 * xScale, y: 11 * yScale), control1: CGPoint(x: 137.37 * xScale, y: 0 * yScale), control2: CGPoint(x: 159.02 * xScale, y: 3.67 * yScale))
@@ -83,12 +139,12 @@ struct KlisterCanView: View {
 
                 // 6. Black Collar (Thin strip)
                 Path { path in
-                     path.move(to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale))
-                     path.addCurve(to: CGPoint(x: 101.62 * xScale, y: 30.46 * yScale), control1: CGPoint(x: 170.23 * xScale, y: 39.31 * yScale), control2: CGPoint(x: 158.64 * xScale, y: 30.03 * yScale))
-                     path.addCurve(to: CGPoint(x: 33.01 * xScale, y: 43.5 * yScale), control1: CGPoint(x: 44.60 * xScale, y: 30.90 * yScale), control2: CGPoint(x: 33.01 * xScale, y: 40.20 * yScale))
-                     path.addCurve(to: CGPoint(x: 101.68 * xScale, y: 52.42 * yScale), control1: CGPoint(x: 33.01 * xScale, y: 46.80 * yScale), control2: CGPoint(x: 68.35 * xScale, y: 52.42 * yScale))
-                     path.addCurve(to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale), control1: CGPoint(x: 135.00 * xScale, y: 52.42 * yScale), control2: CGPoint(x: 170.23 * xScale, y: 45.91 * yScale))
-                     path.closeSubpath()
+                    path.move(to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale))
+                    path.addCurve(to: CGPoint(x: 101.62 * xScale, y: 30.46 * yScale), control1: CGPoint(x: 170.23 * xScale, y: 39.31 * yScale), control2: CGPoint(x: 158.64 * xScale, y: 30.03 * yScale))
+                    path.addCurve(to: CGPoint(x: 33.01 * xScale, y: 43.5 * yScale), control1: CGPoint(x: 44.60 * xScale, y: 30.90 * yScale), control2: CGPoint(x: 33.01 * xScale, y: 40.20 * yScale))
+                    path.addCurve(to: CGPoint(x: 101.68 * xScale, y: 52.42 * yScale), control1: CGPoint(x: 33.01 * xScale, y: 46.80 * yScale), control2: CGPoint(x: 68.35 * xScale, y: 52.42 * yScale))
+                    path.addCurve(to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale), control1: CGPoint(x: 135.00 * xScale, y: 52.42 * yScale), control2: CGPoint(x: 170.23 * xScale, y: 45.91 * yScale))
+                    path.closeSubpath()
                 }
                 .fill(eraserColor)
                 // 4. Dark Middle Section (Gradient part)
@@ -104,6 +160,8 @@ struct KlisterCanView: View {
                 }
                 .fill(middleSectionGradient)
             }
+            // Helps gradients/blend modes look smoother on some devices
+            .drawingGroup()
         }
         .aspectRatio(200/321, contentMode: .fit)
     }
@@ -117,25 +175,25 @@ struct PencilStripesShape: Shape {
         let height = rect.height
         let xScale = width / 200
         let yScale = height / 321
-        
+
         // This generates lines across the width similar to the SVG pattern
         // The original lines were rotated slightly, represented here by start/end offsets
         let numberOfLines = 40
         let spacing: CGFloat = 5.0 * xScale
-        
+
         for i in 0..<numberOfLines {
             let xOffset = CGFloat(i) * spacing
             let startX = xOffset
             let startY: CGFloat = 0
-            
+
             // Slight angle simulation
             let endX = startX - (2.0 * xScale)
             let endY = 62.0 * yScale
-            
+
             path.move(to: CGPoint(x: startX, y: startY))
             path.addLine(to: CGPoint(x: endX, y: endY))
         }
-        
+
         return path
     }
 }
