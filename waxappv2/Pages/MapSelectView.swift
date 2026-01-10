@@ -280,6 +280,7 @@ struct MapSelectView: View {
             placeName: nil
         )
 
+        print("MapSelectView: Setting manual location to (\(newLocation.lat), \(newLocation.lon))")
         locationStore.setManualLocation(newLocation)
         dismiss()
     }
@@ -288,6 +289,7 @@ struct MapSelectView: View {
         // If the user previously confirmed a manual location, `locationStore.location` will be that
         // manual value. Treat this button as a reset-to-GPS action.
         if locationStore.isManualOverride {
+            print("MapSelectView: Clearing manual override and requesting GPS location")
             shouldRecenterOnNextLocationUpdate = true
             locationStore.clearManualLocation()
 

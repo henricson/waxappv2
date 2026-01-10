@@ -126,6 +126,7 @@ final class RecommendationStore: ObservableObject {
         // Update temperature from weather data
         if let firstHour = summary.weather.next24Hours.first {
             let newTemp = Int(firstHour.temperatureC)
+            print("RecommendationStore: Updating temperature from weather: \(newTemp)")
             self.weatherTemperature = newTemp
             self.temperature = newTemp
         }
