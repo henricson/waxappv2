@@ -88,11 +88,14 @@ struct GanttDiagram: View {
             }
             .onChange(of: temperature) { _, newValue in
                 // When parent pushes a new temperature, update the scroll target
-                if let target = scrollItems.first(where: { $0.value == newValue }),
-                   target != scrollPosition {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        scrollPosition = target
+                if let target = scrollItems.first(where: { $0.value == newValue }) {
+                    if target != scrollPosition {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            scrollPosition = target
+                        }
                     }
+                } else {
+                    print("GanttDiagram: Invalid scroll target for temperature: \(newValue)")
                 }
             }
             .onChange(of: snowType) { _, newValue in
