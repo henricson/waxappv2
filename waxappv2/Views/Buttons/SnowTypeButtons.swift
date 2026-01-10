@@ -38,8 +38,16 @@ struct SnowTypeButtons: View {
     @State private var scrollPosition: SnowType? = nil
 
     var body: some View {
-        let widest = buttonWidths.values.max() ?? fallbackButtonWidth
-        let sideMargin = max(0, (viewportWidth - widest) / 2)
+        // Compute asymmetric margins so the first/last item can land exactly on center.
+        // Required margin for an edge item: (viewportWidth / 2) - (edgeItemWidth / 2)
+        let firstType = SnowType.allCases.first
+        let lastType = SnowType.allCases.last
+
+        let firstWidth = firstType.flatMap { buttonWidths[$0] } ?? fallbackButtonWidth
+        let lastWidth = lastType.flatMap { buttonWidths[$0] } ?? fallbackButtonWidth
+
+        let leadingMargin = max(0, (viewportWidth / 2) - (firstWidth / 2))
+        let trailingMargin = max(0, (viewportWidth / 2) - (lastWidth / 2))
 
         ScrollView(.horizontal) {
             HStack(spacing: interItemSpacing) {
@@ -59,21 +67,11 @@ struct SnowTypeButtons: View {
                     )
                 }
             }
-            .padding(.vertical, verticalPadding)
-            // Correct placement: targets are the HStack's children.
             .scrollTargetLayout()
         }
         .scrollIndicators(.hidden)
-        // Measure the scroll view's own laid out width (works in MainView's nested stacks/scroll views).
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .preference(key: ViewportWidthKey.self, value: geo.size.width)
-            }
-        )
-        .contentMargins(.horizontal, sideMargin, for: .scrollContent)
+        .scrollPosition(id: $scrollPosition, anchor: UnitPoint.center)
         .scrollTargetBehavior(.viewAligned)
-        .scrollPosition(id: $scrollPosition, anchor: .center)
         .onAppear {
             scrollPosition = selected
         }
@@ -87,13 +85,13 @@ struct SnowTypeButtons: View {
             selected = newValue
         }
         .onPreferenceChange(ViewportWidthKey.self) { w in
+            // Avoid transient/invalid widths during layout passes.
             guard w > 40, w < 4000 else { return }
             viewportWidth = w
         }
         .onPreferenceChange(SnowTypeButtonWidthKey.self) { widths in
             buttonWidths = widths
         }
-        .frame(height: 40)
     }
 }
 
@@ -130,10 +128,5 @@ private struct SnowTypeChip: View {
 #Preview {
     @Previewable @State var selected: SnowType = .newFallen
 
-    VStack(spacing: 24) {
-        SnowTypeButtons(selected: $selected)
-        SnowTypeButtons(selected: $selected)
-            .padding(.horizontal, 32)
-    }
-    .padding()
+    SnowTypeButtons(selected: $selected)
 }

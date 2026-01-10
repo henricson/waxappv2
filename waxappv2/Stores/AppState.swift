@@ -12,7 +12,6 @@ final class AppState: ObservableObject {
     init() {
         let location = LocationStore()
         let weather = WeatherStore(locationStore: location)
-        weather.startObserving(locationStore: location)
         
         let waxSelection = WaxSelectionStore()
         let recommendation = RecommendationStore(weatherStore: weather, waxSelectionStore: waxSelection)
