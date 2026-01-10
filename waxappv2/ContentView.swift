@@ -17,6 +17,7 @@ struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @EnvironmentObject var storeManager: StoreManager
     @State private var showTrialWarning = false
+    @State private var showPaywall = false
     
     var body: some View {
         Group {
@@ -37,7 +38,7 @@ struct ContentView: View {
                 .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
                     Button("OK", role: .cancel) { }
                     Button("Buy Now") {
-                        // Present paywall if needed, or navigate to it
+                        showPaywall = true
                     }
                 } message: {
                     if case .warning(let days) = storeManager.trialStatus {
@@ -45,6 +46,9 @@ struct ContentView: View {
                     } else {
                         Text("Your free trial is ending soon.")
                     }
+                }
+                .sheet(isPresented: $showPaywall) {
+                    PaywallView()
                 }
             }
         }

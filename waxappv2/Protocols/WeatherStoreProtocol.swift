@@ -24,7 +24,7 @@ protocol WeatherStoreProtocol: ObservableObject {
     /// Publisher for summary changes
     var summaryPublisher: AnyPublisher<WeatherAndSnowpackSummary?, Never> { get }
     
-    /// Manually refresh weather data for a given location
+    /// Manually refresh weather data foar a given location
     /// - Parameter location: The location to fetch weather for
     func refresh(location: AppLocation) async
 }

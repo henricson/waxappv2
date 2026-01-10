@@ -37,13 +37,22 @@ final class LocationStore: NSObject, ObservableObject {
         manualLocation != nil
     }
 
+    /// Convenience initializer that supplies default dependencies on the main actor to avoid actor-isolation warnings.
+    @MainActor
+    convenience override init() {
+        self.init(
+            manager: CLLocationManagerAdapter(),
+            geocodingService: MKReverseGeocodingService()
+        )
+    }
+
     /// Initializes the store with custom dependencies.
     /// - Parameters:
     ///   - manager: The location manager provider (defaults to CLLocationManagerAdapter)
     ///   - geocodingService: The reverse geocoding service (defaults to MKReverseGeocodingService)
     init(
-        manager: LocationManagerProvider = CLLocationManagerAdapter(),
-        geocodingService: ReverseGeocodingService = MKReverseGeocodingService()
+        manager: LocationManagerProvider,
+        geocodingService: ReverseGeocodingService
     ) {
         self.manager = manager
         self.geocodingService = geocodingService
@@ -154,3 +163,4 @@ extension LocationStore: CLLocationManagerDelegate {
         errorDescription = error.localizedDescription
     }
 }
+

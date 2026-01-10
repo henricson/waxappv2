@@ -1,22 +1,7 @@
 import Foundation
-import Playgrounds
 
-public struct TempRangeC: Sendable, Equatable {
-    public let min: Int  // inclusive, °C
-    public let max: Int  // inclusive, °C
-    public init(_ min: Int, _ max: Int) {
-        self.min = min
-        self.max = max
-    }
-}
-
-public enum WaxKind: String, Sendable { case hardwax, klister, base }
-
-// A unified snow type enum (converted from individual properties)
-// This mirrors Swix’s nine official snow condition categories.
-public enum SnowType: CaseIterable, Identifiable, Sendable {
-    public var id: Self { self }
-    case newFallen                // New fallen snow (dry, sharp crystals)
+public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
+    case newFallen = 0               // New fallen snow (dry, sharp crystals)
     case moistNewFallen           // Moist new fallen snow
     case fineGrained              // Fine-grained (dry)
     case moistFineGrained         // Moist fine-grained
@@ -79,7 +64,20 @@ public enum SnowType: CaseIterable, Identifiable, Sendable {
         case .veryWetCorn: return "drop.fill"
         }
     }
+
+    public nonisolated var id: Int { self.rawValue }
 }
+
+public struct TempRangeC: Sendable, Equatable {
+    public let min: Int  // inclusive, °C
+    public let max: Int  // inclusive, °C
+    public init(_ min: Int, _ max: Int) {
+        self.min = min
+        self.max = max
+    }
+}
+
+public enum WaxKind: String, Sendable { case hardwax, klister, base }
 
 // If this playground block causes build issues in app target, comment it out.
 // #Playground {
@@ -503,3 +501,4 @@ public extension Array where Element == SwixWax {
         Dictionary(grouping: self) { $0.waxSeries }
     }
 }
+
