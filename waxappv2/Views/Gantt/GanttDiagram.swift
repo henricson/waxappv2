@@ -23,7 +23,7 @@ struct GanttDiagram: View {
     private let rowHeight: CGFloat = 40
     
     // Use temperature values directly as scroll IDs for stable, semantic targeting
-    private let scrollTargets: [Int] = Array(-35...35)
+    private var scrollTargets: [Int] { Array(minValue...maxValue) }
     
     @State private var scrollPosition: Int?
     @State private var isUpdatingFromScroll = false
@@ -68,10 +68,15 @@ struct GanttDiagram: View {
             .scrollPosition(id: $scrollPosition, anchor: .center)
             .onAppear {
                 updateLayout(for: snowType)
-                // Initialize scroll position from parent temperature
-                scrollPosition = temperature
+                // Initialize scroll position from parent temperature, validating it's in range
+                let validTemperature = max(minValue, min(temperature, maxValue))
+                scrollPosition = validTemperature
+                
                 #if DEBUG
-                print("GanttDiagram: Initial scroll position set to \(temperature)")
+                if validTemperature != temperature {
+                    print("GanttDiagram: Temperature \(temperature) out of range, clamped to \(validTemperature)")
+                }
+                print("GanttDiagram: Initial scroll position set to \(validTemperature)")
                 #endif
             }
             .onChange(of: scrollPosition) { old, new in
