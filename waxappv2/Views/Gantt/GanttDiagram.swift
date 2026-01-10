@@ -8,11 +8,6 @@
 import Foundation
 import SwiftUI
 
-struct ScrollItem:  Identifiable, Hashable {
-    var id: UUID
-    var value: Int
-}
-
 struct GanttDiagram: View {
     // Incoming binding from parent
     @Binding var temperature: Int
@@ -27,13 +22,11 @@ struct GanttDiagram: View {
     private let rowPadding: CGFloat = 0
     private let rowHeight: CGFloat = 40
     
-    // Use stable, static IDs so the scroll targets don't churn on re-render
-    private static let stableScrollItems: [ScrollItem] = (-35...35).map { value in
-        ScrollItem(id:  UUID(), value: value)
-    }
-    private let scrollItems = GanttDiagram.stableScrollItems
+    // Use temperature values directly as scroll IDs for stable, semantic targeting
+    private var scrollTargets: [Int] { Array(minValue...maxValue) }
     
-    @State private var scrollPosition: ScrollItem?
+    @State private var scrollPosition: Int?
+    @State private var isUpdatingFromScroll = false
     @State private var placements: [PlacedGanttTask<String, SwixWax>] = []
     @State private var layoutId = UUID() // Used to trigger transitions
     
@@ -43,12 +36,12 @@ struct GanttDiagram: View {
         HStack {
             ScrollView(.horizontal, showsIndicators: false) {
                 ZStack {
-                    // Temperature scale track with stable IDs
+                    // Temperature scale track using Int values as scroll IDs
                     LazyHStack(spacing: 0) {
-                        ForEach(scrollItems) { item in
+                        ForEach(scrollTargets, id: \.self) { temp in
                             Color.clear
                                 .frame(width: CGFloat(scaleFactor))
-                                .id(item)
+                                .id(temp)
                         }
                     }
                     .scrollTargetLayout()
@@ -72,34 +65,58 @@ struct GanttDiagram: View {
             .coordinateSpace(name: "ganttScroll")
             .sensoryFeedback(.increase, trigger: scrollPosition)
             .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollPosition, anchor:  UnitPoint(x: 0.5625, y: 0))
+            .scrollPosition(id: $scrollPosition, anchor: .center)
             .onAppear {
                 updateLayout(for: snowType)
-                // Initialize scroll position from parent temperature
-                if let target = scrollItems.first(where: { $0.value == temperature }) {
-                    scrollPosition = target
+                // Initialize scroll position from parent temperature, validating it's in range
+                let validTemperature = max(minValue, min(temperature, maxValue))
+                scrollPosition = validTemperature
+                
+                #if DEBUG
+                if validTemperature != temperature {
+                    print("GanttDiagram: Temperature \(temperature) out of range, clamped to \(validTemperature)")
                 }
+                print("GanttDiagram: Initial scroll position set to \(validTemperature)")
+                #endif
             }
             .onChange(of: scrollPosition) { old, new in
-                // Update parent only when the center target changes
-                if let val = new?.value, val != temperature {
-                    temperature = val
-                }
+                // Prevent feedback loop: only update temperature if we're not already updating from a temperature change
+                guard !isUpdatingFromScroll, let newTemp = new, newTemp != temperature else { return }
+                
+                isUpdatingFromScroll = true
+                defer { isUpdatingFromScroll = false }
+                
+                #if DEBUG
+                print("GanttDiagram: Manual scroll to \(newTemp), updating bound temperature")
+                #endif
+                
+                temperature = newTemp
             }
-            .onChange(of: temperature) { _, newValue in
-                // When parent pushes a new temperature, update the scroll target
-                print("GanttDiagram: Temperature changed to \(newValue)")
-                if let target = scrollItems.first(where: { $0.value == newValue }) {
-                    if target != scrollPosition {
-                        print("GanttDiagram: Scrolling to temperature \(newValue)")
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            scrollPosition = target
-                        }
-                    } else {
-                        print("GanttDiagram: Already at temperature \(newValue), no scroll needed")
+            .onChange(of: temperature) { oldValue, newValue in
+                // Prevent feedback loop: only update scroll position if we're not already updating from scroll
+                guard !isUpdatingFromScroll, scrollPosition != newValue else {
+                    #if DEBUG
+                    if scrollPosition == newValue {
+                        print("GanttDiagram: Temperature changed to \(newValue), already at correct position")
                     }
-                } else {
-                    print("GanttDiagram: Invalid scroll target for temperature: \(newValue)")
+                    #endif
+                    return
+                }
+                
+                #if DEBUG
+                print("GanttDiagram: Temperature changed from \(oldValue) to \(newValue), scrolling")
+                #endif
+                
+                // Validate the temperature is in range
+                guard scrollTargets.contains(newValue) else {
+                    #if DEBUG
+                    print("GanttDiagram: Warning - temperature \(newValue) out of range [\(minValue), \(maxValue)]")
+                    #endif
+                    return
+                }
+                
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    scrollPosition = newValue
                 }
             }
             .onChange(of: snowType) { _, newValue in
