@@ -196,7 +196,7 @@ struct Gantt: View {
         // Content width should match the scrollable degree columns exactly.
         let contentWidth: Double = Double(degreesCount) * pxPerDegree
 
-        return GeometryReader { proxy in
+        GeometryReader { proxy in
             ZStack {
                 ScrollView(.horizontal, showsIndicators: false) {
                     ZStack(alignment: .topLeading) {
@@ -274,8 +274,6 @@ struct Gantt: View {
                 .defaultScrollAnchor(.center)
                 .contentMargins(.horizontal, proxy.size.width / 2, for: .scrollContent)
                 .sensoryFeedback(.increase, trigger: scrollPosition)
-
-
                 // Parent -> Gantt: when temperature changes externally, scroll to it.
                 .onChange(of: temperature) { _, newValue in
                     let clamped = clampedTemperature(newValue)
@@ -304,11 +302,13 @@ struct Gantt: View {
                     scrollPosition = clampedTemperature(temperature)
                 }
 
+                // Red temperature indicator line - centered vertically
                 Rectangle()
-                    .frame(width: 1)
-                    .foregroundStyle(.red)
+                    .fill(.red)
+                    .frame(width: 2)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }
 

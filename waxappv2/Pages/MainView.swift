@@ -91,21 +91,19 @@ struct MainView: View {
 
     private var mainContent: some View {
         GeometryReader { proxy in
-            VStack {
-                ScrollView(.vertical) {
-                    VStack(spacing: 0) {
-                        headerSection
-                        snowTypeSection
-                        Text(String(recStore.temperature))
-                        ganttSection
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    // Make the scroll content at least as tall as the visible viewport,
-                    // so the Gantt view can expand into remaining space.
-                    .frame(minHeight: proxy.size.height, alignment: .top)
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    headerSection
+                    snowTypeSection
+                        .padding(.bottom, 16)
+                    ganttSection
+                        .layoutPriority(1)
                 }
-                .background(backgroundView)
+                // Make the scroll content at least as tall as the visible viewport,
+                // so the Gantt view can expand into remaining space.
+                .frame(minHeight: proxy.size.height, alignment: .top)
             }
+            .background(backgroundView)
         }
     }
 

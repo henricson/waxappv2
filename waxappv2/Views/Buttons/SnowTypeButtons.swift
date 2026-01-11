@@ -6,91 +6,70 @@
 //
 import SwiftUI
 
-private struct SnowTypeButtonWidthKey: PreferenceKey {
-    static var defaultValue: [SnowType: CGFloat] = [:]
-
-    static func reduce(value: inout [SnowType: CGFloat], nextValue: () -> [SnowType: CGFloat]) {
-        value.merge(nextValue(), uniquingKeysWith: { $1 })
-    }
-}
-
-private struct ViewportWidthKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        let next = nextValue()
-        if next > 1 { value = next }
-    }
-}
-
 struct SnowTypeButtons: View {
     @Binding var selected: SnowType
 
     @Environment(\.colorScheme) private var colorScheme
 
     private let interItemSpacing: CGFloat = 8
-    private let verticalPadding: CGFloat = 4
-    private let fallbackButtonWidth: CGFloat = 140
-
-    @State private var buttonWidths: [SnowType: CGFloat] = [:]
-    @State private var viewportWidth: CGFloat = 0
 
     @State private var scrollPosition: SnowType? = nil
+    @State private var isProgrammaticScroll: Bool = false
 
     var body: some View {
-        // Compute asymmetric margins so the first/last item can land exactly on center.
-        // Required margin for an edge item: (viewportWidth / 2) - (edgeItemWidth / 2)
-        let firstType = SnowType.allCases.first
-        let lastType = SnowType.allCases.last
-
-        let firstWidth = firstType.flatMap { buttonWidths[$0] } ?? fallbackButtonWidth
-        let lastWidth = lastType.flatMap { buttonWidths[$0] } ?? fallbackButtonWidth
-
-        let leadingMargin = max(0, (viewportWidth / 2) - (firstWidth / 2))
-        let trailingMargin = max(0, (viewportWidth / 2) - (lastWidth / 2))
-
-        ScrollView(.horizontal) {
-            HStack(spacing: interItemSpacing) {
-                ForEach(SnowType.allCases) { type in
-                    SnowTypeChip(
-                        type: type,
-                        isSelected: type == selected,
-                        colorScheme: colorScheme,
-                        onTap: { selected = type }
-                    )
-                    .id(type)
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear
-                                .preference(key: SnowTypeButtonWidthKey.self, value: [type: geo.size.width])
-                        }
-                    )
+        GeometryReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: interItemSpacing) {
+                    ForEach(SnowType.allCases) { type in
+                        SnowTypeChip(
+                            type: type,
+                            isSelected: type == selected,
+                            colorScheme: colorScheme,
+                            onTap: {
+                                guard type != selected else { return }
+                                isProgrammaticScroll = true
+                                selected = type
+                                withAnimation(.easeInOut) {
+                                    scrollPosition = type
+                                }
+                                DispatchQueue.main.async {
+                                    isProgrammaticScroll = false
+                                }
+                            }
+                        )
+                        .id(type)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .contentMargins(.horizontal, proxy.size.width / 2)
+            .scrollTargetBehavior(.viewAligned)
+            .defaultScrollAnchor(.center)
+            .scrollIndicators(.hidden)
+            .scrollPosition(id: $scrollPosition, anchor: .center)
+            
+            .onAppear {
+                isProgrammaticScroll = true
+                scrollPosition = selected
+                DispatchQueue.main.async {
+                    isProgrammaticScroll = false
                 }
             }
-            .scrollTargetLayout()
-        }
-        .scrollIndicators(.hidden)
-        .scrollPosition(id: $scrollPosition, anchor: UnitPoint.center)
-        .scrollTargetBehavior(.viewAligned)
-        .onAppear {
-            scrollPosition = selected
-        }
-        .onChange(of: selected) { _, newValue in
-            withAnimation(.easeInOut) {
-                scrollPosition = newValue
+            .onChange(of: selected) { _, newValue in
+                guard newValue != scrollPosition else { return }
+                isProgrammaticScroll = true
+                withAnimation(.easeInOut) {
+                    scrollPosition = newValue
+                }
+                DispatchQueue.main.async {
+                    isProgrammaticScroll = false
+                }
             }
-        }
-        .onChange(of: scrollPosition) { _, newValue in
-            guard let newValue, newValue != selected else { return }
-            selected = newValue
-        }
-        .onPreferenceChange(ViewportWidthKey.self) { w in
-            // Avoid transient/invalid widths during layout passes.
-            guard w > 40, w < 4000 else { return }
-            viewportWidth = w
-        }
-        .onPreferenceChange(SnowTypeButtonWidthKey.self) { widths in
-            buttonWidths = widths
+            .onChange(of: scrollPosition) { _, newValue in
+                guard !isProgrammaticScroll else { return }
+                guard let newValue, newValue != selected else { return }
+                selected = newValue
+            }
         }
     }
 }
@@ -128,5 +107,13 @@ private struct SnowTypeChip: View {
 #Preview {
     @Previewable @State var selected: SnowType = .newFallen
 
-    SnowTypeButtons(selected: $selected)
+    ZStack {
+        SnowTypeButtons(selected: $selected)
+            .frame(height: 60)
+
+        // Center guide for debugging
+        Rectangle()
+            .frame(width: 1)
+            .foregroundColor(.red)
+    }
 }
