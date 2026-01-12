@@ -145,6 +145,8 @@ struct Gantt: View {
     // Discrete scroll position (degree) for iOS 17 scroll APIs.
     @State private var scrollPosition: Int?
     @State private var isProgrammaticScroll: Bool = false
+    @State private var pendingProgrammaticTarget: Int? = nil
+    @State private var scrollAnimationToken: UUID = UUID()
 
     @Environment(\.displayScale) private var displayScale
 
@@ -169,6 +171,34 @@ struct Gantt: View {
     private func x(for temperature: Int, pxPerDegree: Double) -> CGFloat {
         let t = clamp(Double(temperature), minTemp, maxTemp)
         return CGFloat((t - minTemp) * pxPerDegree)
+    }
+
+    private func animationSpec() -> Animation { .easeInOut(duration: 0.35) }
+
+    private func driveProgrammaticScroll() {
+        guard let target = pendingProgrammaticTarget else { return }
+        // Start a new programmatic scroll towards the latest target.
+        isProgrammaticScroll = true
+        scrollAnimationToken = UUID() // new token to identify this run
+        let token = scrollAnimationToken
+        withAnimation(animationSpec()) {
+            scrollPosition = target
+        }
+        // Schedule completion check after the animation duration. If a newer target arrived meanwhile, run again.
+        let delay = 0.36
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            // Only continue if this is still the latest animation run.
+            guard token == scrollAnimationToken else { return }
+            // If during the animation a new target was set and it's different from current, animate again.
+            if let latest = pendingProgrammaticTarget, latest != scrollPosition {
+                // Continue chaining to the latest target.
+                driveProgrammaticScroll()
+            } else {
+                // We reached the target; clear pending and allow user-driven updates to propagate.
+                pendingProgrammaticTarget = nil
+                isProgrammaticScroll = false
+            }
+        }
     }
 
     var body: some View {
@@ -277,29 +307,41 @@ struct Gantt: View {
                 // Parent -> Gantt: when temperature changes externally, scroll to it.
                 .onChange(of: temperature) { _, newValue in
                     let clamped = clampedTemperature(newValue)
-                    guard scrollPosition != clamped else { return }
-                    isProgrammaticScroll = true
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        scrollPosition = clamped
-                    }
-                    // Clear guard on next runloop so user scroll updates propagate.
-                    DispatchQueue.main.async {
-                        isProgrammaticScroll = false
+                    // If we're already targeting this position, do nothing.
+                    if scrollPosition == clamped && pendingProgrammaticTarget == nil { return }
+
+                    // Record the latest desired target.
+                    pendingProgrammaticTarget = clamped
+
+                    // If we are not currently in a programmatic scroll, start one now.
+                    if !isProgrammaticScroll {
+                        driveProgrammaticScroll()
                     }
                 }
 
                 // Gantt -> Parent: when the scroll position changes (any input), update temperature.
                 .onChange(of: scrollPosition) { _, newValue in
-                    guard !isProgrammaticScroll else { return }
                     guard let degree = newValue else { return }
                     let clamped = clampedTemperature(degree)
+
+                    if isProgrammaticScroll {
+                        // During programmatic scroll, keep temperature in sync only if this is the final target.
+                        if let pending = pendingProgrammaticTarget, pending == clamped {
+                            if temperature != clamped { temperature = clamped }
+                        }
+                        return
+                    }
+                    // User-driven update
                     if clamped != temperature {
                         temperature = clamped
                     }
                 }
 
                 .onAppear {
-                    scrollPosition = clampedTemperature(temperature)
+                    let initial = clampedTemperature(temperature)
+                    scrollPosition = initial
+                    pendingProgrammaticTarget = nil
+                    isProgrammaticScroll = false
                 }
 
                 // Red temperature indicator line - centered vertically
@@ -428,3 +470,4 @@ struct SnapTopClosesestDegree: ScrollTargetBehavior {
 
     }
 }
+
