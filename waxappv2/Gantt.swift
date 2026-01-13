@@ -147,6 +147,7 @@ struct Gantt: View {
     @State private var isProgrammaticScroll: Bool = false
     @State private var pendingProgrammaticTarget: Int? = nil
     @State private var scrollAnimationToken: UUID = UUID()
+    @State private var temperatureDebounceTask: Task<Void, Never>? = nil
 
     @Environment(\.displayScale) private var displayScale
 
@@ -158,7 +159,8 @@ struct Gantt: View {
     let barHeight: Double = 20
     let chartWidth: Double = 3000
 
-    private let axisHeight: Double = 34
+    private let axisHeight: Double = 80
+    private let temperatureDebounceNanoseconds: UInt64 = 300_000_000 // 300ms debounce for incoming temperature updates
 
     private func normalizeTemperature(_ t: Double) -> Int {
         Int(clamp(t.rounded(), minTemp, maxTemp))
@@ -227,11 +229,10 @@ struct Gantt: View {
         let contentWidth: Double = Double(degreesCount) * pxPerDegree
 
         GeometryReader { proxy in
-            ZStack {
-                ScrollView(.horizontal, showsIndicators: false) {
+            let chartContent: AnyView = {
+                AnyView(
                     ZStack(alignment: .topLeading) {
                         // Discrete degree markers used for snapping + scrollPosition.
-                        // IMPORTANT: keep per-degree marker width == pxPerDegree so the modulus snapping aligns.
                         HStack(spacing: 0) {
                             ForEach(Int(minTemp)...Int(maxTemp), id: \.self) { degree in
                                 Color.clear
@@ -240,29 +241,6 @@ struct Gantt: View {
                             }
                         }
                         .scrollTargetLayout()
-
-                        // X-axis ticks + labels (pinned at the bottom of the ZStack)
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 0)
-                            ZStack(alignment: .topLeading) {
-                                ForEach(Int(minTemp)...Int(maxTemp), id: \.self) { degree in
-                                    let x = (Double(degree) - minTemp) * pxPerDegree + tickXOffset
-
-                                    VStack(spacing: 2) {
-                                        Rectangle()
-                                            .fill(.secondary.opacity(0.6))
-                                            .frame(width: tickLineWidth, height: 8)
-
-                                        Text("\(degree)°")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                            .fixedSize()
-                                    }
-                                    .position(x: x, y: axisHeight / 2)
-                                }
-                            }
-                            .frame(height: axisHeight)
-                        }
 
                         // Bars
                         ForEach(Array(placedTasks.placements.enumerated()), id: \.element.id) { index, task in
@@ -296,8 +274,20 @@ struct Gantt: View {
                             }
                         }
                         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: snowType)
+                        .padding(.top, 5)
+
+                        // XAxisView on top so labels are always visible
+                        XAxisView(minTemp: minTemp, maxTemp: maxTemp, pxPerDegree: pxPerDegree, tickXOffset: tickXOffset, tickLineWidth: tickLineWidth,axisHeight: axisHeight, centerX: (Double(clampedTemperature(scrollPosition ?? temperature)) - minTemp + 0.5) * pxPerDegree)
+                            .frame(height: 50)
                     }
                     .frame(width: contentWidth, height: max(contentHeight + axisHeight, proxy.size.height), alignment: .topLeading)
+                )
+            }()
+
+            ZStack {
+       
+                ScrollView(.horizontal, showsIndicators: false) {
+                    chartContent
                 }
                 .scrollTargetBehavior(SnapTopClosesestDegree(snapModulus: pxPerDegree, maxColumnIndex: degreesCount - 1))
                 .scrollPosition(id: $scrollPosition, anchor: .center)
@@ -305,16 +295,19 @@ struct Gantt: View {
                 .contentMargins(.horizontal, proxy.size.width / 2, for: .scrollContent)
                 .sensoryFeedback(.increase, trigger: scrollPosition)
                 // Parent -> Gantt: when temperature changes externally, scroll to it.
-                .onChange(of: temperature) { _, newValue in
-                    let clamped = clampedTemperature(newValue)
-                    // If we're already targeting this position, do nothing.
-                    if scrollPosition == clamped && pendingProgrammaticTarget == nil { return }
+                .onChange(of: temperature) { _, _ in
+                    // Debounce incoming temperature updates to coalesce multiple quick changes (e.g., cached value -> fresh location value).
+                    temperatureDebounceTask?.cancel()
+                    temperatureDebounceTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: temperatureDebounceNanoseconds)
+                        // Use the latest temperature value at the end of the debounce window.
+                        let target = clampedTemperature(temperature)
+                        // If we're already targeting this position and no programmatic target is pending, do nothing.
+                        if scrollPosition == target && pendingProgrammaticTarget == nil { return }
 
-                    // Record the latest desired target.
-                    pendingProgrammaticTarget = clamped
-
-                    // If we are not currently in a programmatic scroll, start one now.
-                    if !isProgrammaticScroll {
+                        // Record the latest desired target and (re)drive programmatic scrolling.
+                        pendingProgrammaticTarget = target
+                        // Always drive programmatic scroll — if one is in progress it will retarget mid-flight.
                         driveProgrammaticScroll()
                     }
                 }
@@ -343,13 +336,16 @@ struct Gantt: View {
                     pendingProgrammaticTarget = nil
                     isProgrammaticScroll = false
                 }
-
-                // Red temperature indicator line - centered vertically
-                Rectangle()
-                    .fill(.red)
-                    .frame(width: 2)
+                .onDisappear { temperatureDebounceTask?.cancel() }
+                
+                TemperatureGauge(temperature: temperature)
+                    .padding(.top, 10)
+           
             }
+    
         }
+        .coordinateSpace(name: "gantt-space")
+        .padding(.vertical, 20)
         .frame(maxHeight: .infinity, alignment: .top)
     }
 }

@@ -301,6 +301,21 @@ struct MapSelectView: View {
             return
         }
 
+        // Check authorization status first
+        if locationStore.authorizationStatus == .notDetermined {
+            // Request authorization and location together
+            shouldRecenterOnNextLocationUpdate = true
+            locationStore.requestAuthorization()
+            locationStore.requestLocation()
+            return
+        }
+        
+        if locationStore.authorizationStatus == .denied || locationStore.authorizationStatus == .restricted {
+            // Handle denied/restricted - could show an alert here
+            print("MapSelectView: Location access denied or restricted")
+            return
+        }
+
         // If no manual override is active, just center on the current GPS location (if we have one).
         guard let loc = locationStore.location else {
             // Kick off a request in case we don't have a fix yet.
