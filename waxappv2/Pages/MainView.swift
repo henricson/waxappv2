@@ -55,21 +55,31 @@ struct MainView: View {
     }
 
     private var snowTypeSection: some View {
-        SnowTypeButtons(
-            selected: Binding(
-                get: { recStore.snowType },
-                set: { newValue in
-                    // If the user taps the same as weather, maybe clear override?
-                    // For now, just set the override.
-                    recStore.userSelectedSnowType = newValue
-                }
+        VStack(spacing: 8) {
+            SnowTypeButtons(
+                selected: Binding(
+                    get: { recStore.snowType },
+                    set: { newValue in
+                        // If the user taps the same as weather, maybe clear override?
+                        // For now, just set the override.
+                        recStore.userSelectedSnowType = newValue
+                    }
+                )
             )
-        )
-        .padding(.vertical, 20)
+            .frame(height: 44)
+            
+            LocationSourceIndicator(
+                isManualOverride: locStore.isManualOverride,
+                isUsingWeatherData: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType
+            )
+        }
+        .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
+        .padding(.top, 20)
     }
 
     private var ganttSection: some View {
         Gantt(temperature: $recStore.temperature, snowType: $recStore.snowType)
+            .frame(minHeight: 300) // Minimum height for the Gantt, but can grow
     }
 
     private var backgroundView: some View {
@@ -94,14 +104,13 @@ struct MainView: View {
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     headerSection
+                    
                     snowTypeSection
-                        .padding(.bottom, 16)
+                    
                     ganttSection
-                        .layoutPriority(1)
+                        .frame(minHeight: max(400, proxy.size.height - 320))
                 }
-                // Make the scroll content at least as tall as the visible viewport,
-                // so the Gantt view can expand into remaining space.
-                .frame(minHeight: proxy.size.height, alignment: .top)
+                .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
             }
             .background(backgroundView)
         }
@@ -110,12 +119,19 @@ struct MainView: View {
     @ToolbarContentBuilder
     private var mainToolbar: some ToolbarContent {
         // MARK: - Location-source tinting
-        // If user overrides temp/snow type, we show both buttons with the default tint.
-        // Otherwise, highlight the active location source.
-        let shouldHighlightLocationSource = !recStore.isOverridden
+        // Highlight map button only if using manual location AND both temp and snow type are from weather
+        let shouldHighlightMap = locStore.isManualOverride && 
+                                 recStore.isUsingWeatherTemperature && 
+                                 recStore.isUsingWeatherSnowType
+        
+        // Highlight location button only if NOT using manual location AND both temp and snow type are from weather
+        let shouldHighlightLocation = !locStore.isManualOverride && 
+                                      recStore.isUsingWeatherTemperature && 
+                                      recStore.isUsingWeatherSnowType
+        
         let highlightColor: Color = .blue
-        let mapTint: Color? = (shouldHighlightLocationSource && locStore.isManualOverride) ? highlightColor : nil
-        let locationTint: Color? = (shouldHighlightLocationSource && !locStore.isManualOverride) ? highlightColor : nil
+        let mapTint: Color? = shouldHighlightMap ? highlightColor : nil
+        let locationTint: Color? = shouldHighlightLocation ? highlightColor : nil
 
         // MARK: - Left: Map Selection
         ToolbarItem(placement: .topBarLeading) {

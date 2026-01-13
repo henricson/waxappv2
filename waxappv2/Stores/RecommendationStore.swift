@@ -17,8 +17,17 @@ final class RecommendationStore: ObservableObject {
     
     /// Current temperature setting for recommendations
     @Published var temperature: Int = -5 {
-        didSet { recompute() }
+        didSet {
+            // Mark as overridden if user changes temperature after weather is available
+            if oldValue != temperature && weatherTemperature != nil {
+                userOverrodeTemperature = (temperature != weatherTemperature)
+            }
+            recompute()
+        }
     }
+    
+    /// Tracks if user manually changed temperature from weather default
+    @Published private(set) var userOverrodeTemperature: Bool = false
     
     /// Current snow type for recommendations
     @Published var snowType: SnowType = .fineGrained {
@@ -59,7 +68,17 @@ final class RecommendationStore: ObservableObject {
     
     /// Indicates if user has overridden weather defaults
     var isOverridden: Bool {
-        userSelectedSnowType != nil
+        userSelectedSnowType != nil || userOverrodeTemperature
+    }
+    
+    /// Indicates if temperature matches weather forecast
+    var isUsingWeatherTemperature: Bool {
+        !userOverrodeTemperature && weatherTemperature != nil
+    }
+    
+    /// Indicates if snow type matches weather forecast
+    var isUsingWeatherSnowType: Bool {
+        userSelectedSnowType == nil && weatherSnowType != nil
     }
 
     // MARK: - Initialization
@@ -93,6 +112,7 @@ final class RecommendationStore: ObservableObject {
     /// Resets all user overrides to weather defaults.
     func resetOverrides() {
         userSelectedSnowType = nil
+        userOverrodeTemperature = false
         if let wt = weatherTemperature {
             self.temperature = wt
         }
@@ -119,13 +139,18 @@ final class RecommendationStore: ObservableObject {
         if let firstHour = summary.weather.next24Hours.first {
             let newTemp = Int(firstHour.temperatureC)
             self.weatherTemperature = newTemp
-            self.temperature = newTemp
+            // Only update temperature if user hasn't overridden it
+            if !userOverrodeTemperature {
+                self.temperature = newTemp
+            }
         }
         
         if let assessment = summary.currentAssessment {
              self.weatherSnowType = assessment.group
-             self.userSelectedSnowType = nil
-             self.snowType = assessment.group
+             // Only update if user hasn't overridden snow type
+             if userSelectedSnowType == nil {
+                 self.snowType = assessment.group
+             }
         }
     }
     
