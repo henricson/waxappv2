@@ -12,7 +12,7 @@ final class WeatherStore: ObservableObject, WeatherStoreProtocol {
     var locationStore: LocationStore
 
     /// Status of weather data operations
-    enum Status {
+    enum Status: Equatable {
         case idle
         case loading
         case loaded
@@ -93,12 +93,15 @@ final class WeatherStore: ObservableObject, WeatherStoreProtocol {
     /// Fetches weather data for a location.
     /// - Parameter location: The location to fetch weather for
     private func fetch(for location: AppLocation) async {
+        print("🌍 Fetching weather for: \(location.placeName)")
         status = .loading
         do {
             let s = try await service.fetchWeatherAndAssessSnow(for: location.coordinate)
             self.summary = s
             status = .loaded
+            print("✅ Weather loaded successfully")
         } catch {
+            print("❌ Weather fetch failed: \(error.localizedDescription)")
             status = .failed(error.localizedDescription)
             self.summary = nil
         }

@@ -58,10 +58,10 @@ struct SnowTypeButtons: View {
             .onChange(of: scrolledID) { _, newValue in
                 guard let newValue, newValue != selected else { return }
                 selected = newValue
-            }        .frame(height: .leastNonzeroMagnitude)
+            }        .frame(height: .leastNormalMagnitude)
 
         }
-        .frame(height: .leastNonzeroMagnitude)
+        .frame(height: .leastNormalMagnitude)
             
     }
 }

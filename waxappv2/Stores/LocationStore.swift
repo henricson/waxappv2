@@ -90,6 +90,7 @@ final class LocationStore: NSObject, ObservableObject {
     /// Clears the manual location override and requests a new GPS location.
     func clearManualLocation() {
         self.location = nil
+        self.locationStatus = .searching
         // Request location again to get fresh GPS coordinates
         requestLocation()
     }
@@ -153,6 +154,7 @@ extension LocationStore: CLLocationManagerDelegate {
                 placeName: nil
             )
             self.location = appLoc
+            self.locationStatus = .active
             
             // Reverse geocode to get place name
             Task {
