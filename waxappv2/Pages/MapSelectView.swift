@@ -241,7 +241,7 @@ struct MapSelectView: View {
                 guard shouldRecenterOnNextLocationUpdate else { return }
                 guard let newLocation else { return }
                 // If we still have a manual override, ignore updates (LocationStore won't send them anyway).
-                guard !locationStore.isManualOverride else { return }
+                guard locationStore.locationStatus != .manual_override else { return }
 
                 let region = MKCoordinateRegion(
                     center: newLocation.coordinate,
@@ -265,7 +265,7 @@ struct MapSelectView: View {
             )
             position = .region(region)
 
-            if locationStore.isManualOverride {
+            if locationStore.locationStatus == .manual_override {
                 selectedCoordinate = currentLoc.coordinate
             }
         }
@@ -288,7 +288,7 @@ struct MapSelectView: View {
     private func useCurrentLocation() {
         // If the user previously confirmed a manual location, `locationStore.location` will be that
         // manual value. Treat this button as a reset-to-GPS action.
-        if locationStore.isManualOverride {
+        if locationStore.locationStatus == .manual_override {
             print("MapSelectView: Clearing manual override and requesting GPS location")
             shouldRecenterOnNextLocationUpdate = true
             locationStore.clearManualLocation()

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
     case newFallen = 0               // New fallen snow (dry, sharp crystals)
@@ -11,45 +12,35 @@ public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
     case wetCorn                  // Wet corn snow (free water present)
     case veryWetCorn              // Very wet corn snow (slushy)
 
-    // Norwegian display name for UI
-    public var title: String {
+    /// UI‑friendly, localized title
+    var title: String {
         switch self {
-        case .newFallen: return "Nysnø"
-        case .moistNewFallen: return "Fuktig nysnø"
-        case .fineGrained: return "Finkornet"
-        case .moistFineGrained: return "Fuktig finkornet"
-        case .oldGrained: return "Gammel snø"
-        case .transformedMoistFine: return "Omvandlet fuktig finkornet"
-        case .frozenCorn: return "Skare/is"
-        case .wetCorn: return "Våt grovkornet"
-        case .veryWetCorn: return "Svært våt grovkornet"
+        case .newFallen:               return NSLocalizedString("NewSnowTitle", comment: "")
+        case .moistNewFallen:          return NSLocalizedString("MoistNewSnowTitle", comment: "")
+        case .fineGrained:             return NSLocalizedString("FineGrainedTitle", comment: "")
+        case .moistFineGrained:        return NSLocalizedString("MoistFineGrainedTitle", comment: "")
+        case .oldGrained:              return NSLocalizedString("OldGrainedTitle", comment: "")
+        case .transformedMoistFine:    return NSLocalizedString("TransformedMoistFineTitle", comment: "")
+        case .frozenCorn:              return NSLocalizedString("FrozenCornTitle", comment: "")
+        case .wetCorn:                 return NSLocalizedString("WetCornTitle", comment: "")
+        case .veryWetCorn:             return NSLocalizedString("VeryWetCornTitle", comment: "")
         }
     }
 
-    // Optional: brief Norwegian description for tooltips/details
-    public var description: String {
+    /// Brief description for tooltips / detail views
+    var description: String {
         switch self {
-        case .newFallen:
-            return "Nylig falt, tørre krystaller (skarpe); krever relativt hard voks."
-        case .moistNewFallen:
-            return "Nysnø med fuktighet rundt/over 0 °C; fare for ising."
-        case .fineGrained:
-            return "Tørr finkornet snø; mellomstadiet i transformasjonen."
-        case .moistFineGrained:
-            return "Finkornet snø med fuktighet; nær 0 °C."
-        case .oldGrained:
-            return "Gammel/avrundet og bundet snø; siste stadiet i transformasjonen."
-        case .transformedMoistFine:
-            return "Omvandlet, fuktig finkornet snø rundt 0 °C; ofte blanke spor."
-        case .frozenCorn:
-            return "Refrosset skare/is; grovkornet og hardt."
-        case .wetCorn:
-            return "Våt grovkornet snø med fri vann; mykere forhold."
-        case .veryWetCorn:
-            return "Svært våt/slush; høy vanninnhold."
+        case .newFallen:               return NSLocalizedString("NewSnowDesc", comment: "")
+        case .moistNewFallen:          return NSLocalizedString("MoistNewSnowDesc", comment: "")
+        case .fineGrained:             return NSLocalizedString("FineGrainedDesc", comment: "")
+        case .moistFineGrained:        return NSLocalizedString("MoistFineGrainedDesc", comment: "")
+        case .oldGrained:              return NSLocalizedString("OldGrainedDesc", comment: "")
+        case .transformedMoistFine:    return NSLocalizedString("TransformedMoistFineDesc", comment: "")
+        case .frozenCorn:              return NSLocalizedString("FrozenCornDesc", comment: "")
+        case .wetCorn:                 return NSLocalizedString("WetCornDesc", comment: "")
+        case .veryWetCorn:             return NSLocalizedString("VeryWetCornDesc", comment: "")
         }
     }
-
     // SF Symbol name for this snow type
     public var iconName: String {
         switch self {

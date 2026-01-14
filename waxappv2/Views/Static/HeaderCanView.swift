@@ -44,7 +44,7 @@ struct HeaderCanView : View {
     
         var body : some View {
 
-                VStack {
+            VStack(spacing: 0) {
                     if recommendedWax.kind == .hardwax {
                         WaxCanGraphic(
                             // Use defaults for topFill and middleFill to keep lid white/metallic

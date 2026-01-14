@@ -141,6 +141,8 @@ struct Gantt: View {
     /// Temperature in °C, as stored in RecommendationStore.
     @Binding var temperature: Int
     @Binding var snowType: SnowType
+    
+    var selectedWaxes : [SwixWax]
 
     // Discrete scroll position (degree) for iOS 17 scroll APIs.
     @State private var scrollPosition: Int?
@@ -211,7 +213,7 @@ struct Gantt: View {
         let tickXOffset: Double = pxPerDegree / 2.0
         let tickLineWidth: Double = max(1.0 / Double(displayScale), 1)
 
-        let ganttTasks: [GanttTask<String, SwixWax>] = swixWaxes.compactMap { wax -> GanttTask<String, SwixWax>? in
+        let ganttTasks: [GanttTask<String, SwixWax>] = selectedWaxes.compactMap { wax -> GanttTask<String, SwixWax>? in
             guard let r = wax.combinedRange(for: snowType) else { return nil }
             return GanttTask(
                 id: wax.id,
@@ -229,6 +231,9 @@ struct Gantt: View {
         let contentWidth: Double = Double(degreesCount) * pxPerDegree
 
         GeometryReader { proxy in
+            // Use the larger of calculated content height or available height from parent
+            let effectiveHeight = max(contentHeight + axisHeight, proxy.size.height)
+            
             let chartContent: AnyView = {
                 AnyView(
                     ZStack(alignment: .topLeading) {
@@ -280,11 +285,11 @@ struct Gantt: View {
                         XAxisView(minTemp: minTemp, maxTemp: maxTemp, pxPerDegree: pxPerDegree, tickXOffset: tickXOffset, tickLineWidth: tickLineWidth,axisHeight: axisHeight, centerX: (Double(clampedTemperature(scrollPosition ?? temperature)) - minTemp + 0.5) * pxPerDegree)
                             .frame(height: 50)
                     }
-                    .frame(width: contentWidth, height: max(contentHeight + axisHeight, proxy.size.height), alignment: .topLeading)
+                    .frame(width: contentWidth, height: max(contentHeight + axisHeight, effectiveHeight), alignment: .topLeading)
                 )
             }()
 
-            ZStack {
+            ZStack(alignment: .top) {
        
                 ScrollView(.horizontal, showsIndicators: false) {
                     chartContent
@@ -340,13 +345,14 @@ struct Gantt: View {
                 
                 TemperatureGauge(temperature: temperature)
                     .padding(.top, 10)
+                    .frame(maxHeight: .infinity) // Allow the gauge to extend to the bottom
            
             }
+            .frame(maxHeight: .infinity) // Allow ZStack to fill available height
     
         }
         .coordinateSpace(name: "gantt-space")
-        .padding(.vertical, 20)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(minHeight: contentHeight + axisHeight + 40) // Minimum height based on content, can grow with parent's minHeight
     }
 }
 
@@ -462,7 +468,7 @@ struct SnapTopClosesestDegree: ScrollTargetBehavior {
     @Previewable @State var snowType : SnowType = .fineGrained
     VStack {
         Text(String(temperature))
-        Gantt(temperature: $temperature, snowType: $snowType)
+        Gantt(temperature: $temperature, snowType: $snowType, selectedWaxes: swixWaxes)
 
     }
 }

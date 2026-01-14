@@ -13,6 +13,8 @@ struct MainView: View {
     @EnvironmentObject var recStore: RecommendationStore
     @EnvironmentObject var locStore: LocationStore
     @EnvironmentObject var weatherStore: WeatherStore
+    @EnvironmentObject var waxStore: WaxSelectionStore
+
     @Environment(\.colorScheme) var colorScheme: ColorScheme
 
     // UI State
@@ -48,7 +50,6 @@ struct MainView: View {
                         .accessibilityHint("Scrolls the temperature scale to the nearest range with recommendations")
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(height: 200)
@@ -56,6 +57,7 @@ struct MainView: View {
 
     private var snowTypeSection: some View {
         VStack(spacing: 8) {
+
             SnowTypeButtons(
                 selected: Binding(
                     get: { recStore.snowType },
@@ -66,20 +68,17 @@ struct MainView: View {
                     }
                 )
             )
-            .frame(height: 44)
-            
+
             LocationSourceIndicator(
-                isManualOverride: locStore.isManualOverride,
+                isManualOverride: locStore.locationStatus == .manual_override,
                 isUsingWeatherData: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType
             )
         }
         .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
-        .padding(.top, 20)
     }
 
     private var ganttSection: some View {
-        Gantt(temperature: $recStore.temperature, snowType: $recStore.snowType)
-            .frame(minHeight: 300) // Minimum height for the Gantt, but can grow
+        Gantt(temperature: $recStore.temperature, snowType: $recStore.snowType, selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id)})
     }
 
     private var backgroundView: some View {
@@ -100,19 +99,24 @@ struct MainView: View {
     }
 
     private var mainContent: some View {
-        GeometryReader { proxy in
+        GeometryReader { geometry in
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
-                    headerSection
+                    headerSection // 200pt
                     
                     snowTypeSection
+
+                        .frame(height: 100)
+
+                    // ~64pt
                     
                     ganttSection
-                        .frame(minHeight: max(400, proxy.size.height - 320))
+                        .frame(minHeight: geometry.size.height - 300) // Fill to tab bar: total height - header (200) - snow type section (~92)
                 }
                 .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
             }
             .background(backgroundView)
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 
@@ -120,14 +124,10 @@ struct MainView: View {
     private var mainToolbar: some ToolbarContent {
         // MARK: - Location-source tinting
         // Highlight map button only if using manual location AND both temp and snow type are from weather
-        let shouldHighlightMap = locStore.isManualOverride && 
-                                 recStore.isUsingWeatherTemperature && 
-                                 recStore.isUsingWeatherSnowType
+        let shouldHighlightMap = locStore.locationStatus == .manual_override
         
         // Highlight location button only if NOT using manual location AND both temp and snow type are from weather
-        let shouldHighlightLocation = !locStore.isManualOverride && 
-                                      recStore.isUsingWeatherTemperature && 
-                                      recStore.isUsingWeatherSnowType
+        let shouldHighlightLocation = locStore.locationStatus == .active
         
         let highlightColor: Color = .blue
         let mapTint: Color? = shouldHighlightMap ? highlightColor : nil
@@ -145,7 +145,15 @@ struct MainView: View {
             Button {
                 handleReset()
             } label: {
-                Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
+                if locStore.authorizationStatus == .denied {
+                    Image(systemName: "location.slash")
+                } else {
+                    if locStore.locationStatus == .searching {
+                        Image(systemName: "progress.indicator")
+                    } else {
+                        Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
+                    }
+                }
             }
             .tint(locationTint)
         }
@@ -169,38 +177,46 @@ struct MainView: View {
                         }
                     }
                 } message: {
-                    Text("Please enable location services in settings to use your GPS position.")
+                    Text("Please enable location services in settings, or select your position manually using the top left map button.")
                 }
                 .onChange(of: locStore.authorizationStatus) { _, newStatus in
-                    switch newStatus {
-                    case .authorizedAlways, .authorizedWhenInUse:
-                        // Once the user grants permission, immediately fetch a location so WeatherStore can update.
-                        locStore.requestLocation()
-                    case .denied, .restricted:
-                        // Allow the user to opt into showing the alert via the location button.
-                        break
-                    case .notDetermined:
-                        // Keep waiting for the user to answer the system prompt.
-                        break
-                    @unknown default:
-                        break
-                    }
+                    handleLocationAuthorizationStateChange(newStatus)
                 }
                 .onAppear {
-                    if locStore.authorizationStatus == .notDetermined {
-                        locStore.requestAuthorization()
-                        return
-                    }
-
-                    // Only request a location if we're already authorized.
-                    if locStore.authorizationStatus == .authorizedAlways || locStore.authorizationStatus == .authorizedWhenInUse {
-                        locStore.requestLocation()
-                    }
+                    initializeLocation()
                 }
         }
     }
 
     // MARK: - Helper Methods
+    
+    private func handleLocationAuthorizationStateChange(_ newStatus : CLAuthorizationStatus) {
+        switch newStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            // Once the user grants permission, immediately fetch a location so WeatherStore can update.
+            locStore.requestLocation()
+        case .denied, .restricted:
+            // Allow the user to opt into showing the alert via the location button.
+            break
+        case .notDetermined:
+            // Keep waiting for the user to answer the system prompt.
+            break
+        @unknown default:
+            break
+        }
+    }
+    
+    private func initializeLocation() {
+        if locStore.authorizationStatus == .notDetermined {
+            locStore.requestAuthorization()
+            return
+        }
+
+        // Only request a location if we're already authorized.
+        if locStore.authorizationStatus == .authorizedAlways || locStore.authorizationStatus == .authorizedWhenInUse {
+            locStore.requestLocation()
+        }
+    }
 
     private func handleReset() {
         switch locStore.authorizationStatus {
@@ -215,7 +231,6 @@ struct MainView: View {
             recStore.resetOverrides()
             // 3. Force a refresh of GPS
             locStore.requestLocation()
-
         @unknown default:
             break
         }

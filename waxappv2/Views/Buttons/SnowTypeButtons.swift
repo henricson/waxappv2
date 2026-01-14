@@ -58,8 +58,11 @@ struct SnowTypeButtons: View {
             .onChange(of: scrolledID) { _, newValue in
                 guard let newValue, newValue != selected else { return }
                 selected = newValue
-            }
+            }        .frame(height: .leastNonzeroMagnitude)
+
         }
+        .frame(height: .leastNonzeroMagnitude)
+            
     }
 }
 
@@ -116,6 +119,7 @@ private struct SnowTypeChip: View {
         let unselectedText: Color = (colorScheme == .dark) ? .white : .primary
         
         Label(type.title, systemImage: type.iconName)
+
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(isSelected ? Color.accentColor : unselectedText)
             .padding(.horizontal, 12)
@@ -128,8 +132,10 @@ private struct SnowTypeChip: View {
                         lineWidth: isSelected ? 1.25 : 0.75
                     )
             )
+
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.08), radius: 1, x: 0, y: 1)
             .contentShape(Capsule())
+
     }
 }
 
@@ -138,7 +144,6 @@ private struct SnowTypeChip: View {
     
     ZStack {
         SnowTypeButtons(selected: $selected)
-            .frame(height: 60)
         
         Rectangle()
             .frame(width: 1)

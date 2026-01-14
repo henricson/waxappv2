@@ -10,12 +10,21 @@ import CoreLocation
 import Combine
 import MapKit
 
+enum LocationStatus {
+    case searching
+    case fault_searching
+    case active
+    case manual_override
+}
+
 /// Store that manages location updates, authorization, and reverse geocoding.
 /// Uses LocationManagerProvider for location services and ReverseGeocodingService for address lookup.
 @MainActor
 final class LocationStore: NSObject, ObservableObject {
     /// The current location, or nil if not available
     @Published var location: AppLocation? = nil
+    
+    @Published var locationStatus : LocationStatus = .searching
     
     /// The current location authorization status
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
@@ -30,12 +39,7 @@ final class LocationStore: NSObject, ObservableObject {
     private let geocodingService: ReverseGeocodingService
     
     /// Manually set location that overrides GPS location
-    private var manualLocation: AppLocation? = nil
-    
-    /// Indicates if a manual location override is active
-    var isManualOverride: Bool {
-        manualLocation != nil
-    }
+    // private var manualLocation: AppLocation? = nil
 
     /// Convenience initializer that supplies default dependencies on the main actor to avoid actor-isolation warnings.
     @MainActor
@@ -70,20 +74,22 @@ final class LocationStore: NSObject, ObservableObject {
     
     /// Requests a one-time location update.
     func requestLocation() {
+        self.locationStatus = .searching
         manager.requestLocation()
     }
     
     /// Sets a manual location, overriding GPS location.
     /// - Parameter loc: The location to set
     func setManualLocation(_ loc: AppLocation) {
-        self.manualLocation = loc
+        //self.manualLocation = loc
         self.location = loc
+        self.locationStatus = .manual_override
         Task { await updatePlaceName(for: loc) }
     }
     
     /// Clears the manual location override and requests a new GPS location.
     func clearManualLocation() {
-        self.manualLocation = nil
+        self.location = nil
         // Request location again to get fresh GPS coordinates
         requestLocation()
     }
@@ -140,7 +146,7 @@ extension LocationStore: CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         
         // Only update if manual override is not active
-        if manualLocation == nil {
+        if locationStatus != .manual_override {
             let appLoc = AppLocation(
                 lat: loc.coordinate.latitude,
                 lon: loc.coordinate.longitude,
