@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5E06418F2F17BD4100CCF25D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5E06418E2F17BD4100CCF25D /* Localizable.xcstrings */; };
 		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
 		5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */; };
 		5E863B4D2F165000004DFAA4 /* TemperatureGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */; };
@@ -31,7 +30,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5E06418E2F17BD4100CCF25D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
 		5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureGauge.swift; sourceTree = "<group>"; };
@@ -99,7 +97,6 @@
 		5EFB6CE72EA40981005C4E5D = {
 			isa = PBXGroup;
 			children = (
-				5E06418E2F17BD4100CCF25D /* Localizable.xcstrings */,
 				5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */,
 				5EFB6CF22EA40981005C4E5D /* waxappv2 */,
 				5EFB6D002EA40982005C4E5D /* waxappv2Tests */,
@@ -242,7 +239,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */,
-				5E06418F2F17BD4100CCF25D /* Localizable.xcstrings in Resources */,
 				5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

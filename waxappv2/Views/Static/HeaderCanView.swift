@@ -66,7 +66,7 @@ struct HeaderCanView : View {
                     }
                     Spacer(minLength: 20)
                     VStack(spacing: 2) {
-                        Text("\(recommendedWax.code) \(recommendedWax.name)")
+                        Text("\(recommendedWax.name)")
                             .font(.headline)
                             .foregroundStyle(headerPrimary.contrastingTextColor)
                         Text("\(recommendedWax.series) • \(recommendedWax.kindDisplay)")

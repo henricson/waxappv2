@@ -79,7 +79,7 @@ public enum WaxKind: String, Sendable { case hardwax, klister, base }
 public struct SwixWax: Sendable, Identifiable {
     public var id: String { code }
     public let code: String
-    public let name: String
+    public let nameKey: String  // Localization key for name
     public let series: String   // V, VP, K, KX, KN, etc.
     public let kind: WaxKind
 
@@ -87,28 +87,38 @@ public struct SwixWax: Sendable, Identifiable {
     // Use multiple ranges for complicated recommendations (e.g., different subranges).
     public let ranges: [SnowType: [TempRangeC]]
 
-    public let notes: String?
+    public let notesKey: String?  // Localization key for notes
     public let primaryColor: String
     public let secondaryColor: String?
 
     public init(
         code: String,
-        name: String,
+        nameKey: String,
         series: String,
         kind: WaxKind,
         ranges: [SnowType: [TempRangeC]] = [:],
-        notes: String? = nil,
+        notesKey: String? = nil,
         primaryColor: String = "#333",
         secondaryColor: String? = nil
     ) {
         self.code = code
-        self.name = name
+        self.nameKey = nameKey
         self.series = series
         self.kind = kind
         self.ranges = ranges
-        self.notes = notes
+        self.notesKey = notesKey
         self.primaryColor = primaryColor
         self.secondaryColor = secondaryColor
+    }
+    
+    // Computed properties for localized strings
+    public var name: String {
+        NSLocalizedString(nameKey, comment: "")
+    }
+    
+    public var notes: String? {
+        guard let key = notesKey else { return nil }
+        return NSLocalizedString(key, comment: "")
     }
 
     // Convenience accessors to compute min/max across provided ranges
@@ -143,18 +153,18 @@ public let swixWaxes: [SwixWax] = [
 
     // ===== V series (classic hardwaxes; recreational/training) =====
     SwixWax(
-        code: "V05", name: "Polar", series: "V", kind: .hardwax,
+        code: "V05", nameKey: "Wax_V05_Name", series: "V", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-25, -12)],
             .fineGrained: [TempRangeC(-25, -15)],
             .oldGrained: [TempRangeC(-30, -15)]
         ],
-        notes: "Very cold, dry snow",
+        notesKey: "Wax_V05_Notes",
         primaryColor: "#FFFFFF", secondaryColor: "#000000"
     ),
 
     .init(
-        code: "V20", name: "Green", series: "V", kind: .hardwax,
+        code: "V20", nameKey: "Wax_V20_Name", series: "V", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-15, -8)],
             .fineGrained: [TempRangeC(-18, -10)],
@@ -164,7 +174,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "V30", name: "Blue", series: "V", kind: .hardwax,
+        code: "V30", nameKey: "Wax_V30_Name", series: "V", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-10, -2)],
             .fineGrained: [TempRangeC(-15, -5)],
@@ -174,7 +184,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "V40", name: "Blue Extra", series: "V", kind: .hardwax,
+        code: "V40", nameKey: "Wax_V40_Name", series: "V", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-7, -1)],
             .fineGrained: [TempRangeC(-10, -3)],
@@ -184,7 +194,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "V45", name: "Violet Special", series: "V", kind: .hardwax,
+        code: "V45", nameKey: "Wax_V45_Name", series: "V", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(-3, 0)],
             .moistFineGrained: [TempRangeC(-6, -2)],
@@ -194,18 +204,18 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "V50", name: "Violet", series: "V", kind: .hardwax,
+        code: "V50", nameKey: "Wax_V50_Name", series: "V", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(0, 0)],
             .fineGrained: [TempRangeC(-3, -1)],
             .moistFineGrained: [TempRangeC(-3, -1)]
         ],
-        notes: "Around freezing",
+        notesKey: "Wax_V50_Notes",
         primaryColor: "#704D7B", secondaryColor: "#B1A2B4"
     ),
 
     .init(
-        code: "V55", name: "Red Special", series: "V", kind: .hardwax,
+        code: "V55", nameKey: "Wax_V55_Name", series: "V", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(0, 1)],
             .moistFineGrained: [TempRangeC(-2, 0)],
@@ -215,29 +225,29 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "V60", name: "Red/Silver", series: "V", kind: .hardwax,
+        code: "V60", nameKey: "Wax_V60_Name", series: "V", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(0, 3)],
             .moistFineGrained: [TempRangeC(-1, 1)],
             .transformedMoistFine: [TempRangeC(-1, 1)]
         ],
-        notes: "Wet new snow to mild, shiny tracks",
+        notesKey: "Wax_V60_Notes",
         primaryColor: "#B5332B", secondaryColor: "#909093"
     ),
 
     .init(
-        code: "VP30", name: "Pro Light Blue", series: "VP", kind: .hardwax,
+        code: "VP30", nameKey: "Wax_VP30_Name", series: "VP", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-16, -8)],
             .fineGrained: [TempRangeC(-16, -8)],
             .oldGrained: [TempRangeC(-20, -12)]
         ],
-        notes: "Dry to extra-cold; old snow range from −12 to −20°C per Swix",
+        notesKey: "Wax_VP30_Notes",
         primaryColor: "#000000", secondaryColor: "#ADD8E6"
     ),
 
     .init(
-        code: "VP40", name: "Pro Blue", series: "VP", kind: .hardwax,
+        code: "VP40", nameKey: "Wax_VP40_Name", series: "VP", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-10, -4)],
             .fineGrained: [TempRangeC(-10, -4)],
@@ -247,7 +257,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "VP45", name: "Pro Blue/Violet", series: "VP", kind: .hardwax,
+        code: "VP45", nameKey: "Wax_VP45_Name", series: "VP", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-5, -1)],
             .fineGrained: [TempRangeC(-5, -1)],
@@ -257,7 +267,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "VP50", name: "Pro Light Violet", series: "VP", kind: .hardwax,
+        code: "VP50", nameKey: "Wax_VP50_Name", series: "VP", kind: .hardwax,
         ranges: [
             .newFallen: [TempRangeC(-3, 0)],
             .fineGrained: [TempRangeC(-3, 0)],
@@ -267,7 +277,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "VP55", name: "Pro Violet", series: "VP", kind: .hardwax,
+        code: "VP55", nameKey: "Wax_VP55_Name", series: "VP", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(-2, 1)],
             .moistFineGrained: [TempRangeC(0, 1)],
@@ -277,7 +287,7 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "VP60", name: "Pro Violet/Red", series: "VP", kind: .hardwax,
+        code: "VP60", nameKey: "Wax_VP60_Name", series: "VP", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(-1, 2)],
             .moistFineGrained: [TempRangeC(-1, 2)],
@@ -287,137 +297,137 @@ public let swixWaxes: [SwixWax] = [
     ),
 
     .init(
-        code: "VP65", name: "Pro Black/Red", series: "VP", kind: .hardwax,
+        code: "VP65", nameKey: "Wax_VP65_Name", series: "VP", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(0, 2)],
             .oldGrained: [TempRangeC(-4, 0)],
             .transformedMoistFine: [TempRangeC(0, 0)]
         ],
-        notes: "Anti-icing black additive; excellent as cover on klister",
+        notesKey: "Wax_VP65_Notes",
         primaryColor: "#000000", secondaryColor: "#8B0000"
     ),
 
     .init(
-        code: "VP70", name: "Pro Yellow (klister-wax)", series: "VP", kind: .hardwax,
+        code: "VP70", nameKey: "Wax_VP70_Name", series: "VP", kind: .hardwax,
         ranges: [
             .moistNewFallen: [TempRangeC(0, 3)],
             .transformedMoistFine: [TempRangeC(-1, 2)]
         ],
-        notes: "If very wet new snow or coarse transformed, switch to klister",
+        notesKey: "Wax_VP70_Notes",
         primaryColor: "#000000", secondaryColor: "#FFFF00"
     ),
 
     // ===== Klister: Universal K, KX, Nero KN =====
     .init(
-        code: "K21S", name: "Universal Silver Klister", series: "K", kind: .klister,
+        code: "K21S", nameKey: "Wax_K21S_Name", series: "K", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-5, 3)],
             .wetCorn: [TempRangeC(-5, 3)]
         ],
-        notes: "Changeable, damp–wet transformed; above/below freezing",
+        notesKey: "Wax_K21S_Notes",
         primaryColor: "#BDBDBD", secondaryColor: "#5071B0"
     ),
 
     .init(
-        code: "K22", name: "Universal VM Klister", series: "K", kind: .klister,
+        code: "K22", nameKey: "Wax_K22_Name", series: "K", kind: .klister,
         ranges: [
             .frozenCorn: [TempRangeC(-3, 10)],
             .wetCorn: [TempRangeC(-3, 10)]
         ],
-        notes: "Coarse/old snow from ice/crust to wet",
+        notesKey: "Wax_K22_Notes",
         primaryColor: "#CCCECB", secondaryColor: "#C14D40"
     ),
 
     .init(
-        code: "KX20", name: "Green Base Klister", series: "KX", kind: .base,
+        code: "KX20", nameKey: "Wax_KX20_Name", series: "KX", kind: .base,
         ranges: [:],
-        notes: "Base/binder klister (iron in) for durability on ice & aggressive tracks",
+        notesKey: "Wax_KX20_Notes",
         primaryColor: "#6AAC45", secondaryColor: "#82B45B"
     ),
 
     .init(
-        code: "KX30", name: "Blue Ice Klister", series: "KX", kind: .klister,
+        code: "KX30", nameKey: "Wax_KX30_Name", series: "KX", kind: .klister,
         ranges: [
             .frozenCorn: [TempRangeC(-12, 0)]
         ],
-        notes: "Icy/frozen coarse tracks; also as underlayer",
+        notesKey: "Wax_KX30_Notes",
         primaryColor: "#509CD6", secondaryColor: "#59A9DF"
     ),
 
     .init(
-        code: "KX35N", name: "Blue Extra Klister", series: "KX", kind: .klister,
+        code: "KX35N", nameKey: "Wax_KX35N_Name", series: "KX", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-8, 0)]
         ],
-        notes: "Fine/coarse old snow near and below 0°C",
+        notesKey: "Wax_KX35N_Notes",
         primaryColor: "#2C68BD", secondaryColor: "#614AA7"
     ),
 
     .init(
-        code: "KX40S", name: "Silver Klister", series: "KX", kind: .klister,
+        code: "KX40S", nameKey: "Wax_KX40S_Name", series: "KX", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-4, 2)],
             .wetCorn: [TempRangeC(-4, 2)]
         ],
-        notes: "Transformed & fine-grained; slightly wet above 0°C",
+        notesKey: "Wax_KX40S_Notes",
         primaryColor: "#95989E", secondaryColor: "#612A6A"
     ),
 
     .init(
-        code: "KX45N", name: "Violet Special Klister", series: "KX", kind: .klister,
+        code: "KX45N", nameKey: "Wax_KX45N_Name", series: "KX", kind: .klister,
         ranges: [
             .frozenCorn: [TempRangeC(-2, 4)],
             .wetCorn: [TempRangeC(-2, 4)]
         ],
-        notes: "All-around for wet/coarse & frozen corn",
+        notesKey: "Wax_KX45N_Notes",
         primaryColor: "#773C89", secondaryColor: "#4294D2"
     ),
 
     .init(
-        code: "KX55", name: "Violet Extra Klister", series: "KX", kind: .klister,
+        code: "KX55", nameKey: "Wax_KX55_Name", series: "KX", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-6, 4)],
             .wetCorn: [TempRangeC(-6, 4)]
         ],
-        notes: "Moist transformed to wet/coarse",
+        notesKey: "Wax_KX55_Notes",
         primaryColor: "#C63B66", secondaryColor: "#D79D4B"
     ),
 
     .init(
-        code: "KX65", name: "Red Klister", series: "KX", kind: .klister,
+        code: "KX65", nameKey: "Wax_KX65_Name", series: "KX", kind: .klister,
         ranges: [
             .wetCorn: [TempRangeC(1, 5)]
         ],
-        notes: "Damp → wet, granular/coarse warm snow",
+        notesKey: "Wax_KX65_Notes",
         primaryColor: "#D23A2B", secondaryColor: "#D66B60"
     ),
 
     .init(
-        code: "KX75", name: "Red Extra Wet Klister", series: "KX", kind: .klister,
+        code: "KX75", nameKey: "Wax_KX75_Name", series: "KX", kind: .klister,
         ranges: [
             .veryWetCorn: [TempRangeC(2, 15)]
         ],
-        notes: "Very wet/slushy; highest water content",
+        notesKey: "Wax_KX75_Notes",
         primaryColor: "#D5452F", secondaryColor: "#DFB53E"
     ),
 
     .init(
-        code: "KN33", name: "Nero Klister", series: "KN", kind: .klister,
+        code: "KN33", nameKey: "Wax_KN33_Name", series: "KN", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-7, 1)],
             .wetCorn: [TempRangeC(-7, 1)]
         ],
-        notes: "Racing klister w/ anti-icing; variable conditions",
+        notesKey: "Wax_KN33_Notes",
         primaryColor: "#000000", secondaryColor: "#BD74BF"
     ),
 
     .init(
-        code: "KN44", name: "Nero Klister", series: "KN", kind: .klister,
+        code: "KN44", nameKey: "Wax_KN44_Name", series: "KN", kind: .klister,
         ranges: [
             .transformedMoistFine: [TempRangeC(-3, 5)],
             .wetCorn: [TempRangeC(-3, 5)]
         ],
-        notes: "Warmer Nero; humid transformed/wet",
+        notesKey: "Wax_KN44_Notes",
         primaryColor: "#000000", secondaryColor: "#972921"
     )
 ]

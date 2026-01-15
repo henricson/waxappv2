@@ -23,7 +23,7 @@ struct LocationSourceIndicator: View {
     }
     
     private var text: String {
-        isManualOverride ? "At selected location" : "At your location"
+        isManualOverride ? NSLocalizedString("At selected location", comment: "Label indicating that posiiton is selected location") : NSLocalizedString("At your location", comment: "Label indicating that position is current location")
     }
     
     var body: some View {
