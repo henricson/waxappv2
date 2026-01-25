@@ -25,8 +25,10 @@ final class WaxSelectionStore: ObservableObject {
 
     /// Convenience initializer using default dependencies
     convenience init() {
+        // Exclude VP series by default
+        let defaultWaxes = swixWaxes.filter { $0.series != "VP" }
         self.init(
-            defaultSelectedWaxIDs: Set(swixWaxes.map { $0.id }),
+            defaultSelectedWaxIDs: Set(defaultWaxes.map { $0.id }),
             persistenceService: UserDefaultsPersistenceService()
         )
     }

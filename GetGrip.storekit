@@ -21,12 +21,12 @@
       "localizations" : [
         {
           "description" : "One time purchase to unlock the app",
-          "displayName" : "Lifetime Access",
+          "displayName" : "Unlimited Access",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.waxappv2.lifetime",
-      "referenceName" : "Lifetime Access",
+      "referenceName" : "Unlimited Access",
       "type" : "NonConsumable"
     }
   ],
@@ -38,7 +38,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 789567104.77744198,
+    "_lastSynchronizedDate" : 791045889.76415598,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",

@@ -26,20 +26,72 @@ struct WaxSelectionView: View {
                             }
                         )
                     ) {
+                        // Mass toggle buttons for this series
+                        HStack(spacing: 12) {
+                            Button {
+                                store.setAllSelected(true, in: series)
+                            } label: {
+                                Label("Select All", systemImage: "checkmark.circle.fill")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button {
+                                store.setAllSelected(false, in: series)
+                            } label: {
+                                Label("Deselect All", systemImage: "circle")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        
                         ForEach(waxes) { wax in
                             WaxRow(wax: wax, isSelected: store.isSelected(wax)) {
                                 store.setSelected(!store.isSelected(wax), for: wax)
                             }
                         }
                     } label: {
-                        Text(series.title)
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                        HStack {
+                            Text(series.title)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            // Show selection status badge
+                            seriesSelectionBadge(for: series)
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Select Waxes")
+    }
+    
+    @ViewBuilder
+    private func seriesSelectionBadge(for series: WaxSeries) -> some View {
+        let state = store.selectionState(for: series)
+        let waxCount = swixWaxes.filter { $0.waxSeries == series }.count
+        let selectedCount = swixWaxes.filter { $0.waxSeries == series && store.isSelected($0) }.count
+        
+        switch state {
+        case .all:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .font(.caption)
+        case .some:
+            Text("\(selectedCount)/\(waxCount)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .none:
+            Image(systemName: "circle")
+                .foregroundStyle(.secondary)
+                .font(.caption)
+        }
     }
 }
 

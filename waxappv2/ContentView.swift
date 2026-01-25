@@ -28,12 +28,14 @@ struct ContentView: View {
                 AboutView()
             }
         }
-        .task {
-            // Sync with CloudKit before checking trial status
-            await storeManager.performLaunchSync()
-            
-            // Check trial status after sync and initialization complete
-            checkTrialStatus()
+        .onAppear() {
+            Task {
+                // Sync with CloudKit before checking trial status
+                await storeManager.performLaunchSync()
+                
+                // Check trial status after sync and initialization complete
+                checkTrialStatus()
+            }
         }
         .onChange(of: storeManager.cachedTrialStatus) { oldStatus, newStatus in
             // Only show paywall if initialized and not purchased
