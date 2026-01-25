@@ -62,10 +62,10 @@ struct AboutView: View {
                 }
 
                 Section("Legal") {
-                    Link(destination: URL(string: "https://squarewave.no/terms")!) {
+                    Link(destination: URL(string: "https://www.squarewave.no/apps/getgrip/terms")!) {
                         Text("Terms of Service")
                     }
-                    Link(destination: URL(string: "https://squarewave.no/privacy")!) {
+                    Link(destination: URL(string: "https://www.squarewave.no/apps/getgrip/privacy")!) {
                         Text("Privacy Policy")
                     }
                 }
