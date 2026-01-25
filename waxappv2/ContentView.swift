@@ -20,37 +20,50 @@ struct ContentView: View {
     @State private var showPaywall = false
     
     var body: some View {
-        Group {
-            if storeManager.trialStatus == .expired && !storeManager.isPurchased {
-                PaywallView()
-            } else {
-                TabView(selection: $selectedTab) {
-                    Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
-                        MainView()
-                    }
-                    Tab("About", systemImage: "info.circle", value: .about) {
-                        AboutView()
-                    }
-                }
-                .onAppear {
-                    checkTrialStatus()
-                }
-                .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
-                    Button("OK", role: .cancel) { }
-                    Button("Buy Now") {
-                        showPaywall = true
-                    }
-                } message: {
-                    if case .warning(let days) = storeManager.trialStatus {
-                        Text("You have \(days) days left in your free trial.")
-                    } else {
-                        Text("Your free trial is ending soon.")
-                    }
-                }
-                .sheet(isPresented: $showPaywall) {
-                    PaywallView()
-                }
+        TabView(selection: $selectedTab) {
+            Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
+                MainView()
             }
+            Tab("About", systemImage: "info.circle", value: .about) {
+                AboutView()
+            }
+        }
+        .task {
+            // Sync with CloudKit before checking trial status
+            await storeManager.performLaunchSync()
+            
+            // Check trial status after sync and initialization complete
+            checkTrialStatus()
+        }
+        .onChange(of: storeManager.cachedTrialStatus) { oldStatus, newStatus in
+            // Only show paywall if initialized and not purchased
+            guard storeManager.isInitialized else { return }
+            
+            // Show paywall if trial expires
+            if newStatus == .expired && !storeManager.isPurchased {
+                showPaywall = true
+            }
+        }
+        .onChange(of: storeManager.isInitialized) { _, initialized in
+            // Check trial status once initialization completes
+            if initialized {
+                checkTrialStatus()
+            }
+        }
+        .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
+            Button("OK", role: .cancel) { }
+            Button("Buy Now") {
+                showPaywall = true
+            }
+        } message: {
+            if case .warning(let days) = storeManager.trialStatus {
+                Text("You have \(days) days left in your free trial.")
+            } else {
+                Text("Your free trial is ending soon.")
+            }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
         }
         .sheet(isPresented: Binding(
             get: { !hasSeenOnboarding },
@@ -65,8 +78,21 @@ struct ContentView: View {
     }
     
     private func checkTrialStatus() {
+        // Skip if app is purchased
+        if storeManager.isPurchased {
+            return
+        }
+        
+        // Only check trial status if StoreManager is fully initialized
+        guard storeManager.isInitialized else { return }
+        
         if case .warning = storeManager.trialStatus, !storeManager.isPurchased {
             showTrialWarning = true
+        }
+        
+        // Show paywall if trial is expired
+        if storeManager.trialStatus == .expired && !storeManager.isPurchased {
+            showPaywall = true
         }
     }
 }

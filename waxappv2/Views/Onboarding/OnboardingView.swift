@@ -16,10 +16,10 @@ struct OnboardingView: View {
         TabView(selection: $selection) {
             OnboardingPage(
                 image: .asset("introduction"),
-                title: "Welcome to GetGrip",
-                description: "Get perfect cross-country grip recommendations based on your local weather conditions.",
+                title: String(localized: "Welcome to GetGrip", comment: "Onboarding welcome page title"),
+                description: String(localized: "Get perfect cross-country grip recommendations based on your local weather conditions.", comment: "Onboarding welcome page description"),
                 imageMaxSize: 420,
-                primaryButtonTitle: "Next",
+                primaryButtonTitle: String(localized: "Next", comment: "Onboarding button to proceed to next page"),
                 primaryAction: {
                     goToNextPage(from: .welcome)
                 }
@@ -27,9 +27,9 @@ struct OnboardingView: View {
             .tag(Page.welcome)
 
             OnboardingPage(
-                title: "Wherever You Are",
-                description: "Our algorithm automatically predicts the correct grip wax or klister based on nine snow-type categories and temperature.",
-                primaryButtonTitle: "Next",
+                title: String(localized: "Always the best grip", comment: "Onboarding analytics page title"),
+                description: String(localized: "We analyze snow type, temperature, and humidity to recommend the perfect wax or klister from Swix's full range.", comment: "Onboarding analytics page description"),
+                primaryButtonTitle: String(localized: "Next", comment: "Onboarding button to proceed to next page"),
                 primaryAction: {
                     goToNextPage(from: .analytics)
                 }
@@ -44,9 +44,9 @@ struct OnboardingView: View {
             if storeManager.isPurchased {
                 OnboardingPage(
                     image: .system("checkmark.seal.fill"),
-                    title: "You're All Set",
-                    description: "You already have lifetime access to WaxApp. Enjoy all features!",
-                    primaryButtonTitle: "Start Using App",
+                    title: String(localized: "You're All Set", comment: "Onboarding title when user already has purchase"),
+                    description: String(localized: "You already have lifetime access to GetGrip. Enjoy all features!", comment: "Onboarding description when user already has purchase"),
+                    primaryButtonTitle: String(localized: "Start Using App", comment: "Onboarding button to dismiss and start using app"),
                     primaryAction: {
                         showOnboarding = false
                     }
@@ -55,16 +55,15 @@ struct OnboardingView: View {
             } else {
                 OnboardingPage(
                     image: .asset("post-introduction-background"),
-                    title: "Get started for free",
-                    description: "We offer new customers a 14-day, risk-free trial before the app can be unlocked with a one-time purchase.",
+                    title: String(localized: "Get started for free", comment: "Onboarding trial page title"),
+                    description: String(localized: "We offer new customers a 14-day, risk-free trial before the app can be unlocked with a one-time purchase.", comment: "Onboarding trial page description"),
                     imageMaxSize: 420,
-                    primaryButtonTitle: "Start trial",
+                    primaryButtonTitle: String(localized: "Start trial", comment: "Onboarding button to start free trial"),
                     primaryAction: {
                         showOnboarding = false
                     }
                 )
                 .tag(Page.access)
-
             }
         }
         .tabViewStyle(PageTabViewStyle())

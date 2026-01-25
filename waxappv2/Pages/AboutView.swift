@@ -20,7 +20,7 @@ struct AboutView: View {
             List {
                 Section("Purchase status") {
                     if storeManager.isPurchased {
-                        Label("Premium Active", systemImage: "checkmark.seal.fill")
+                        Label("App purchased", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(.green)
                     } else {
                         // Trial status summary

@@ -63,29 +63,35 @@ final class CloudKitTrialStore {
         }
     }
 
-    /// Ensures CloudKit contains the earliest (strictest) trial start date.
-    /// - Returns: The effective start date stored in CloudKit after the operation.
+    /// Fetches or creates trial start date in CloudKit.
+    /// CloudKit is authoritative - if a record exists, it always wins.
+    /// - Returns: The trial start date from CloudKit (existing or newly created).
     func upsertEarliestTrialStartDate(_ candidate: Date) async throws -> Date {
+        let recordID = CKRecord.ID(recordName: recordName)
+        
         do {
-            let existing = try await fetchTrialStartDate()
-            // Keep the earliest date.
-            if existing <= candidate {
-                return existing
+            // Fetch existing record from CloudKit
+            let existingRecord = try await database.record(for: recordID)
+            
+            guard let cloudKitDate = existingRecord[fieldStartDate] as? Date else {
+                throw TrialStoreError.invalidRecord
             }
-
-            // Candidate is earlier; overwrite.
-            let recordID = CKRecord.ID(recordName: recordName)
-            let record = CKRecord(recordType: recordType, recordID: recordID)
-            record[fieldStartDate] = candidate as NSDate
-            _ = try await database.save(record)
+            
+            // CloudKit always wins - return its date
+            print("📝 CloudKit record exists - using CloudKit date: \(cloudKitDate)")
+            return cloudKitDate
+            
+        } catch let error as CKError where error.code == .unknownItem {
+            // Record doesn't exist - create it with local date
+            print("📝 No CloudKit record found - creating new with: \(candidate)")
+            let newRecord = CKRecord(recordType: recordType, recordID: recordID)
+            newRecord[fieldStartDate] = candidate as NSDate
+            _ = try await database.save(newRecord)
             return candidate
-        } catch TrialStoreError.noRecord {
-            // No record yet: create with candidate.
-            let recordID = CKRecord.ID(recordName: recordName)
-            let record = CKRecord(recordType: recordType, recordID: recordID)
-            record[fieldStartDate] = candidate as NSDate
-            _ = try await database.save(record)
-            return candidate
+            
+        } catch {
+            // Some other error occurred
+            throw error
         }
     }
 }

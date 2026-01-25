@@ -15,6 +15,7 @@ struct MainView: View {
     @EnvironmentObject var locStore: LocationStore
     @EnvironmentObject var weatherStore: WeatherStore
     @EnvironmentObject var waxStore: WaxSelectionStore
+    @EnvironmentObject var storeManager: StoreManager
 
     @Environment(\.colorScheme) var colorScheme: ColorScheme
 
@@ -26,6 +27,22 @@ struct MainView: View {
     @State private var locationTimeoutTask: Task<Void, Never>?
     @State private var weatherErrorMessage: String = ""
     @State private var lastWeatherStatus: WeatherStore.Status?
+    @State private var showPaywall = false
+    
+    private var remainingTrialDays: Int {
+        if case .warning(let days) = storeManager.trialStatus {
+            return days
+        } else if case .active = storeManager.trialStatus {
+            // Calculate actual remaining days for active trial
+            let daysSinceStart = storeManager.daysSinceStart
+            return max(0, 14 - daysSinceStart)
+        }
+        return 0
+    }
+    
+    private var shouldShowPurchaseButton: Bool {
+        !storeManager.isPurchased && storeManager.trialStatus != .expired
+    }
 
     private var headerSection: some View {
         Group {
@@ -117,7 +134,7 @@ struct MainView: View {
                         // ~64pt
                         
                     ganttSection
-                        .frame(minHeight: geometry.size.height - 280) // Fill to tab bar: total height - header (200) - snow type section (~80)
+                        .frame(minHeight: geometry.size.height - 300) // Fill to tab bar: total height - header (200) - snow type section (~80)
                 }
                 .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
             }
@@ -180,14 +197,28 @@ struct MainView: View {
 
     var body: some View {
         NavigationStack {
-            mainContent
-                .navigationTitle(locStore.location?.placeName ?? "")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { mainToolbar }
-                // MARK: - Modals & Alerts
-                .sheet(isPresented: $showMapSelection) {
-                    MapSelectView()
+            ZStack(alignment: .bottom) {
+                mainContent
+                
+                // Floating purchase button
+                if shouldShowPurchaseButton {
+                    FloatingPurchaseButton(remainingDays: remainingTrialDays) {
+                        showPaywall = true
+                    }
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+            }
+            .navigationTitle(locStore.location?.placeName ?? "")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { mainToolbar }
+            // MARK: - Modals & Alerts
+            .sheet(isPresented: $showMapSelection) {
+                MapSelectView()
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
                 .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
                     Button("Cancel", role: .cancel) { }
                     Button("Settings") {
