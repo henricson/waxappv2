@@ -110,20 +110,36 @@ final class WeatherServiceClient {
         let today = calendar.startOfDay(for: now)
 
         // Past daily: include only days strictly before today, newest first, up to 10
-        let pastDaily = dailyWeather.forecast
-            .filter { calendar.startOfDay(for: $0.date) < today }
-            .sorted { $0.date > $1.date }
-            .prefix(10)
-            .map { day in
-                DailyHistorySummary(
-                    date: day.date,
-                    temperatureMinC: day.lowTemperature.converted(to: .celsius).value,
-                    temperatureMaxC: day.highTemperature.converted(to: .celsius).value,
-                    totalPrecipitationMM: Self.mm(from: day.precipitationAmount),
-                    snowfallAmountCM: Self.cm(from: day.snowfallAmount),
-                    predominantPrecipitation: day.precipitation
-                )
+        let filteredDays = dailyWeather.forecast.filter { calendar.startOfDay(for: $0.date) < today }
+        let sortedDays = filteredDays.sorted { $0.date > $1.date }
+        let recentDays = Array(sortedDays.prefix(10))
+        
+        let pastDaily: [DailyHistorySummary] = recentDays.map { day in
+            let precipitationMM: Double
+            let snowFallAmountCM: Double?
+            if #available(iOS 18.0, *) {
+                let byType = day.precipitationAmountByType
+                let rain = Self.mm(from: byType.rainfall) ?? 0
+                let snow = Self.mm(from: byType.snowfallAmount.amount) ?? 0
+                let sleet = Self.mm(from: byType.sleet) ?? 0
+                let hail = Self.mm(from: byType.hail) ?? 0
+                let mixed = Self.mm(from: byType.mixed) ?? 0
+                precipitationMM = rain + snow + sleet + hail + mixed
+                snowFallAmountCM = snow / 10.0  // Convert mm to cm
+            } else {
+                precipitationMM = Self.mm(from: day.precipitationAmount) ?? 0
+                snowFallAmountCM = Self.cm(from: day.snowfallAmount)
             }
+            
+            return DailyHistorySummary(
+                date: day.date,
+                temperatureMinC: day.lowTemperature.converted(to: .celsius).value,
+                temperatureMaxC: day.highTemperature.converted(to: .celsius).value,
+                totalPrecipitationMM: precipitationMM,
+                snowfallAmountCM: snowFallAmountCM,
+                predominantPrecipitation: day.precipitation
+            )
+        }
 
         // Next 24 hours from now
         let next24Hours = hourlyWeather.forecast
@@ -140,7 +156,7 @@ final class WeatherServiceClient {
             }
 
         return WeatherSummary(
-            pastDaily: Array(pastDaily),
+            pastDaily: pastDaily,
             next24Hours: Array(next24Hours)
         )
     }

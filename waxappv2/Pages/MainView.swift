@@ -409,10 +409,12 @@ struct ToolbarButtonStyle: ButtonStyle {
 extension View {
     @ViewBuilder
     func toolbarButtonStyle(tint: Color? = nil) -> some View {
-        if #available(iOS 18.0, *) {
-            self.buttonStyle(ToolbarButtonStyle(tint: tint))
+        if #available(iOS 26.0, *) {
+            self  // No styling on iOS 26+
+        } else if #available(iOS 18.0, *) {
+            self.buttonStyle(ToolbarButtonStyle(tint: tint))  // Style only on iOS 18-25
         } else {
-            self
+            self  // No styling on iOS 17 and earlier
         }
     }
 }

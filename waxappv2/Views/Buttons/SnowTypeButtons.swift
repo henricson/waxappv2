@@ -91,15 +91,15 @@ private struct CenterSnappingBehavior: ScrollTargetBehavior {
         }
         
         // Find nearest
-        var nearest = SnowType.allCases.first!
+        // var nearest = SnowType.allCases.first!
         var nearestCenter: CGFloat = 0
         var nearestDist = CGFloat.infinity
         
-        for (type, center) in chipCenters {
+        for (_, center) in chipCenters {
             let dist = abs(targetCenter - center)
             if dist < nearestDist {
                 nearestDist = dist
-                nearest = type
+                // nearest = type
                 nearestCenter = center
             }
         }

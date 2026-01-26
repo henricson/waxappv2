@@ -100,8 +100,8 @@ struct PaywallView: View {
                 }
             }
             .interactiveDismissDisabled(storeManager.trialStatus == .expired && !storeManager.isPurchased)
-            .onChange(of: storeManager.isPurchased) { purchased in
-                if purchased {
+            .onChange(of: storeManager.isPurchased) { oldValue, newValue in
+                if newValue {
                     dismiss()
                 }
             }

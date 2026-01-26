@@ -38,11 +38,11 @@ import Observation
     /// - Parameters:
     ///   - defaultSelectedWaxIDs: The default set of selected wax IDs to use if no persisted data exists
     ///   - persistenceService: The service to use for persistence operations
-    init(defaultSelectedWaxIDs: Set<String>, persistenceService: PersistenceService = UserDefaultsPersistenceService()) {
-        self.persistenceService = persistenceService
+    init(defaultSelectedWaxIDs: Set<String>, persistenceService: PersistenceService? = nil) {
+        self.persistenceService = persistenceService ?? UserDefaultsPersistenceService()
         
         // Load persisted selection or use defaults
-        if let data = persistenceService.load(forKey: AppConstants.PersistenceKeys.selectedWaxIDs),
+        if let data = self.persistenceService.load(forKey: AppConstants.PersistenceKeys.selectedWaxIDs),
            let decoded = try? JSONDecoder().decode(Persisted.self, from: data),
            !decoded.selectedWaxIDs.isEmpty {
             self.selectedWaxIDs = decoded.selectedWaxIDs
