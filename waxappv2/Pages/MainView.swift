@@ -114,6 +114,12 @@ struct MainView: View {
                 isManualOverride: locStore.locationStatus == .manual_override,
                 isUsingWeatherData: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType
             )
+            
+            if recStore.isUsingWeatherSnowType, let assessment = weatherStore.currentAssessment {
+                SnowAssessmentSummaryView(assessment: assessment)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .padding(.top, 2)
+            }
         }
         .padding(.vertical, 12)
         .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
@@ -162,8 +168,7 @@ struct MainView: View {
                     headerSection
                     
                     snowTypeSection
-                        .frame(height: 100)
-                        
+                    
                     ganttSection
                         .frame(minHeight: geometry.size.height - 300)
                 }
@@ -459,3 +464,4 @@ extension View {
         .environment(app.waxSelection)
         .environment(app.storeManager)
 }
+
