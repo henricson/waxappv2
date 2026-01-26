@@ -143,7 +143,14 @@
       }
     },
     "Buy now" : {
-
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjøp nå"
+          }
+        }
+      }
     },
     "Buy Now" : {
       "comment" : "A button that allows the user to purchase the app.",
