@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AboutView: View {
-    @EnvironmentObject var storeManager: StoreManager
+    @Environment(StoreManager.self) private var storeManager
     @State private var showPaywall = false
 
     private var daysLeftInTrial: Int {
@@ -23,7 +23,6 @@ struct AboutView: View {
                         Label("App purchased", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(.green)
                     } else {
-                        // Trial status summary
                         Group {
                             Label("Free Trial", systemImage: "clock")
 
@@ -83,9 +82,5 @@ struct AboutView: View {
     let app = AppState()
 
     AboutView()
-        .environmentObject(app.location)
-        .environmentObject(app.weather)
-        .environmentObject(app.waxSelection)
-        .environmentObject(app.recommendation)
-        .environmentObject(app.storeManager)
+        .environment(app.storeManager)
 }

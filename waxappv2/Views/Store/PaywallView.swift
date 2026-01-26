@@ -1,8 +1,9 @@
 import SwiftUI
 import StoreKit
+import Observation
 
 struct PaywallView: View {
-    @EnvironmentObject var storeManager: StoreManager
+    @Environment(StoreManager.self) private var storeManager: StoreManager
     @Environment(\.dismiss) var dismiss
 
     private let imageMaxSize: CGFloat = 420
@@ -110,5 +111,5 @@ struct PaywallView: View {
 
 #Preview {
     PaywallView()
-        .environmentObject(StoreManager())
+        .environment(StoreManager())
 }

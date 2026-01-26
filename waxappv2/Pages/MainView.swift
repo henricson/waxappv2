@@ -8,14 +8,14 @@
 import SwiftUI
 import CoreLocation
 import TipKit
-import Combine
+import Observation
 
 struct MainView: View {
-    @EnvironmentObject var recStore: RecommendationStore
-    @EnvironmentObject var locStore: LocationStore
-    @EnvironmentObject var weatherStore: WeatherStore
-    @EnvironmentObject var waxStore: WaxSelectionStore
-    @EnvironmentObject var storeManager: StoreManager
+    @Environment(RecommendationStore.self) private var recStore
+    @Environment(LocationStore.self) private var locStore
+    @Environment(WeatherStore.self) private var weatherStore
+    @Environment(WaxSelectionStore.self) private var waxStore
+    @Environment(StoreManager.self) private var storeManager
 
     @Environment(\.colorScheme) var colorScheme: ColorScheme
 
@@ -29,11 +29,12 @@ struct MainView: View {
     @State private var lastWeatherStatus: WeatherStore.Status?
     @State private var showPaywall = false
     
+    // MARK: - Computed Properties
+    
     private var remainingTrialDays: Int {
         if case .warning(let days) = storeManager.trialStatus {
             return days
         } else if case .active = storeManager.trialStatus {
-            // Calculate actual remaining days for active trial
             let daysSinceStart = storeManager.daysSinceStart
             return max(0, 14 - daysSinceStart)
         }
@@ -43,6 +44,8 @@ struct MainView: View {
     private var shouldShowPurchaseButton: Bool {
         !storeManager.isPurchased && storeManager.trialStatus != .expired
     }
+
+    // MARK: - View Components
 
     private var headerSection: some View {
         Group {
@@ -60,7 +63,7 @@ struct MainView: View {
                     if let target = recStore.nearestRecommendedTemperature(from: recStore.temperature) {
                         Button {
                             withAnimation(.easeInOut(duration: 0.35)) {
-                                recStore.temperature = target
+                                recStore.setTemperature(target)
                             }
                         } label: {
                             Label(
@@ -83,14 +86,10 @@ struct MainView: View {
             SnowTypeButtons(
                 selected: Binding(
                     get: { recStore.snowType },
-                    set: { newValue in
-                        // If the user taps the same as weather, maybe clear override?
-                        // For now, just set the override.
-                        recStore.userSelectedSnowType = newValue
-                    }
+                    set: { recStore.setSnowType($0) }
                 )
             )
-            .frame(height: 44) // Give explicit height for the buttons
+            .frame(height: 44)
             
             LocationSourceIndicator(
                 isManualOverride: locStore.locationStatus == .manual_override,
@@ -102,7 +101,17 @@ struct MainView: View {
     }
 
     private var ganttSection: some View {
-        Gantt(temperature: $recStore.temperature, snowType: $recStore.snowType, selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id)})
+        Gantt(
+            temperature: Binding(
+                get: { recStore.temperature },
+                set: { recStore.setTemperature($0) }
+            ),
+            snowType: Binding(
+                get: { recStore.snowType },
+                set: { recStore.setSnowType($0) }
+            ),
+            selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
+        )
     }
 
     private var backgroundView: some View {
@@ -126,15 +135,13 @@ struct MainView: View {
         GeometryReader { geometry in
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
-                    headerSection // 200pt
+                    headerSection
                     
                     snowTypeSection
                         .frame(height: 100)
-
-                        // ~64pt
                         
                     ganttSection
-                        .frame(minHeight: geometry.size.height - 300) // Fill to tab bar: total height - header (200) - snow type section (~80)
+                        .frame(minHeight: geometry.size.height - 300)
                 }
                 .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
             }
@@ -143,37 +150,34 @@ struct MainView: View {
         }
     }
 
+    // MARK: - Toolbar
+
     @ToolbarContentBuilder
     private var mainToolbar: some ToolbarContent {
-        // MARK: - Loading States
         let isLocationLoading = locStore.locationStatus == .searching
         let isWeatherLoading = weatherStore.status == .loading
         let isAnyLoading = isLocationLoading || isWeatherLoading
         
-        // MARK: - Location-source tinting
-        // Map button: blue when manual override AND no user temperature/snow type overrides
         let shouldHighlightMap = locStore.locationStatus == .manual_override && !recStore.isOverridden
-        
-        // Location button: blue when using GPS location AND no user temperature/snow type overrides
         let shouldHighlightLocation = locStore.locationStatus == .active && !recStore.isOverridden
         
-        let highlightColor: Color = .blue
-        let mapTint: Color? = shouldHighlightMap ? highlightColor : nil
-        let locationTint: Color? = shouldHighlightLocation ? highlightColor : nil
+        let mapTint: Color? = shouldHighlightMap ? .blue : nil
+        let locationTint: Color? = shouldHighlightLocation ? .blue : nil
 
-        // MARK: - Left: Map Selection
         ToolbarItem(placement: .topBarLeading) {
-            Button("Map", systemImage: "map") {
+            Button {
                 showMapSelection = true
-            }
-            .tint(mapTint)
-            .overlay(alignment: .center) {
-                if isWeatherLoading && locStore.locationStatus == .manual_override {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.primary)
+            } label: {
+                ZStack {
+                    Image(systemName: "map")
+                    
+                    if isWeatherLoading && locStore.locationStatus == .manual_override {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                 }
             }
+            .toolbarButtonStyle(tint: mapTint)
         }
 
         ToolbarItem(placement: .topBarTrailing) {
@@ -182,25 +186,64 @@ struct MainView: View {
             } label: {
                 if locStore.authorizationStatus == .denied {
                     Image(systemName: "location.slash")
+                } else if isAnyLoading {
+                    ProgressView()
+                        .controlSize(.small)
                 } else {
-                    if isAnyLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
-                    }
+                    Image(systemName: recStore.isOverridden ? "location.slash.fill" : "location.fill")
                 }
             }
-            .tint(locationTint)
+            .toolbarButtonStyle(tint: locationTint)
+    
         }
     }
+
+    // MARK: - Alert Actions
+
+    @ViewBuilder
+    private var locationPermissionAlertActions: some View {
+        Button("Cancel", role: .cancel) { }
+        Button("Settings") {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var locationTimeoutAlertActions: some View {
+        Button("Retry") {
+            locStore.requestLocation()
+            startLocationTimeout()
+        }
+        Button("Select Manually") {
+            showMapSelection = true
+        }
+        Button("Cancel", role: .cancel) { }
+    }
+
+    @ViewBuilder
+    private var weatherErrorAlertActions: some View {
+        Button("Set Manually") {
+            showWeatherErrorAlert = false
+        }
+        Button("Retry") {
+            if locStore.location != nil {
+                Task {
+                    await weatherStore.refresh()
+                }
+            }
+        }
+        Button("Cancel", role: .cancel) { }
+    }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 mainContent
                 
-                // Floating purchase button
                 if shouldShowPurchaseButton {
                     FloatingPurchaseButton(remainingDays: remainingTrialDays) {
                         showPaywall = true
@@ -212,77 +255,46 @@ struct MainView: View {
             .navigationTitle(locStore.location?.placeName ?? "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { mainToolbar }
-            // MARK: - Modals & Alerts
             .sheet(isPresented: $showMapSelection) {
                 MapSelectView()
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
-                .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
-                    Button("Cancel", role: .cancel) { }
-                    Button("Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
-                    }
-                } message: {
-                    Text("Please enable location services in settings, or select your position manually using the top left map button.")
-                }
-                .alert("Location Timeout", isPresented: $showLocationTimeoutAlert) {
-                    Button("Retry") {
-                        locStore.requestLocation()
-                        startLocationTimeout()
-                    }
-                    Button("Select Manually") {
-                        showMapSelection = true
-                    }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Unable to determine your location. Please check your connection and try again, or select your location manually.")
-                }
-                .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
-                    Button("Set Manually") {
-                        // User can manually adjust temperature and snow type
-                        showWeatherErrorAlert = false
-                    }
-                    Button("Retry") {
-                        if let location = locStore.location {
-                            Task {
-                                await weatherStore.refresh(location: location)
-                            }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Unable to fetch weather data. \(weatherErrorMessage)\n\nYou can set the temperature and snow type manually using the controls below.")
-                }
-                .onChange(of: locStore.authorizationStatus) { _, newStatus in
-                    handleLocationAuthorizationStateChange(newStatus)
-                }
-                .onChange(of: locStore.locationStatus) { oldStatus, newStatus in
-                    handleLocationStatusChange(oldStatus: oldStatus, newStatus: newStatus)
-                }
-                .onChange(of: weatherStore.status) { _, newStatus in
-                    handleWeatherStatusChange(newStatus)
-                }
-                .task {
-                    // Continuously monitor weather status
-                    for await status in weatherStore.$status.values {
-                        if case .failed(let errorMessage) = status {
-                            weatherErrorMessage = errorMessage
-                            showWeatherErrorAlert = true
-                        }
-                    }
-                }
-                .onAppear {
-                    initializeLocation()
-                }
-                .onDisappear {
-                    // Cancel timeout task when view disappears
-                    locationTimeoutTask?.cancel()
-                    locationTimeoutTask = nil
-                }
+            .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
+                locationPermissionAlertActions
+            } message: {
+                Text("Please enable location services in settings, or select your position manually using the top left map button.")
+            }
+            .alert("Location Timeout", isPresented: $showLocationTimeoutAlert) {
+                locationTimeoutAlertActions
+            } message: {
+                Text("Unable to determine your location. Please check your connection and try again, or select your location manually.")
+            }
+            .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
+                weatherErrorAlertActions
+            } message: {
+                Text("Unable to fetch weather data. \(weatherErrorMessage)\n\nYou can set the temperature and snow type manually using the controls below.")
+            }
+            .onChange(of: locStore.authorizationStatus) { _, newStatus in
+                handleLocationAuthorizationStateChange(newStatus)
+            }
+            .onChange(of: locStore.locationStatus) { oldStatus, newStatus in
+                handleLocationStatusChange(oldStatus: oldStatus, newStatus: newStatus)
+            }
+            .onChange(of: weatherStore.status) { _, newStatus in
+                handleWeatherStatusChange(newStatus)
+            }
+            .task(id: locStore.location) {
+                await weatherStore.fetchIfNeeded()
+            }
+            .onAppear {
+                initializeLocation()
+            }
+            .onDisappear {
+                locationTimeoutTask?.cancel()
+                locationTimeoutTask = nil
+            }
         }
     }
 
@@ -301,47 +313,46 @@ struct MainView: View {
     }
     
     private func startLocationTimeout() {
-        // Cancel any existing timeout task
         locationTimeoutTask?.cancel()
         
         locationTimeoutTask = Task {
             do {
                 try await Task.sleep(for: .seconds(20))
                 
-                // If still searching after 20 seconds, show alert
                 if locStore.locationStatus == .searching {
                     showLocationTimeoutAlert = true
                     locStore.locationStatus = .fault_searching
                 }
             } catch {
-                // Task was cancelled, do nothing
+                // Task was cancelled
             }
         }
     }
     
     private func handleLocationStatusChange(oldStatus: LocationStatus, newStatus: LocationStatus) {
-        // If we transition to searching, start the timeout
         if newStatus == .searching {
             startLocationTimeout()
         }
         
-        // If we successfully get a location or override, cancel the timeout
         if newStatus == .active || newStatus == .manual_override {
             locationTimeoutTask?.cancel()
             locationTimeoutTask = nil
         }
+        
+        // Reset overrides when switching to manual location (from map)
+        // so that weather data for the new location is applied
+        if newStatus == .manual_override && oldStatus != .manual_override {
+            recStore.resetOverrides()
+        }
     }
     
-    private func handleLocationAuthorizationStateChange(_ newStatus : CLAuthorizationStatus) {
+    private func handleLocationAuthorizationStateChange(_ newStatus: CLAuthorizationStatus) {
         switch newStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            // Once the user grants permission, immediately fetch a location so WeatherStore can update.
             locStore.requestLocation()
         case .denied, .restricted:
-            // Allow the user to opt into showing the alert via the location button.
             break
         case .notDetermined:
-            // Keep waiting for the user to answer the system prompt.
             break
         @unknown default:
             break
@@ -354,7 +365,6 @@ struct MainView: View {
             return
         }
 
-        // Only request a location if we're already authorized.
         if locStore.authorizationStatus == .authorizedAlways || locStore.authorizationStatus == .authorizedWhenInUse {
             locStore.requestLocation()
         }
@@ -367,11 +377,8 @@ struct MainView: View {
         case .notDetermined:
             locStore.requestAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
-            // 1. Clear any manual map selection
             locStore.clearManualLocation()
-            // 2. Clear overrides (snow type & temp)
             recStore.resetOverrides()
-            // 3. Force a refresh of GPS
             locStore.requestLocation()
         @unknown default:
             break
@@ -379,12 +386,45 @@ struct MainView: View {
     }
 }
 
+// MARK: - View Extension
+
+struct ToolbarButtonStyle: ButtonStyle {
+    var tint: Color?
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(tint ?? .primary)
+            .frame(width: 20, height: 20)
+            .padding(10)
+            .background(
+                Circle()
+                    .fill(.white)
+            )
+            .contentShape(Circle())
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func toolbarButtonStyle(tint: Color? = nil) -> some View {
+        if #available(iOS 18.0, *) {
+            self.buttonStyle(ToolbarButtonStyle(tint: tint))
+        } else {
+            self
+        }
+    }
+}
+
+// MARK: - Preview
+
 #Preview {
     let app = AppState()
     MainView()
-        .environmentObject(app.location)
-        .environmentObject(app.weather)
-        .environmentObject(app.recommendation)
-        .environmentObject(app.waxSelection)
-    
+        .environment(app.location)
+        .environment(app.weather)
+        .environment(app.recommendation)
+        .environment(app.waxSelection)
+        .environment(app.storeManager)
 }

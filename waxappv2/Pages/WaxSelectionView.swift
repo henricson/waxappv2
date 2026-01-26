@@ -1,7 +1,8 @@
 import SwiftUI
+import Observation
 
 struct WaxSelectionView: View {
-    @EnvironmentObject var store: WaxSelectionStore
+    @Environment(WaxSelectionStore.self) var store: WaxSelectionStore
     
     // Default expanded state: V-series is expanded
     @State private var expandedSeries: Set<WaxSeries> = [.V]
@@ -147,6 +148,6 @@ struct WaxRow: View {
 #Preview {
     NavigationView {
         WaxSelectionView()
-            .environmentObject(WaxSelectionStore())
+            .environment(WaxSelectionStore())
     }
 }

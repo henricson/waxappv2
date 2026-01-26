@@ -10,6 +10,7 @@ import StoreKit
 import SwiftUI
 import Combine
 import CloudKit
+import Observation
 
 enum TrialStatus: Equatable {
     case active
@@ -23,22 +24,21 @@ enum TrialSourceStatus: Equatable {
     case initializing
 }
 
-@MainActor
-class StoreManager: ObservableObject {
-    @Published var isPurchased: Bool = false
-    @Published var products: [Product] = []
+@Observable class StoreManager {
+    var isPurchased: Bool = false
+    var products: [Product] = []
 
     /// Local cache of trial start date for offline enforcement
-    @Published private(set) var cachedTrialStartDate: Date?
+    private(set) var cachedTrialStartDate: Date?
     
     /// Indicates where the trial date is sourced from
-    @Published private(set) var trialSourceStatus: TrialSourceStatus = .initializing
+    private(set) var trialSourceStatus: TrialSourceStatus = .initializing
     
     /// Cached trial status to prevent multiple updates per frame
-    @Published private(set) var cachedTrialStatus: TrialStatus = .active
+    private(set) var cachedTrialStatus: TrialStatus = .active
     
     /// Indicates if initial purchase status check is complete
-    @Published private(set) var isInitialized: Bool = false
+    private(set) var isInitialized: Bool = false
 
     private let productIds = ["com.waxappv2.lifetime"] // Replace with your actual Product ID
 
@@ -62,19 +62,37 @@ class StoreManager: ObservableObject {
 
         // Load from local cache (Keychain for security)
         if let cachedDate = loadLocalCache() {
-            cachedTrialStartDate = cachedDate
+            // Don't update @Published property here - defer to async initialization
             print("📅 Trial date source: Keychain cache")
             print("📅 Effective date: \(cachedDate)")
             return cachedDate
+        }
+
+        // First run - return current date without updating @Published
+        let now = Date()
+        print("📅 Trial date source: First run initialization")
+        print("📅 Effective date: \(now)")
+        return now
+    }
+    
+    /// Load and cache the trial start date (call this during async initialization)
+    private func loadAndCacheTrialDate() {
+        if cachedTrialStartDate != nil {
+            return // Already loaded
+        }
+        
+        // Load from local cache (Keychain for security)
+        if let cachedDate = loadLocalCache() {
+            cachedTrialStartDate = cachedDate
+            print("📅 Trial date cached from Keychain: \(cachedDate)")
+            return
         }
 
         // First run - initialize with current date
         let now = Date()
         saveToLocalCache(now)
         cachedTrialStartDate = now
-        print("📅 Trial date source: First run initialization")
-        print("📅 Effective date: \(now)")
-        return now
+        print("📅 Trial date initialized and cached: \(now)")
     }
 
     var daysSinceStart: Int {
@@ -129,6 +147,11 @@ class StoreManager: ObservableObject {
             
             // Mark as initialized after initial checks complete
             await MainActor.run {
+                // Load trial date into cache if not purchased
+                if !isPurchased {
+                    loadAndCacheTrialDate()
+                }
+                
                 isInitialized = true
                 
                 if isPurchased {
@@ -160,15 +183,11 @@ class StoreManager: ObservableObject {
         
         print("\n🔄 Starting launch sync with CloudKit...")
         
-        // Load initial cached date for trial users
-        if cachedTrialStartDate == nil {
-            cachedTrialStartDate = loadLocalCache()
-            
-            if let cached = cachedTrialStartDate {
-                print("📦 Loaded from local cache: \(cached)")
-            } else {
-                print("📦 No local cache found - will initialize on first access")
-            }
+        // Load trial date into cache if needed
+        loadAndCacheTrialDate()
+        
+        if let cached = cachedTrialStartDate {
+            print("📦 Loaded from local cache: \(cached)")
         }
         
         // Update trial status before sync

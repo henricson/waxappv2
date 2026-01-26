@@ -1,109 +1,82 @@
 // `waxappv2/Stores/WeatherStore.swift`
 
 import Foundation
-import CoreLocation
-import Combine
+import Observation
 
 /// Store that manages weather data for the current location.
-/// Observes location changes and automatically fetches weather updates.
-@MainActor
-final class WeatherStore: ObservableObject, WeatherStoreProtocol {
-
-    var locationStore: LocationStore
-
-    /// Status of weather data operations
+@Observable
+final class WeatherStore {
+    
     enum Status: Equatable {
         case idle
         case loading
         case loaded
         case failed(String)
     }
-
-    /// Current status of weather operations
-    @Published private(set) var status: Status = .idle
-
-    /// Current weather and snow pack summary
-    @Published private(set) var summary: WeatherAndSnowpackSummary?
-
-    /// The current temperature in Celsius, or nil if not available
+    
+    // MARK: - Public State
+    
+    private(set) var status: Status = .idle
+    private(set) var summary: WeatherAndSnowpackSummary?
+    
+    /// Current temperature in Celsius
     var temperature: Int? {
         guard let first = summary?.weather.next24Hours.first else { return nil }
         return Int(first.temperatureC)
     }
-
-    /// The current snow surface assessment, or nil if not available
+    
+    /// Current snow surface assessment
     var currentAssessment: SnowSurfaceAssessment? {
         summary?.currentAssessment
     }
-
-    /// Publisher for summary changes (required by WeatherStoreProtocol)
-    var summaryPublisher: AnyPublisher<WeatherAndSnowpackSummary?, Never> {
-        $summary.eraseToAnyPublisher()
-    }
-
-    /// Weather service client for fetching data
+    
+    // MARK: - Dependencies
+    
+    private let locationStore: LocationStore
     private let service: WeatherServiceClient
-
-    /// Task that observes location changes
-    private var observeTask: Task<Void, Never>?
-
-    /// Initializes the store with dependencies.
-    /// - Parameters:
-    ///   - locationStore: The location store to observe for location changes
-    ///   - service: The weather service client (defaults to WeatherServiceClient)
-    init(locationStore: LocationStore, service: WeatherServiceClient? = nil) {
-        self.service = service ?? WeatherServiceClient()
+    
+    // MARK: - Private
+    
+    private var lastFetchedLocation: AppLocation?
+    
+    init(locationStore: LocationStore, service: WeatherServiceClient) {
         self.locationStore = locationStore
-        startObservingLocationChanges()
+        self.service = service
     }
-
-    deinit {
-        observeTask?.cancel()
-    }
-
-    /// Manually refresh weather data for a specific location.
-    /// - Parameter location: The location to fetch weather for
-    func refresh(location: AppLocation) async {
+    
+    // MARK: - Public Methods
+    
+    /// Call this when you need weather data. Fetches only if location changed.
+    func fetchIfNeeded() async {
+        guard let location = locationStore.location else {
+            status = .idle
+            summary = nil
+            lastFetchedLocation = nil
+            return
+        }
+        
+        guard location != lastFetchedLocation else { return }
         await fetch(for: location)
     }
-
-    /// Starts observing the LocationStore for location updates and fetches when it changes.
-    private func startObservingLocationChanges() {
-        observeTask?.cancel()
-        observeTask = Task { [weak self] in
-            guard let self else { return }
-
-            var last: AppLocation? = nil
-
-            for await location in self.locationStore.locationStream() {
-                guard location != last else { continue }
-                last = location
-
-                guard let location else {
-                    self.status = .idle
-                    self.summary = nil
-                    continue
-                }
-
-                await self.fetch(for: location)
-            }
-        }
+    
+    /// Force refresh for current location
+    func refresh() async {
+        guard let location = locationStore.location else { return }
+        await fetch(for: location)
     }
-
-    /// Fetches weather data for a location.
-    /// - Parameter location: The location to fetch weather for
+    
+    // MARK: - Private
+    
     private func fetch(for location: AppLocation) async {
-        print("🌍 Fetching weather for: \(location.placeName)")
         status = .loading
         do {
-            let s = try await service.fetchWeatherAndAssessSnow(for: location.coordinate)
-            self.summary = s
+            let result = try await service.fetchWeatherAndAssessSnow(for: location.coordinate)
+            summary = result
+            lastFetchedLocation = location
             status = .loaded
-            print("✅ Weather loaded successfully")
         } catch {
-            print("❌ Weather fetch failed: \(error.localizedDescription)")
             status = .failed(error.localizedDescription)
-            self.summary = nil
+            summary = nil
         }
     }
 }

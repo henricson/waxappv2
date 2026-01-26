@@ -19,7 +19,7 @@ private struct HeightPreferenceKey: PreferenceKey {
 
 struct MapSelectView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var locationStore: LocationStore
+    @Environment(LocationStore.self) private var locationStore: LocationStore
 
     // Default to a zoomed-out view if no location exists
     @State private var position: MapCameraPosition = .automatic
@@ -380,7 +380,7 @@ struct MapSelectView: View {
 
 #Preview {
     MapSelectView()
-        .environmentObject(AppState().location)
+        .environment(AppState().location)
 }
 
 @MainActor

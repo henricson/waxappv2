@@ -6,19 +6,20 @@
 //
 
 import SwiftUI
+import Observation
 
 @main
 struct waxappv2App: App {
-    @StateObject private var appState = AppState()
+    @State private var appState = AppState()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(appState.location)
-                .environmentObject(appState.weather)
-                .environmentObject(appState.waxSelection)
-                .environmentObject(appState.recommendation)
-                .environmentObject(appState.storeManager)
+                .environment(appState.location)
+                .environment(appState.weather)
+                .environment(appState.waxSelection)
+                .environment(appState.recommendation)
+                .environment(appState.storeManager)
         }
     }
 }

@@ -20,19 +20,26 @@ protocol ReverseGeocodingService {
     func placeName(for latitude: Double, longitude: Double) async -> String?
 }
 
-/// MapKit-based implementation of reverse geocoding service.
-/// Uses MKReverseGeocodingRequest for address lookup.
+/// CoreLocation-based implementation of reverse geocoding service.
+/// Uses CLGeocoder for address lookup.
 final class MKReverseGeocodingService: ReverseGeocodingService {
+    private let geocoder = CLGeocoder()
+    
     func placeName(for latitude: Double, longitude: Double) async -> String? {
         let location = CLLocation(latitude: latitude, longitude: longitude)
         
-        guard let request = MKReverseGeocodingRequest(location: location) else {
-            return nil
-        }
-        
         do {
-            let mapItems = try await request.mapItems
-            return mapItems.first?.name
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            
+            // Try to get the most relevant name from the placemark
+            if let placemark = placemarks.first {
+                // Prefer name, then locality, then administrative area
+                return placemark.name 
+                    ?? placemark.locality 
+                    ?? placemark.administrativeArea
+            }
+            
+            return nil
         } catch {
             print("Error reverse geocoding: \(error)")
             return nil

@@ -1,8 +1,9 @@
 import Foundation
-import Combine
+
 
 @MainActor
-final class AppState: ObservableObject {
+@Observable
+final class AppState {
     let location: LocationStore
     let weather: WeatherStore
     let waxSelection: WaxSelectionStore
@@ -11,8 +12,7 @@ final class AppState: ObservableObject {
 
     init() {
         let location = LocationStore()
-        let weather = WeatherStore(locationStore: location)
-        
+        let weather = WeatherStore(locationStore: location, service: WeatherServiceClient())
         let waxSelection = WaxSelectionStore()
         let recommendation = RecommendationStore(weatherStore: weather, waxSelectionStore: waxSelection)
         let storeManager = StoreManager()

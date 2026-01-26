@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Observation
 
 enum Tabs {
     case waxes
@@ -13,9 +14,11 @@ enum Tabs {
 }
 
 struct ContentView: View {
+    
+    @Environment(StoreManager.self) private var storeManager: StoreManager
+
     @State private var selectedTab: Tabs = .waxes
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
-    @EnvironmentObject var storeManager: StoreManager
     @State private var showTrialWarning = false
     @State private var showPaywall = false
     
@@ -102,9 +105,9 @@ struct ContentView: View {
 #Preview {
     let app = AppState()
     ContentView()
-        .environmentObject(app.location)
-        .environmentObject(app.weather)
-        .environmentObject(app.waxSelection)
-        .environmentObject(app.recommendation)
-        .environmentObject(app.storeManager)
+        .environment(app.location)
+        .environment(app.weather)
+        .environment(app.waxSelection)
+        .environment(app.recommendation)
+        .environment(app.storeManager)
 }

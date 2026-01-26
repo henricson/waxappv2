@@ -7,11 +7,12 @@
 
 import Foundation
 import Combine
+import Observation
 
 /// Store that manages which wax products are selected for display in the app.
 /// Uses PersistenceService to save/load selections across app launches.
 @MainActor
-final class WaxSelectionStore: ObservableObject {
+@Observable class WaxSelectionStore {
     /// Internal structure for persisting selected wax IDs
     private struct Persisted: Codable {
         let selectedWaxIDs: Set<String>
@@ -21,7 +22,7 @@ final class WaxSelectionStore: ObservableObject {
     private let persistenceService: PersistenceService
 
     /// Wax IDs (SwixWax.id) that should be shown in the app.
-    @Published private(set) var selectedWaxIDs: Set<String>
+    private(set) var selectedWaxIDs: Set<String>
 
     /// Convenience initializer using default dependencies
     convenience init() {

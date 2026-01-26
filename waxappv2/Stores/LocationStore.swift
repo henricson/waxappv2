@@ -2,173 +2,167 @@
 //  LocationStore.swift
 //  waxappv2
 //
-//  Store managing location services and reverse geocoding.
-//
 
 import Foundation
 import CoreLocation
-import Combine
-import MapKit
+import Observation
 
-enum LocationStatus {
+enum LocationStatus: Equatable {
+    case idle
     case searching
-    case fault_searching
     case active
     case manual_override
+    case fault_searching
 }
 
-/// Store that manages location updates, authorization, and reverse geocoding.
-/// Uses LocationManagerProvider for location services and ReverseGeocodingService for address lookup.
 @MainActor
-final class LocationStore: NSObject, ObservableObject {
-    /// The current location, or nil if not available
-    @Published var location: AppLocation? = nil
+@Observable
+final class LocationStore: NSObject {
     
-    @Published var locationStatus : LocationStatus = .searching
+    // MARK: - Public State
     
-    /// The current location authorization status
-    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    private(set) var location: AppLocation?
+    var locationStatus: LocationStatus = .idle
+    private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     
-    /// Error description if location services fail
-    @Published var errorDescription: String?
+    // MARK: - Private
     
-    /// Location manager provider for testability
-    private let manager: LocationManagerProvider
+    private let locationManager: CLLocationManager
+    private let geocoder: CLGeocoder
     
-    /// Reverse geocoding service for place name lookup
-    private let geocodingService: ReverseGeocodingService
+    // MARK: - Init
     
-    /// Manually set location that overrides GPS location
-    // private var manualLocation: AppLocation? = nil
-
-    /// Convenience initializer that supplies default dependencies on the main actor to avoid actor-isolation warnings.
-    @MainActor
-    convenience override init() {
-        self.init(
-            manager: CLLocationManagerAdapter(),
-            geocodingService: MKReverseGeocodingService()
-        )
-    }
-
-    /// Initializes the store with custom dependencies.
-    /// - Parameters:
-    ///   - manager: The location manager provider (defaults to CLLocationManagerAdapter)
-    ///   - geocodingService: The reverse geocoding service (defaults to MKReverseGeocodingService)
-    init(
-        manager: LocationManagerProvider,
-        geocodingService: ReverseGeocodingService
-    ) {
-        self.manager = manager
-        self.geocodingService = geocodingService
+    override init() {
+        self.locationManager = CLLocationManager()
+        self.geocoder = CLGeocoder()
+        
         super.init()
         
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        authorizationStatus = manager.authorizationStatus
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        authorizationStatus = locationManager.authorizationStatus
     }
     
-    /// Requests authorization for location services.
+    // MARK: - Public Methods
+    
     func requestAuthorization() {
-        manager.requestWhenInUseAuthorization()
+        locationManager.requestWhenInUseAuthorization()
     }
     
-    /// Requests a one-time location update.
     func requestLocation() {
-        self.locationStatus = .searching
-        manager.requestLocation()
-    }
-    
-    /// Sets a manual location, overriding GPS location.
-    /// - Parameter loc: The location to set
-    func setManualLocation(_ loc: AppLocation) {
-        //self.manualLocation = loc
-        self.location = loc
-        self.locationStatus = .manual_override
-        Task { await updatePlaceName(for: loc) }
-    }
-    
-    /// Clears the manual location override and requests a new GPS location.
-    func clearManualLocation() {
-        self.location = nil
-        self.locationStatus = .searching
-        // Request location again to get fresh GPS coordinates
-        requestLocation()
-    }
-    
-    /// Creates an async stream of location updates.
-    /// The stream yields the current location immediately, then yields subsequent updates.
-    /// - Returns: An async stream that yields location updates
-    func locationStream() -> AsyncStream<AppLocation?> {
-        AsyncStream { continuation in
-            // Yield current location immediately
-            continuation.yield(self.location)
-            
-            // Subscribe to location updates
-            let token = self.$location.sink { val in
-                continuation.yield(val)
-            }
-            
-            // Clean up subscription when stream terminates
-            continuation.onTermination = { _ in
-                token.cancel()
-            }
-        }
-    }
-    
-    /// Updates the place name for a location using reverse geocoding.
-    /// - Parameter loc: The location to geocode
-    private func updatePlaceName(for loc: AppLocation) async {
-        guard let placeName = await geocodingService.placeName(for: loc.lat, longitude: loc.lon) else {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             return
         }
         
-        // Update the location with the place name
-        self.location = AppLocation(
-            lat: loc.lat,
-            lon: loc.lon,
-            placeName: placeName
-        )
+        locationStatus = .searching
+        locationManager.requestLocation()
+    }
+    
+    func setManualLocation(_ location: AppLocation) {
+        self.location = location
+        locationStatus = .manual_override
+    }
+    
+    func setManualLocation(lat: Double, lon: Double) async {
+        locationStatus = .searching
+        
+        let placeName = await reverseGeocode(lat: lat, lon: lon)
+        
+        location = AppLocation(lat: lat, lon: lon, placeName: placeName)
+        locationStatus = .manual_override
+    }
+    
+    func setManualLocation(coordinate: CLLocationCoordinate2D) async {
+        await setManualLocation(lat: coordinate.latitude, lon: coordinate.longitude)
+    }
+    
+    func clearManualLocation() {
+        if locationStatus == .manual_override {
+            location = nil
+            locationStatus = .idle
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func reverseGeocode(lat: Double, lon: Double) async -> String? {
+        let clLocation = CLLocation(latitude: lat, longitude: lon)
+        
+        do {
+            let placemarks = try await geocoder.reverseGeocodeLocation(clLocation)
+            
+            if let placemark = placemarks.first {
+                return formatPlaceName(from: placemark)
+            }
+        } catch {
+            print("❌ Geocoding failed: \(error.localizedDescription)")
+        }
+        
+        return nil
+    }
+    
+    private func formatPlaceName(from placemark: CLPlacemark) -> String {
+        if let locality = placemark.locality {
+            if let area = placemark.subLocality ?? placemark.administrativeArea {
+                return "\(locality), \(area)"
+            }
+            return locality
+        }
+        
+        if let name = placemark.name {
+            return name
+        }
+        
+        if let area = placemark.administrativeArea {
+            return area
+        }
+        
+        return "Unknown Location"
+    }
+    
+    private func handleLocationUpdate(_ clLocation: CLLocation) async {
+        let lat = clLocation.coordinate.latitude
+        let lon = clLocation.coordinate.longitude
+        let placeName = await reverseGeocode(lat: lat, lon: lon)
+        
+        location = AppLocation(lat: lat, lon: lon, placeName: placeName)
+        locationStatus = .active
     }
 }
 
 // MARK: - CLLocationManagerDelegate
 
 extension LocationStore: CLLocationManagerDelegate {
-    /// Called when location authorization status changes.
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
+    
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let clLocation = locations.last else { return }
+        
+        Task { @MainActor in
+            await self.handleLocationUpdate(clLocation)
+        }
     }
     
-    /// Called when new location data is available.
-    /// - Parameters:
-    ///   - manager: The location manager
-    ///   - locations: Array of location updates
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("❌ Location error: \(error.localizedDescription)")
         
-        // Only update if manual override is not active
-        if locationStatus != .manual_override {
-            let appLoc = AppLocation(
-                lat: loc.coordinate.latitude,
-                lon: loc.coordinate.longitude,
-                placeName: nil
-            )
-            self.location = appLoc
-            self.locationStatus = .active
-            
-            // Reverse geocode to get place name
-            Task {
-                await updatePlaceName(for: appLoc)
+        Task { @MainActor in
+            if self.locationStatus != .manual_override {
+                self.locationStatus = .fault_searching
             }
         }
     }
     
-    /// Called when location manager encounters an error.
-    /// - Parameters:
-    ///   - manager: The location manager
-    ///   - error: The error that occurred
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        errorDescription = error.localizedDescription
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        
+        Task { @MainActor in
+            self.authorizationStatus = status
+            
+            if status == .authorizedWhenInUse || status == .authorizedAlways {
+                if self.locationStatus == .idle {
+                    self.requestLocation()
+                }
+            }
+        }
     }
 }
-

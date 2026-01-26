@@ -2,7 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Binding var showOnboarding: Bool
-    @EnvironmentObject var storeManager: StoreManager
+    @Environment(StoreManager.self) var storeManager: StoreManager
 
     private enum Page: Hashable {
         case welcome
@@ -208,9 +208,9 @@ struct OnboardingPage<Content: View>: View {
     let app = AppState()
 
     OnboardingView(showOnboarding: .constant(true))
-        .environmentObject(app.location)
-        .environmentObject(app.weather)
-        .environmentObject(app.waxSelection)
-        .environmentObject(app.recommendation)
-        .environmentObject(app.storeManager)
+        .environment(app.location)
+        .environment(app.weather)
+        .environment(app.waxSelection)
+        .environment(app.recommendation)
+        .environment(app.storeManager)
 }
