@@ -180,6 +180,7 @@ struct OnboardingPage<Content: View>: View {
                         .font(.largeTitle)
                         .bold()
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(description)
                         .font(.body)

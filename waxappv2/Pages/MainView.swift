@@ -400,6 +400,7 @@ struct ToolbarButtonStyle: ButtonStyle {
                 Circle()
                     .fill(.white)
             )
+            .clipShape(Circle())
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
@@ -410,7 +411,11 @@ extension View {
     @ViewBuilder
     func toolbarButtonStyle(tint: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {
-            self  // No styling on iOS 26+
+            if let tint = tint {
+                self.tint(tint)
+            } else {
+                self
+            }
         } else if #available(iOS 18.0, *) {
             self.buttonStyle(ToolbarButtonStyle(tint: tint))  // Style only on iOS 18-25
         } else {

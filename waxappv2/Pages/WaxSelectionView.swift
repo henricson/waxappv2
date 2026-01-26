@@ -33,6 +33,7 @@ struct WaxSelectionView: View {
                                 store.setAllSelected(true, in: series)
                             } label: {
                                 Label("Select All", systemImage: "checkmark.circle.fill")
+                                    .labelStyle(.iconOnly)
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)
@@ -42,6 +43,7 @@ struct WaxSelectionView: View {
                                 store.setAllSelected(false, in: series)
                             } label: {
                                 Label("Deselect All", systemImage: "circle")
+                                    .labelStyle(.iconOnly)
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered)

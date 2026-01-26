@@ -1,6 +1,55 @@
 import Foundation
 import SwiftUI
 
+private func _waxLocalizationKeys() {
+    _ = String(localized: "Wax_V05_Name")
+    _ = String(localized: "Wax_V05_Notes")
+    _ = String(localized: "Wax_V20_Name")
+    _ = String(localized: "Wax_V30_Name")
+    _ = String(localized: "Wax_V40_Name")
+    _ = String(localized: "Wax_V45_Name")
+    _ = String(localized: "Wax_V50_Name")
+    _ = String(localized: "Wax_V50_Notes")
+    _ = String(localized: "Wax_V55_Name")
+    _ = String(localized: "Wax_V60_Name")
+    _ = String(localized: "Wax_V60_Notes")
+    _ = String(localized: "Wax_VP30_Name")
+    _ = String(localized: "Wax_VP30_Notes")
+    _ = String(localized: "Wax_VP40_Name")
+    _ = String(localized: "Wax_VP45_Name")
+    _ = String(localized: "Wax_VP50_Name")
+    _ = String(localized: "Wax_VP55_Name")
+    _ = String(localized: "Wax_VP60_Name")
+    _ = String(localized: "Wax_VP65_Name")
+    _ = String(localized: "Wax_VP65_Notes")
+    _ = String(localized: "Wax_VP70_Name")
+    _ = String(localized: "Wax_VP70_Notes")
+    _ = String(localized: "Wax_K21S_Name")
+    _ = String(localized: "Wax_K21S_Notes")
+    _ = String(localized: "Wax_K22_Name")
+    _ = String(localized: "Wax_K22_Notes")
+    _ = String(localized: "Wax_KX20_Name")
+    _ = String(localized: "Wax_KX20_Notes")
+    _ = String(localized: "Wax_KX30_Name")
+    _ = String(localized: "Wax_KX30_Notes")
+    _ = String(localized: "Wax_KX35N_Name")
+    _ = String(localized: "Wax_KX35N_Notes")
+    _ = String(localized: "Wax_KX40S_Name")
+    _ = String(localized: "Wax_KX40S_Notes")
+    _ = String(localized: "Wax_KX45N_Name")
+    _ = String(localized: "Wax_KX45N_Notes")
+    _ = String(localized: "Wax_KX55_Name")
+    _ = String(localized: "Wax_KX55_Notes")
+    _ = String(localized: "Wax_KX65_Name")
+    _ = String(localized: "Wax_KX65_Notes")
+    _ = String(localized: "Wax_KX75_Name")
+    _ = String(localized: "Wax_KX75_Notes")
+    _ = String(localized: "Wax_KN33_Name")
+    _ = String(localized: "Wax_KN33_Notes")
+    _ = String(localized: "Wax_KN44_Name")
+    _ = String(localized: "Wax_KN44_Notes")
+}
+
 public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
     case newFallen = 0               // New fallen snow (dry, sharp crystals)
     case moistNewFallen           // Moist new fallen snow
@@ -15,30 +64,30 @@ public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
     /// UI‑friendly, localized title
     var title: String {
         switch self {
-        case .newFallen:               return NSLocalizedString("NewSnowTitle", comment: "")
-        case .moistNewFallen:          return NSLocalizedString("MoistNewSnowTitle", comment: "")
-        case .fineGrained:             return NSLocalizedString("FineGrainedTitle", comment: "")
-        case .moistFineGrained:        return NSLocalizedString("MoistFineGrainedTitle", comment: "")
-        case .oldGrained:              return NSLocalizedString("OldGrainedTitle", comment: "")
-        case .transformedMoistFine:    return NSLocalizedString("TransformedMoistFineTitle", comment: "")
-        case .frozenCorn:              return NSLocalizedString("FrozenCornTitle", comment: "")
-        case .wetCorn:                 return NSLocalizedString("WetCornTitle", comment: "")
-        case .veryWetCorn:             return NSLocalizedString("VeryWetCornTitle", comment: "")
+        case .newFallen:               return String(localized: "NewSnowTitle")
+        case .moistNewFallen:          return String(localized: "MoistNewSnowTitle")
+        case .fineGrained:             return String(localized: "FineGrainedTitle")
+        case .moistFineGrained:        return String(localized: "MoistFineGrainedTitle")
+        case .oldGrained:              return String(localized: "OldGrainedTitle")
+        case .transformedMoistFine:    return String(localized: "TransformedMoistFineTitle")
+        case .frozenCorn:              return String(localized: "FrozenCornTitle")
+        case .wetCorn:                 return String(localized: "WetCornTitle")
+        case .veryWetCorn:             return String(localized: "VeryWetCornTitle")
         }
     }
 
     /// Brief description for tooltips / detail views
     var description: String {
         switch self {
-        case .newFallen:               return NSLocalizedString("NewSnowDesc", comment: "")
-        case .moistNewFallen:          return NSLocalizedString("MoistNewSnowDesc", comment: "")
-        case .fineGrained:             return NSLocalizedString("FineGrainedDesc", comment: "")
-        case .moistFineGrained:        return NSLocalizedString("MoistFineGrainedDesc", comment: "")
-        case .oldGrained:              return NSLocalizedString("OldGrainedDesc", comment: "")
-        case .transformedMoistFine:    return NSLocalizedString("TransformedMoistFineDesc", comment: "")
-        case .frozenCorn:              return NSLocalizedString("FrozenCornDesc", comment: "")
-        case .wetCorn:                 return NSLocalizedString("WetCornDesc", comment: "")
-        case .veryWetCorn:             return NSLocalizedString("VeryWetCornDesc", comment: "")
+        case .newFallen:               return String(localized: "NewSnowDesc")
+        case .moistNewFallen:          return String(localized: "MoistNewSnowDesc")
+        case .fineGrained:             return String(localized: "FineGrainedDesc")
+        case .moistFineGrained:        return String(localized: "MoistFineGrainedDesc")
+        case .oldGrained:              return String(localized: "OldGrainedDesc")
+        case .transformedMoistFine:    return String(localized: "TransformedMoistFineDesc")
+        case .frozenCorn:              return String(localized: "FrozenCornDesc")
+        case .wetCorn:                 return String(localized: "WetCornDesc")
+        case .veryWetCorn:             return String(localized: "VeryWetCornDesc")
         }
     }
     // SF Symbol name for this snow type
@@ -113,12 +162,12 @@ public struct SwixWax: Sendable, Identifiable {
     
     // Computed properties for localized strings
     public var name: String {
-        NSLocalizedString(nameKey, comment: "")
+        Bundle.main.localizedString(forKey: nameKey, value: nil, table: nil)
     }
-    
+
     public var notes: String? {
         guard let key = notesKey else { return nil }
-        return NSLocalizedString(key, comment: "")
+        return Bundle.main.localizedString(forKey: key, value: nil, table: nil)
     }
 
     // Convenience accessors to compute min/max across provided ranges
@@ -435,9 +484,9 @@ public let swixWaxes: [SwixWax] = [
 extension SwixWax {
     var kindDisplay: String {
         switch kind {
-        case .hardwax: return "Hardwax"
-        case .klister: return "Klister"
-        case .base: return "Base"
+        case .hardwax: return String(localized: "Hardwax")
+        case .klister: return String(localized: "Klister")
+        case .base: return String(localized: "Base")
         }
     }
 }

@@ -23,6 +23,7 @@ struct FloatingPurchaseButton: View {
                     .fontWeight(.semibold)
             }
             .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -30,6 +31,7 @@ struct FloatingPurchaseButton: View {
             Capsule()
                 .fill(.regularMaterial)
         )
+        .clipShape(Capsule())
         .overlay(
             Capsule()
                 .strokeBorder(.separator, lineWidth: 0.5)

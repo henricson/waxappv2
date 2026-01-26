@@ -66,9 +66,12 @@ struct HeaderCanView : View {
                     }
                     Spacer(minLength: 20)
                     VStack(spacing: 2) {
-                        Text("\(recommendedWax.name)")
-                            .font(.headline)
-                            .foregroundStyle(headerPrimary.contrastingTextColor)
+                        Text(LocalizedStringKey(recommendedWax.nameKey))
+                            .onAppear {
+                                print("🌍 Key: \(recommendedWax.nameKey)")
+                                print("🌍 Preferred: \(Locale.preferredLanguages)")
+                                print("🌍 Bundle localizations: \(Bundle.main.localizations)")
+                            }
                         Text("\(recommendedWax.series) • \(recommendedWax.kindDisplay)")
                             .font(.caption)
                             .foregroundStyle(headerPrimary.contrastingTextColor.opacity(0.8))
