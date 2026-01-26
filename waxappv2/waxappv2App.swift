@@ -7,10 +7,22 @@
 
 import SwiftUI
 import Observation
+import TipKit
 
 @main
 struct waxappv2App: App {
     @State private var appState = AppState()
+
+    init() {
+        // Configure TipKit
+        #if DEBUG
+        try? Tips.resetDatastore()
+        #endif
+        try? Tips.configure([
+            .displayFrequency(.immediate),
+            .datastoreLocation(.applicationDefault)
+        ])
+    }
 
     var body: some Scene {
         WindowGroup {

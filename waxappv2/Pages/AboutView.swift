@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct AboutView: View {
     @Environment(StoreManager.self) private var storeManager
@@ -55,8 +56,8 @@ struct AboutView: View {
                 }
 
                 Section("Developer") {
-                    Link(destination: URL(string: "https://squarewave.no")!) {
-                        Label("Square Wave AS", systemImage: "link")
+                    Link(destination: URL(string: "https://www.squarewave.no")!) {
+                        Text("Square Wave AS")
                     }
                 }
 

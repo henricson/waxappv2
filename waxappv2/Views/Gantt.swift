@@ -343,9 +343,10 @@ struct Gantt: View {
                 }
                 .onDisappear { temperatureDebounceTask?.cancel() }
                 
+                // Temperature gauge
                 TemperatureGauge(temperature: temperature)
                     .padding(.top, 10)
-                    .frame(maxHeight: .infinity) // Allow the gauge to extend to the bottom
+                    .frame(maxHeight: .infinity, alignment: .top)
            
             }
             .frame(maxHeight: .infinity) // Allow ZStack to fill available height

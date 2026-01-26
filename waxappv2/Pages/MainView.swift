@@ -10,6 +10,22 @@ import CoreLocation
 import TipKit
 import Observation
 
+// MARK: - TipKit
+
+struct GanttScrollTip: Tip {
+    var title: Text {
+        Text("Adjust Temperature", comment: "Tip title for Gantt scroll")
+    }
+    
+    var message: Text? {
+        Text("Scroll horizontally to adjust the temperature and see different wax recommendations.", comment: "Tip message for Gantt scroll")
+    }
+    
+    var image: Image? {
+        Image(systemName: "hand.draw")
+    }
+}
+
 struct MainView: View {
     @Environment(RecommendationStore.self) private var recStore
     @Environment(LocationStore.self) private var locStore
@@ -28,6 +44,9 @@ struct MainView: View {
     @State private var weatherErrorMessage: String = ""
     @State private var lastWeatherStatus: WeatherStore.Status?
     @State private var showPaywall = false
+    
+    // TipKit
+    private let scrollTip = GanttScrollTip()
     
     // MARK: - Computed Properties
     
@@ -112,6 +131,11 @@ struct MainView: View {
             ),
             selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
         )
+        .overlay(alignment: .top) {
+            TipView(scrollTip, arrowEdge: .top)
+                .padding(.horizontal)
+                .padding(.top, 70)
+        }
     }
 
     private var backgroundView: some View {
