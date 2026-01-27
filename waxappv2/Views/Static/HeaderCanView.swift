@@ -67,6 +67,8 @@ struct HeaderCanView : View {
                     Spacer(minLength: 20)
                     VStack(spacing: 2) {
                         Text(LocalizedStringKey(recommendedWax.nameKey))
+                            .font(.headline)
+                            .foregroundStyle(headerPrimary.contrastingTextColor)
                             .onAppear {
                                 print("🌍 Key: \(recommendedWax.nameKey)")
                                 print("🌍 Preferred: \(Locale.preferredLanguages)")

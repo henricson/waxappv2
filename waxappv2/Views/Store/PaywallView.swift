@@ -29,12 +29,13 @@ struct PaywallView: View {
 
                         Group {
                             if storeManager.trialStatus == .expired {
-                                Text("Your 14-day free trial has ended. Purchase the full version to continue.")
+                                Text("Your 14-day free trial has ended. Purchase the unlimited version to continue.")
                             } else {
-                                Text("Support the development and unlock all features.")
+                                Text("Support the continued development by unlocking the unlimited version of the app.")
                             }
                         }
                         .font(.body)
+                        
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                         .lineLimit(4)

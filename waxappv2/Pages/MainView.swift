@@ -34,6 +34,7 @@ struct MainView: View {
     @Environment(StoreManager.self) private var storeManager
 
     @Environment(\.colorScheme) var colorScheme: ColorScheme
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
 
     // UI State
     @State private var showMapSelection = false
@@ -44,6 +45,7 @@ struct MainView: View {
     @State private var weatherErrorMessage: String = ""
     @State private var lastWeatherStatus: WeatherStore.Status?
     @State private var showPaywall = false
+    @State private var pendingPostAuthReset = false
     
     // TipKit
     private let scrollTip = GanttScrollTip()
@@ -119,6 +121,7 @@ struct MainView: View {
                 SnowAssessmentSummaryView(assessment: assessment)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                     .padding(.top, 2)
+                    .padding(.horizontal, 10)
             }
         }
         .padding(.vertical, 12)
@@ -314,11 +317,20 @@ struct MainView: View {
             .onChange(of: weatherStore.status) { _, newStatus in
                 handleWeatherStatusChange(newStatus)
             }
+            .onChange(of: hasSeenOnboarding) { _, newValue in
+                if newValue {
+                    initializeLocation()
+                }
+            }
             .task(id: locStore.location) {
-                await weatherStore.fetchIfNeeded()
+                if hasSeenOnboarding {
+                    await weatherStore.fetchIfNeeded()
+                }
             }
             .onAppear {
-                initializeLocation()
+                if hasSeenOnboarding {
+                    initializeLocation()
+                }
             }
             .onDisappear {
                 locationTimeoutTask?.cancel()
@@ -378,6 +390,18 @@ struct MainView: View {
     private func handleLocationAuthorizationStateChange(_ newStatus: CLAuthorizationStatus) {
         switch newStatus {
         case .authorizedAlways, .authorizedWhenInUse:
+            // Only proceed if onboarding is done, or if this is a direct follow-up
+            // from the user's tap while asking for authorization.
+            guard hasSeenOnboarding || pendingPostAuthReset else { return }
+
+            if pendingPostAuthReset {
+                pendingPostAuthReset = false
+                // Clear manual override and reset recommendation overrides so new device location applies immediately
+                locStore.clearManualLocation()
+                recStore.resetOverrides()
+            }
+
+            // Immediately fetch location after permission is granted
             locStore.requestLocation()
         case .denied, .restricted:
             break
@@ -400,10 +424,12 @@ struct MainView: View {
     }
 
     private func handleReset() {
+        guard hasSeenOnboarding else { return }
         switch locStore.authorizationStatus {
         case .denied, .restricted:
             showLocationPermissionAlert = true
         case .notDetermined:
+            pendingPostAuthReset = true
             locStore.requestAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
             locStore.clearManualLocation()

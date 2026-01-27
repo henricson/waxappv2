@@ -24,7 +24,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Wax", systemImage: "figure.skiing.crosscountry", value: .waxes) {
+            Tab("Predictions", systemImage: "figure.skiing.crosscountry", value: .waxes) {
                 MainView()
             }
             Tab("About", systemImage: "info.circle", value: .about) {
