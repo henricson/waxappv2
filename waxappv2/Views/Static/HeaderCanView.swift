@@ -74,7 +74,7 @@ struct HeaderCanView : View {
                                 print("🌍 Preferred: \(Locale.preferredLanguages)")
                                 print("🌍 Bundle localizations: \(Bundle.main.localizations)")
                             }
-                        Text("\(recommendedWax.series) • \(recommendedWax.kindDisplay)")
+                        Text("\(recommendedWax.code) • \(recommendedWax.kindDisplay)")
                             .font(.caption)
                             .foregroundStyle(headerPrimary.contrastingTextColor.opacity(0.8))
                     }
