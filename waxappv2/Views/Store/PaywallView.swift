@@ -52,9 +52,15 @@ struct PaywallView: View {
                                 }
                             } label: {
                                 HStack {
-                                    Text("Purchase")
-                                    Spacer()
-                                    Text(product.displayPrice)
+                                    if storeManager.isPurchasing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        Text("Processing...")
+                                    } else {
+                                        Text("Purchase")
+                                        Spacer()
+                                        Text(product.displayPrice)
+                                    }
                                 }
                                 .bold()
                                 .padding()
@@ -63,6 +69,8 @@ struct PaywallView: View {
                                 .foregroundColor(.white)
                                 .cornerRadius(12)
                             }
+                            .disabled(storeManager.isPurchasing)
+                            .opacity(storeManager.isPurchasing ? 0.6 : 1.0)
                         } else {
                             ProgressView("Loading products...")
                         }

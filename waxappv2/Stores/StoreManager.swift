@@ -27,6 +27,7 @@ enum TrialSourceStatus: Equatable {
 @Observable class StoreManager {
     var isPurchased: Bool = false
     var products: [Product] = []
+    var isPurchasing: Bool = false
 
     /// Local cache of trial start date for offline enforcement
     private(set) var cachedTrialStartDate: Date?
@@ -354,6 +355,15 @@ enum TrialSourceStatus: Equatable {
     }
 
     func purchase(_ product: Product) async throws {
+        // Prevent concurrent purchases
+        guard !isPurchasing else {
+            print("⚠️ Purchase already in progress")
+            return
+        }
+        
+        isPurchasing = true
+        defer { isPurchasing = false }
+        
         let result = try await product.purchase()
 
         switch result {
