@@ -139,8 +139,7 @@ func clamp(_ x: Double, _ a: Double, _ b: Double) -> Double { min(max(x, a), b) 
 
 struct Gantt: View {
     /// Temperature in °C, as stored in RecommendationStore.
-    @Binding var temperature: Int
-    @Binding var snowType: SnowType
+    @Environment(RecommendationStore.self) private var recStore
     
     var selectedWaxes : [SwixWax]
 
@@ -163,6 +162,15 @@ struct Gantt: View {
 
     private let axisHeight: Double = 80
     private let temperatureDebounceNanoseconds: UInt64 = 300_000_000 // 300ms debounce for incoming temperature updates
+    
+    // Computed properties to access environment values
+    private var temperature: Int {
+        recStore.effectiveTemperature
+    }
+    
+    private var snowType: SnowType {
+        recStore.effectiveSnowType
+    }
 
     private func normalizeTemperature(_ t: Double) -> Int {
         Int(clamp(t.rounded(), minTemp, maxTemp))
@@ -325,13 +333,13 @@ struct Gantt: View {
                     if isProgrammaticScroll {
                         // During programmatic scroll, keep temperature in sync only if this is the final target.
                         if let pending = pendingProgrammaticTarget, pending == clamped {
-                            if temperature != clamped { temperature = clamped }
+                            if temperature != clamped { recStore.effectiveTemperature = clamped }
                         }
                         return
                     }
                     // User-driven update
                     if clamped != temperature {
-                        temperature = clamped
+                        recStore.effectiveTemperature = clamped
                     }
                 }
 
@@ -465,12 +473,12 @@ struct SnapTopClosesestDegree: ScrollTargetBehavior {
 
 
 #Preview {
-    @Previewable @State var temperature: Int = 0
-    @Previewable @State var snowType : SnowType = .fineGrained
+    @Previewable @State var appState = AppState()
     VStack {
-        Text(String(temperature))
-        Gantt(temperature: $temperature, snowType: $snowType, selectedWaxes: swixWaxes)
-
+        Text("Temperature: \(appState.recommendation.effectiveTemperature)°C")
+        Text("Snow Type: \(appState.recommendation.effectiveSnowType.rawValue)")
+        Gantt(selectedWaxes: swixWaxes)
+            .environment(appState.recommendation)
     }
 }
 

@@ -601,7 +601,6 @@ final class WeatherServiceClient {
         // This is the PRIMARY source of truth for recent snow
         let recentSnowfall = recentHistory.prefix(3).compactMap { $0.snowfallAmountCM }.reduce(0, +)
         let snowYesterday = recentHistory.first?.snowfallAmountCM ?? 0
-        let snowTwoDaysAgo = recentHistory.dropFirst().first?.snowfallAmountCM ?? 0
         
         // Determine days since significant snow from ACTUAL weather data
         let daysSinceSnow: Int = {

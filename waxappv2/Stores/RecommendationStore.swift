@@ -18,43 +18,25 @@ final class RecommendationStore {
     
     // MARK: - User Input State
     
-    /// User-overridden temperature (nil = use weather)
-    var userTemperature: Int? = nil
-    
-    /// User-overridden snow type (nil = use weather)
-    var userSnowType: SnowType? = nil
+  
     
     // MARK: - Computed Properties (Reactive)
     
     /// Effective temperature for recommendations
-    var temperature: Int {
-        userTemperature ?? weatherStore.temperature ?? -5
-    }
+    private var weatherKitTemperature: Int = 0
+    var effectiveTemperature: Int = 0
     
-    /// Effective snow type for recommendations
-    var snowType: SnowType {
-        userSnowType ?? weatherStore.currentAssessment?.group ?? .fineGrained
-    }
+    private var weatherKitSnowType : SnowType = .fineGrained
+    var effectiveSnowType : SnowType = .fineGrained
     
-    /// Whether user has overridden any weather defaults
-    var isOverridden: Bool {
-        userTemperature != nil || userSnowType != nil
+    var isSameAsWeatherKit: Bool {
+        weatherKitTemperature == effectiveTemperature && weatherKitSnowType == effectiveSnowType
     }
-    
-    /// Whether using weather-provided temperature
-    var isUsingWeatherTemperature: Bool {
-        userTemperature == nil && weatherStore.temperature != nil
-    }
-    
-    /// Whether using weather-provided snow type
-    var isUsingWeatherSnowType: Bool {
-        userSnowType == nil && weatherStore.currentAssessment != nil
-    }
-    
+        
     /// Computed recommendations based on current temperature, snow type, and selected waxes
     var recommended: [WaxRecommendation] {
-        let currentTemp = temperature
-        let currentSnowType = snowType
+        let currentTemp = effectiveTemperature
+        let currentSnowType = effectiveSnowType
         let selectedIDs = waxSelectionStore.selectedWaxIDs
         
         let eligibleWaxes = swixWaxes.filter { selectedIDs.contains($0.id) }
@@ -85,31 +67,47 @@ final class RecommendationStore {
     init(weatherStore: WeatherStore, waxSelectionStore: WaxSelectionStore) {
         self.weatherStore = weatherStore
         self.waxSelectionStore = waxSelectionStore
+        
+        // Update temperature and snow type from weather store
+        self.weatherKitTemperature = Int(weatherStore.currentTemperature)
+        self.weatherKitSnowType = weatherStore.currentSnowType
+        
+        // Start observing weather store changes
+        self.startObservingWeather()
+    }
+    
+    /// Watches `weatherStore` for changes and updates recommendations accordingly.
+    private func startObservingWeather() {
+        withObservationTracking {
+            _ = weatherStore.currentTemperature
+            _ = weatherStore.currentSnowType
+            _ = weatherStore.weatherRevision
+        } onChange: {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWeatherChange()
+            }
+        }
+    }
+
+    private func handleWeatherChange() {
+        print("🎯 Weather data changed, updating recommendations...")
+        self.weatherKitTemperature = Int(self.weatherStore.currentTemperature)
+        self.effectiveTemperature = self.weatherKitTemperature
+        self.weatherKitSnowType = self.weatherStore.currentSnowType
+        self.effectiveSnowType = self.weatherKitSnowType
+        print("🎯 Updated temp: \(self.weatherKitTemperature)°C, snow type: \(self.effectiveSnowType)")
+        
+        // Re-arm
+        startObservingWeather()
     }
     
     // MARK: - Public Methods
-    
-    /// Resets all user overrides to weather defaults
-    func resetOverrides() {
-        userTemperature = nil
-        userSnowType = nil
-    }
-    
-    /// Sets user temperature override
-    func setTemperature(_ temp: Int) {
-        userTemperature = temp
-    }
-    
-    /// Sets user snow type override
-    func setSnowType(_ type: SnowType) {
-        userSnowType = type
-    }
     
     /// Finds the nearest recommended temperature from the current temperature
     func nearestRecommendedTemperature(from current: Int) -> Int? {
         let selectedIDs = waxSelectionStore.selectedWaxIDs
         let eligibleWaxes = swixWaxes.filter { selectedIDs.contains($0.id) }
-        let ranges = eligibleWaxes.flatMap { $0.ranges[snowType] ?? [] }
+        let ranges = eligibleWaxes.flatMap { $0.ranges[effectiveSnowType] ?? [] }
         
         guard !ranges.isEmpty else { return nil }
         

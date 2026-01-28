@@ -50,7 +50,7 @@ private func _waxLocalizationKeys() {
     _ = String(localized: "Wax_KN44_Notes")
 }
 
-public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable {
+public enum SnowType: Int, CaseIterable, Identifiable, Sendable, Hashable, Observable {
     case newFallen = 0               // New fallen snow (dry, sharp crystals)
     case moistNewFallen           // Moist new fallen snow
     case fineGrained              // Fine-grained (dry)

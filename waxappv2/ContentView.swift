@@ -84,10 +84,19 @@ struct ContentView: View {
 
 #Preview {
     let app = AppState()
+    
+    // Location services DO work in previews!
+    // The preview will request location permission and fetch real data
+    
     ContentView()
         .environment(app.location)
         .environment(app.weather)
         .environment(app.waxSelection)
         .environment(app.recommendation)
         .environment(app.storeManager)
+        .onAppear {
+            // Request location when preview appears
+            // This will trigger the full chain: location → weather → recommendations
+            app.location.requestLocation()
+        }
 }

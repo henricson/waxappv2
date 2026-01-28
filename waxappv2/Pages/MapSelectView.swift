@@ -274,15 +274,12 @@ struct MapSelectView: View {
     private func confirmLocation() {
         guard let coordinate = selectedCoordinate else { return }
 
-        let newLocation = AppLocation(
-            lat: coordinate.latitude,
-            lon: coordinate.longitude,
-            placeName: nil
-        )
-
-        print("MapSelectView: Setting manual location to (\(newLocation.lat), \(newLocation.lon))")
-        locationStore.setManualLocation(newLocation)
-        dismiss()
+        print("MapSelectView: Setting manual location to (\(coordinate.latitude), \(coordinate.longitude))")
+        
+        Task {
+            await locationStore.setManualLocation(coordinate: coordinate)
+            dismiss()
+        }
     }
 
     private func useCurrentLocation() {

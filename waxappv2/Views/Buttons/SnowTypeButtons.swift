@@ -1,7 +1,10 @@
 import SwiftUI
+import Observation
 
 struct SnowTypeButtons: View {
-    @Binding var selected: SnowType
+    @Bindable var store: RecommendationStore
+    
+    private var selected: Binding<SnowType> { $store.effectiveSnowType }
     
     @Environment(\.colorScheme) private var colorScheme
     
@@ -19,7 +22,7 @@ struct SnowTypeButtons: View {
                     ForEach(SnowType.allCases) { type in
                         SnowTypeChip(
                             type: type,
-                            isSelected: type == selected,
+                            isSelected: type == selected.wrappedValue,
                             colorScheme: colorScheme
                         )
                         .background(
@@ -32,8 +35,8 @@ struct SnowTypeButtons: View {
                         )
                         .id(type)
                         .onTapGesture {
-                            guard type != selected else { return }
-                            selected = type
+                            guard type != selected.wrappedValue else { return }
+                            selected.wrappedValue = type
                         }
                     }
                 }
@@ -48,16 +51,16 @@ struct SnowTypeButtons: View {
             .scrollPosition(id: $scrolledID, anchor: .center)
             .scrollIndicators(.hidden)
             .onAppear {
-                scrolledID = selected
+                scrolledID = selected.wrappedValue
             }
-            .onChange(of: selected) { _, newValue in
+            .onChange(of: selected.wrappedValue) { _, newValue in
                 withAnimation(.easeOut(duration: 0.25)) {
                     scrolledID = newValue
                 }
             }
             .onChange(of: scrolledID) { _, newValue in
-                guard let newValue, newValue != selected else { return }
-                selected = newValue
+                guard let newValue, newValue != selected.wrappedValue else { return }
+                selected.wrappedValue = newValue
             }        .frame(height: .leastNormalMagnitude)
 
         }
@@ -140,13 +143,34 @@ private struct SnowTypeChip: View {
 }
 
 #Preview {
-    @Previewable @State var selected: SnowType = .fineGrained
+    PreviewWrapper()
+}
+
+private struct PreviewWrapper: View {
+    @State private var locStore = LocationStore()
+    @State private var weatherStore: WeatherStore
+    @State private var waxSelectionStore = WaxSelectionStore()
+    @State private var recStore: RecommendationStore
     
-    ZStack {
-        SnowTypeButtons(selected: $selected)
+    init() {
+        let locStore = LocationStore()
+        let weatherStore = WeatherStore(locationStore: locStore)
+        let waxSelectionStore = WaxSelectionStore()
+        let recStore = RecommendationStore(weatherStore: weatherStore, waxSelectionStore: waxSelectionStore)
         
-        Rectangle()
-            .frame(width: 1)
-            .foregroundColor(.red)
+        _locStore = State(initialValue: locStore)
+        _weatherStore = State(initialValue: weatherStore)
+        _waxSelectionStore = State(initialValue: waxSelectionStore)
+        _recStore = State(initialValue: recStore)
+    }
+    
+    var body: some View {
+        ZStack {
+            SnowTypeButtons(store: recStore)
+            
+            Rectangle()
+                .frame(width: 1)
+                .foregroundColor(.red)
+        }
     }
 }

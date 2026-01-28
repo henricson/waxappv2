@@ -54,8 +54,11 @@ final class LocationStore: NSObject {
             return
         }
         
+        // Stop any in-flight updates first so that startUpdatingLocation()
+        // is guaranteed to produce a fresh location callback.
+        locationManager.stopUpdatingLocation()
         locationStatus = .searching
-        locationManager.requestLocation()
+        locationManager.startUpdatingLocation()
     }
     
     func setManualLocation(_ location: AppLocation) {
@@ -66,7 +69,9 @@ final class LocationStore: NSObject {
     func setManualLocation(lat: Double, lon: Double) async {
         locationStatus = .searching
         
+        print("📍 Manual location set: \(lat), \(lon)")
         let placeName = await reverseGeocode(lat: lat, lon: lon)
+        print("📍 Reverse geocoded place name: \(placeName ?? "nil")")
         
         location = AppLocation(lat: lat, lon: lon, placeName: placeName)
         locationStatus = .manual_override
@@ -81,6 +86,9 @@ final class LocationStore: NSObject {
         // This allows the location button to force a fresh location request
         location = nil
         locationStatus = .idle
+        
+        // After clearing, request a fresh device location
+        requestLocation()
     }
     
     // MARK: - Private Methods
@@ -89,13 +97,22 @@ final class LocationStore: NSObject {
         let clLocation = CLLocation(latitude: lat, longitude: lon)
         
         do {
+            print("🔍 Starting reverse geocode for: \(lat), \(lon)")
             let placemarks = try await geocoder.reverseGeocodeLocation(clLocation)
+            print("🔍 Received \(placemarks.count) placemark(s)")
             
             if let placemark = placemarks.first {
-                return formatPlaceName(from: placemark)
+                let formattedName = formatPlaceName(from: placemark)
+                print("✅ Formatted place name: \(formattedName)")
+                return formattedName
+            } else {
+                print("⚠️ No placemarks returned")
             }
         } catch {
             print("❌ Geocoding failed: \(error.localizedDescription)")
+            if let clError = error as? CLError {
+                print("❌ CLError code: \(clError.code.rawValue)")
+            }
         }
         
         return nil
@@ -121,12 +138,24 @@ final class LocationStore: NSObject {
     }
     
     private func handleLocationUpdate(_ clLocation: CLLocation) async {
+        locationManager.stopUpdatingLocation()
+        
         let lat = clLocation.coordinate.latitude
         let lon = clLocation.coordinate.longitude
+        
+        print("📍 Location updated: \(lat), \(lon)")
+        
         let placeName = await reverseGeocode(lat: lat, lon: lon)
         
+        // Reset to nil first so that the @Observable system always sees a
+        // change — even if the new coordinates are identical to the previous
+        // ones (e.g. the user hasn't moved). Without this, WeatherStore's
+        // withObservationTracking won't fire and fetchWeather() is skipped.
+        location = nil
         location = AppLocation(lat: lat, lon: lon, placeName: placeName)
         locationStatus = .active
+        
+        print("📍 Location set: \(placeName ?? "Unknown")")
     }
 }
 
@@ -159,7 +188,8 @@ extension LocationStore: CLLocationManagerDelegate {
             self.authorizationStatus = status
             
             if status == .authorizedWhenInUse || status == .authorizedAlways {
-                if self.locationStatus == .idle {
+                // Request location immediately when authorized, unless user has manually overridden
+                if self.locationStatus != .manual_override {
                     self.requestLocation()
                 }
             }

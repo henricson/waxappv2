@@ -12,7 +12,7 @@ final class AppState {
 
     init() {
         let location = LocationStore()
-        let weather = WeatherStore(locationStore: location, service: WeatherServiceClient())
+        let weather = WeatherStore(locationStore: location)
         let waxSelection = WaxSelectionStore()
         let recommendation = RecommendationStore(weatherStore: weather, waxSelectionStore: waxSelection)
         let storeManager = StoreManager()
