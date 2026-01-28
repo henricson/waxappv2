@@ -15,13 +15,13 @@
   ],
   "products" : [
     {
-      "displayPrice" : "12.99",
+      "displayPrice" : "3.99",
       "familyShareable" : true,
       "internalID" : "6757531110",
       "localizations" : [
         {
           "description" : "One time purchase to unlock the app",
-          "displayName" : "Unlimited Access",
+          "displayName" : "Full Access",
           "locale" : "en_US"
         }
       ],
@@ -38,7 +38,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 791045889.76415598,
+    "_lastSynchronizedDate" : 791217772.89888,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",

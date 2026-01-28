@@ -33,28 +33,25 @@ struct ContentView: View {
         }
         .onAppear() {
             Task {
-                // Sync with CloudKit before checking trial status
+                // Fetch trial start date from CloudKit
                 await storeManager.performLaunchSync()
-                
-                // Check trial status after sync and initialization complete
-                checkTrialStatus()
             }
         }
-        .onChange(of: storeManager.cachedTrialStatus) { oldStatus, newStatus in
-            // Only show paywall if initialized and not purchased
-            guard storeManager.isInitialized else { return }
+        // MARK: Trial is about to end
+        .onChange(of: storeManager.trialStatus) { _, newStatus in
+            // Only react if initialized and not purchased
+            guard storeManager.isInitialized, !storeManager.isPurchased else { return }
             
-            // Show paywall if trial expires
-            if newStatus == .expired && !storeManager.isPurchased {
+            switch newStatus {
+            case .warning:
+                showTrialWarning = true
+            case .expired:
                 showPaywall = true
+            case .active:
+                break
             }
         }
-        .onChange(of: storeManager.isInitialized) { _, initialized in
-            // Check trial status once initialization completes
-            if initialized {
-                checkTrialStatus()
-            }
-        }
+        // MARK: Trial ending alert
         .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
             Button("OK", role: .cancel) { }
             Button("Buy Now") {
@@ -67,9 +64,11 @@ struct ContentView: View {
                 Text("Your free trial is ending soon.")
             }
         }
+        // MARK: PayWallView
         .sheet(isPresented: $showPaywall) {
             PaywallView()
         }
+        // MARK: OnboardingView
         .sheet(isPresented: Binding(
             get: { !hasSeenOnboarding },
             set: { if !$0 { hasSeenOnboarding = true } }
@@ -79,25 +78,6 @@ struct ContentView: View {
                 set: { if !$0 { hasSeenOnboarding = true } }
             ))
             .interactiveDismissDisabled()
-        }
-    }
-    
-    private func checkTrialStatus() {
-        // Skip if app is purchased
-        if storeManager.isPurchased {
-            return
-        }
-        
-        // Only check trial status if StoreManager is fully initialized
-        guard storeManager.isInitialized else { return }
-        
-        if case .warning = storeManager.trialStatus, !storeManager.isPurchased {
-            showTrialWarning = true
-        }
-        
-        // Show paywall if trial is expired
-        if storeManager.trialStatus == .expired && !storeManager.isPurchased {
-            showPaywall = true
         }
     }
 }

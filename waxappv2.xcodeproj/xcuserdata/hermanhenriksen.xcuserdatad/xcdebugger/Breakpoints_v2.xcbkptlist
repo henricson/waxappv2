@@ -34,84 +34,56 @@
             endingLineNumber = "1">
             <Locations>
                <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 495afdf3f69d1309"
+                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 33529c7d2dd910a8"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "waxappv2.LocationStore._locationStatus.getter : waxappv2.LocationStatus"
                   moduleName = "waxappv2.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-e49446.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
+                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-21032f.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "0"
                   endingLineNumber = "0">
                </Location>
                <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - a7a5cec387159d7d"
+                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - ddadaf4d5c519edc"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "waxappv2.LocationStore._locationStatus.setter : waxappv2.LocationStatus"
                   moduleName = "waxappv2.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-e49446.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
+                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-21032f.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "0"
                   endingLineNumber = "0">
                </Location>
                <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 6bb73a65c7345753"
+                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 6bfe5823a320d6fe"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "waxappv2.LocationStore._locationStatus.getter : waxappv2.LocationStatus"
                   moduleName = "waxappv2.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-fb0829.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
+                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-bce550.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "0"
                   endingLineNumber = "0">
                </Location>
                <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 85480955b6bcd927"
+                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 85016b13d2a8588a"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "waxappv2.LocationStore._locationStatus.setter : waxappv2.LocationStatus"
                   moduleName = "waxappv2.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-fb0829.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - 52bd4b70baa51675"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "waxappv2.LocationStore._locationStatus.getter : waxappv2.LocationStatus"
-                  moduleName = "waxappv2.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-eeff06.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "11AB7145-3B1E-4387-9DAA-D76AAEF225FB - bc427840cb2d9801"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "waxappv2.LocationStore._locationStatus.setter : waxappv2.LocationStatus"
-                  moduleName = "waxappv2.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-eeff06.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
+                  urlString = "file:///var/folders/xw/_3xqc1g13qx190mj680ky_m80000gn/T/-bce550.@__swiftmacro_8waxappv213LocationStoreC14locationStatus18ObservationTrackedfMp_.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "0"

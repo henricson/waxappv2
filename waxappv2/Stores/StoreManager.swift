@@ -250,6 +250,7 @@ enum TrialSourceStatus: Equatable {
     
     /// Sync with CloudKit - call on every app launch
     /// CloudKit is authoritative - if a record exists there, it always wins
+    /// Falls back to local cache if offline
     func syncWithCloudKit() async {
         print("\n☁️ === CloudKit Sync Starting ===")
         
@@ -263,6 +264,9 @@ enum TrialSourceStatus: Equatable {
             saveToLocalCache(localDate)
             cachedTrialStartDate = localDate
         }
+        
+        // IMPORTANT: Local cache is always saved first, so offline enforcement
+        // works from first launch, even if CloudKit is never available
         
         // Check if CloudKit is available
         print("🔍 Checking iCloud availability...")

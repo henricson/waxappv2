@@ -26,6 +26,8 @@ struct GanttScrollTip: Tip {
     }
 }
 
+
+
 struct MainView: View {
     @Environment(RecommendationStore.self) private var recStore
     @Environment(LocationStore.self) private var locStore
@@ -140,6 +142,8 @@ struct MainView: View {
             ),
             selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
         )
+        .frame(maxHeight: .infinity) // Tell it to expand
+        .layoutPriority(-1) // Give header/snow sections priority
         .overlay(alignment: .top) {
             TipView(scrollTip, arrowEdge: .top)
                 .padding(.horizontal)
@@ -173,9 +177,8 @@ struct MainView: View {
                     snowTypeSection
                     
                     ganttSection
-                        .frame(minHeight: geometry.size.height - 300)
                 }
-                .animation(.easeInOut(duration: 0.3), value: recStore.isUsingWeatherTemperature && recStore.isUsingWeatherSnowType)
+                .frame(minHeight: geometry.size.height) // Make VStack fill the screen
             }
             .background(backgroundView)
             .scrollBounceBehavior(.basedOnSize)

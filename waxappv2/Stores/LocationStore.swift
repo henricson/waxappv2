@@ -77,10 +77,10 @@ final class LocationStore: NSObject {
     }
     
     func clearManualLocation() {
-        if locationStatus == .manual_override {
-            location = nil
-            locationStatus = .idle
-        }
+        // Clear location and reset status for both manual and device locations
+        // This allows the location button to force a fresh location request
+        location = nil
+        locationStatus = .idle
     }
     
     // MARK: - Private Methods
