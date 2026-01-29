@@ -7,7 +7,6 @@
 
 import SwiftUI
 import TipKit
-import Observation
 import CoreLocation
 import WeatherKit
 
@@ -27,7 +26,17 @@ struct GanttScrollTip: Tip {
     }
 }
 
+// MARK: - Layout Constants
 
+private enum LayoutConstants {
+    static let headerHeight: CGFloat = 200
+    static let snowTypeSectionHeight: CGFloat = 68
+    static let attributionHeight: CGFloat = 100
+    static let floatingButtonHeight: CGFloat = 74
+    static let minimumGanttHeight: CGFloat = 200
+}
+
+// MARK: - MainView
 
 struct MainView: View {
     @Environment(RecommendationStore.self) private var recStore
@@ -35,223 +44,305 @@ struct MainView: View {
     @Environment(WeatherStore.self) private var weatherStore
     @Environment(WaxSelectionStore.self) private var waxStore
     @Environment(StoreManager.self) private var storeManager
+    @Environment(\.colorScheme) private var colorScheme
 
-    @Environment(\.colorScheme) var colorScheme: ColorScheme
-    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
 
-    // UI State
+    // MARK: UI State
+    
     @State private var showMapSelection = false
     @State private var showLocationPermissionAlert = false
     @State private var showLocationTimeoutAlert = false
     @State private var showWeatherErrorAlert = false
-    @State private var locationTimeoutTask: Task<Void, Never>?
-    @State private var weatherErrorMessage: String = ""
     @State private var showPaywall = false
-    @State private var pendingPostAuthReset = false
-    @State private var showSnowAssessmentExplain = false
-
-    // TipKit
-    private let scrollTip = GanttScrollTip()
-
+    @State private var weatherErrorMessage = ""
     @State private var isUserInitiatedLocationRequest = false
 
-    /// Minimal extra scroll space so the attribution/footer can be scrolled above the floating purchase button.
-    private var scrollBottomPadding: CGFloat {
-        // FloatingPurchaseButton is ~56pt tall, plus the 8pt bottom padding applied in the safeAreaInset.
-        // Add a small buffer so the last line doesn’t visually collide with the button.
-        shouldShowPurchaseButton ? (56 + 10 + 6) : 0
-    }
+    private let scrollTip = GanttScrollTip()
 
-    // MARK: - Computed Properties
+    // MARK: Computed Properties
 
     private var remainingTrialDays: Int {
-        if case .warning(let days) = storeManager.trialStatus {
+        switch storeManager.trialStatus {
+        case .warning(let days):
             return days
-        } else if case .active = storeManager.trialStatus {
-            let daysSinceStart = storeManager.daysSinceStart
-            return max(0, 14 - daysSinceStart)
+        case .active:
+            return max(0, 14 - storeManager.daysSinceStart)
+        default:
+            return 0
         }
-        return 0
     }
 
     private var shouldShowPurchaseButton: Bool {
         !storeManager.isPurchased && storeManager.trialStatus != .expired
     }
+    
+    private var showAttribution: Bool {
+        recStore.isSameAsWeatherKit
+    }
+    
+    private var selectedWaxes: [SwixWax] {
+        swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
+    }
 
-    /// A small, conservative min-height that helps the Gantt resize smoothly when bottom UI appears/disappears.
-    /// (MainView is scrollable now, so we don't need to force a min-height here.)
-    // private var ganttMinHeight: CGFloat { ... }
+    // MARK: Body
 
-    // MARK: - View Components
+    var body: some View {
+        NavigationStack {
+            mainContent
+                .navigationTitle(locStore.location?.placeName ?? "")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { toolbarContent }
+                .sheet(isPresented: $showMapSelection) {
+                    MapSelectView()
+                }
+                .sheet(isPresented: $showPaywall) {
+                    PaywallView()
+                }
+                .onChange(of: locStore.authorizationStatus, handleAuthorizationChange)
+                .onChange(of: locStore.locationStatus, handleLocationStatusChange)
+                .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
+                    locationPermissionAlertActions
+                } message: {
+                    Text("Please enable location services in settings, or select your position manually using the top left map button.")
+                }
+                .alert("Location Timeout", isPresented: $showLocationTimeoutAlert) {
+                    locationTimeoutAlertActions
+                } message: {
+                    Text("Unable to determine your location. Please check your connection and try again, or select your location manually.")
+                }
+                .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
+                    weatherErrorAlertActions
+                } message: {
+                    Text("Unable to fetch weather data. \(weatherErrorMessage)\n\nYou can set the temperature and snow type manually using the controls below.")
+                }
+        }
+    }
+}
 
-    private var headerSection: some View {
-        Group {
-            if let recommended = recStore.recommended.first {
-                HeaderCanView(recommendedWax: recommended.wax)
-                    .id(recommended.wax.id)
-            } else {
-                VStack(spacing: 20) {
-                    HStack {
-                        Image(systemName: "info.triangle")
-                        Text("Outside of range")
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
-                    }
-                    if let target = recStore.nearestRecommendedTemperature(from: recStore.effectiveTemperature) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.35)) {
-                                recStore.effectiveTemperature = target
-                            }
-                        } label: {
-                            Label(
-                                "Move back",
-                                systemImage: target > recStore.effectiveTemperature ? "arrow.right" : "arrow.left"
-                            )
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.regular)
-                        .accessibilityHint("Scrolls the temperature scale to the nearest range with recommendations")
+// MARK: - Main Content
+
+private extension MainView {
+    var mainContent: some View {
+        ZStack {
+            backgroundGradient
+            
+            GeometryReader { geometry in
+                let availableGanttHeight = calculateAvailableGanttHeight(in: geometry)
+                
+                ScrollView(.vertical) {
+                    VStack(spacing: 0) {
+                        headerSection
+                        snowTypeSection
+                        ganttSection
+                            .frame(minHeight: availableGanttHeight)
+                        attributionSection
                     }
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                .contentMargins(.bottom, shouldShowPurchaseButton ? LayoutConstants.floatingButtonHeight : 0, for: .scrollContent)
             }
         }
-        .frame(height: 200)
-    }
-
-    private var snowTypeSection: some View {
-        VStack(spacing: 12) {
-            SnowTypeButtons(
-                store: recStore
-            )
-            .frame(height: 44)
-            
-            LocationSourceIndicator(
-                isManualOverride: locStore.locationStatus == .manual_override,
-                isUsingWeatherData: recStore.isSameAsWeatherKit
-            )
-            
+        .overlay(alignment: .bottom) {
+            floatingPurchaseButton
         }
-        .padding(.vertical, 12)
-        .animation(.easeInOut(duration: 0.3), value: recStore.isSameAsWeatherKit)
+        .animation(.easeInOut(duration: 0.35), value: showAttribution)
+        .animation(.easeInOut(duration: 0.35), value: shouldShowPurchaseButton)
     }
-
-    private var ganttSection: some View {
-        Gantt(
-            selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
-        )
-        .overlay(alignment: .top) {
-            TipView(scrollTip, arrowEdge: .top)
-                .padding(.horizontal)
-                .padding(.top, 70)
-        }
+    
+    func calculateAvailableGanttHeight(in geometry: GeometryProxy) -> CGFloat {
+        let fixedHeight = LayoutConstants.headerHeight
+            + LayoutConstants.snowTypeSectionHeight
+            + (shouldShowPurchaseButton ? LayoutConstants.floatingButtonHeight : 0)
+            + (showAttribution ? LayoutConstants.attributionHeight : 0)
+        
+        let available = geometry.size.height - fixedHeight
+        return max(LayoutConstants.minimumGanttHeight, available)
     }
+}
 
-    private var backgroundView: some View {
-        ZStack {
-            Color.clear.ignoresSafeArea(edges: .top)
+// MARK: - View Components
+
+private extension MainView {
+    var backgroundGradient: some View {
+        Group {
             if let recommended = recStore.recommended.first {
                 LinearGradient(
-                    colors: [Color(hex: recommended.wax.backgroundColor) ?? .blue, colorScheme == .dark ? .black : .white],
+                    colors: [
+                        Color(hex: recommended.wax.backgroundColor) ?? .blue,
+                        colorScheme == .dark ? .black : .white
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea(edges: .top)
                 .transition(.opacity)
                 .id(recommended.wax.primaryColor)
+            } else {
+                Color.clear.ignoresSafeArea(edges: .top)
             }
         }
         .animation(.easeIn, value: recStore.recommended.first?.wax.primaryColor)
     }
 
-    private var mainContent: some View {
-        ZStack {
-            backgroundView
-
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 0) {
-                    headerSection
-                        .frame(height: 200)
-
-                    snowTypeSection
-
-                    ganttSection
-                        .frame(maxWidth: .infinity)
-
-                    if recStore.isSameAsWeatherKit {
-                        WeatherAttributionView()
-                            .padding(.top, 20)
-                            .padding(.bottom, 16)
-                            .frame(maxWidth: .infinity)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+    var headerSection: some View {
+        Group {
+            if let recommended = recStore.recommended.first {
+                HeaderCanView(recommendedWax: recommended.wax)
+                    .id(recommended.wax.id)
+            } else {
+                outOfRangeHeader
+            }
+        }
+        .frame(height: LayoutConstants.headerHeight)
+    }
+    
+    var outOfRangeHeader: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Image(systemName: "info.triangle")
+                Text("Outside of range")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+            }
+            
+            if let target = recStore.nearestRecommendedTemperature(from: recStore.effectiveTemperature) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        recStore.effectiveTemperature = target
                     }
-
-                    // Only enough spacing to allow scrolling the footer above the floating purchase button.
-                    Color.clear
-                        .frame(height: scrollBottomPadding)
+                } label: {
+                    Label(
+                        "Move back",
+                        systemImage: target > recStore.effectiveTemperature ? "arrow.right" : "arrow.left"
+                    )
                 }
-                .frame(maxWidth: .infinity)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-        }
-        .overlay(alignment: .bottom) {
-            if shouldShowPurchaseButton {
-                FloatingPurchaseButton(remainingDays: remainingTrialDays) {
-                    showPaywall = true
-                }
-                .padding(.bottom, 10)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .accessibilityHint("Scrolls the temperature scale to the nearest range with recommendations")
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: recStore.isSameAsWeatherKit)
-        .animation(.easeInOut(duration: 0.35), value: shouldShowPurchaseButton)
     }
 
+    var snowTypeSection: some View {
+        VStack(spacing: 12) {
+            SnowTypeButtons(store: recStore)
+                .frame(height: 44)
+            
+            LocationSourceIndicator(
+                isManualOverride: locStore.locationStatus == .manual_override,
+                isUsingWeatherData: recStore.isSameAsWeatherKit
+            )
+        }
+        .padding(.vertical, 12)
+        .animation(.easeInOut(duration: 0.3), value: recStore.isSameAsWeatherKit)
+    }
+
+    var ganttSection: some View {
+        Gantt(selectedWaxes: selectedWaxes)
+            .overlay(alignment: .top) {
+                TipView(scrollTip, arrowEdge: .top)
+                    .padding(.horizontal)
+                    .padding(.top, 70)
+            }
+    }
+    
     @ViewBuilder
-    private func contentStack(ganttHeight: CGFloat) -> some View {
-        // (No longer used; keeping this signature around caused the old GeometryReader height forcing.)
-        EmptyView()
+    var attributionSection: some View {
+        if showAttribution {
+            WeatherAttributionView()
+                .padding(.top, 20)
+                .frame(maxWidth: .infinity)
+                .frame(height: LayoutConstants.attributionHeight)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
+    
+    @ViewBuilder
+    var floatingPurchaseButton: some View {
+        if shouldShowPurchaseButton {
+            FloatingPurchaseButton(remainingDays: remainingTrialDays) {
+                showPaywall = true
+            }
+            .padding(.bottom, 10)
+        }
+    }
+}
 
-    // MARK: - Toolbar
+// MARK: - Toolbar
 
+private extension MainView {
     @ToolbarContentBuilder
-    private var mainToolbar: some ToolbarContent {
-
+    var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button {
                 showMapSelection = true
             } label: {
                 Image(systemName: "map")
             }
-            .toolbarButtonStyle(tint: locStore.locationStatus == .manual_override && recStore.isSameAsWeatherKit ? .accentColor : .primary)
+            .toolbarButtonStyle(
+                tint: locStore.locationStatus == .manual_override && recStore.isSameAsWeatherKit ? .accentColor : .primary
+            )
         }
 
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                // Check if already denied/restricted before requesting
-                switch locStore.authorizationStatus {
-                case .denied, .restricted:
-                    showLocationPermissionAlert = true
-                case .notDetermined:
-                    isUserInitiatedLocationRequest = true
-                    locStore.requestAuthorization()
-                case .authorizedWhenInUse, .authorizedAlways:
-                    isUserInitiatedLocationRequest = true
-                    locStore.requestLocation()
-                @unknown default:
-                    break
-                }
-            } label: {
+            Button(action: handleLocationButtonTap) {
                 Image(systemName: "location.fill")
             }
-            .toolbarButtonStyle(tint: recStore.isSameAsWeatherKit && locStore.locationStatus != .manual_override ? .accentColor : .primary)
+            .toolbarButtonStyle(
+                tint: recStore.isSameAsWeatherKit && locStore.locationStatus != .manual_override ? .accentColor : .primary
+            )
         }
     }
+}
 
-    // MARK: - Alert Actions
+// MARK: - Actions & Handlers
 
+private extension MainView {
+    func handleLocationButtonTap() {
+        switch locStore.authorizationStatus {
+        case .denied, .restricted:
+            showLocationPermissionAlert = true
+        case .notDetermined:
+            isUserInitiatedLocationRequest = true
+            locStore.requestAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            isUserInitiatedLocationRequest = true
+            locStore.requestLocation()
+        @unknown default:
+            break
+        }
+    }
+    
+    func handleAuthorizationChange(_ oldStatus: CLAuthorizationStatus, _ newStatus: CLAuthorizationStatus) {
+        guard isUserInitiatedLocationRequest else { return }
+        
+        if newStatus == .denied || newStatus == .restricted {
+            showLocationPermissionAlert = true
+            isUserInitiatedLocationRequest = false
+        }
+    }
+    
+    func handleLocationStatusChange(_ oldStatus: LocationStatus, _ newStatus: LocationStatus) {
+        guard isUserInitiatedLocationRequest else { return }
+        
+        switch newStatus {
+        case .fault_searching:
+            showLocationTimeoutAlert = true
+            isUserInitiatedLocationRequest = false
+        case .active:
+            isUserInitiatedLocationRequest = false
+        default:
+            break
+        }
+    }
+}
+
+// MARK: - Alert Actions
+
+private extension MainView {
     @ViewBuilder
-    private var locationPermissionAlertActions: some View {
+    var locationPermissionAlertActions: some View {
         Button("Cancel", role: .cancel) { }
         Button("Settings") {
             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -261,10 +352,9 @@ struct MainView: View {
     }
 
     @ViewBuilder
-    private var locationTimeoutAlertActions: some View {
+    var locationTimeoutAlertActions: some View {
         Button("Retry") {
             locStore.requestLocation()
-            // startLocationTimeout()
         }
         Button("Select Manually") {
             showMapSelection = true
@@ -273,7 +363,7 @@ struct MainView: View {
     }
 
     @ViewBuilder
-    private var weatherErrorAlertActions: some View {
+    var weatherErrorAlertActions: some View {
         Button("Set Manually") {
             showWeatherErrorAlert = false
         }
@@ -286,71 +376,14 @@ struct MainView: View {
         }
         Button("Cancel", role: .cancel) { }
     }
-
-    // MARK: - Body
-    
-    var body: some View {
-            NavigationStack {
-                mainContent
-                    .navigationTitle(locStore.location?.placeName ?? "")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { mainToolbar }
-                    .sheet(isPresented: $showMapSelection) {
-                        MapSelectView()
-                    }
-                    .sheet(isPresented: $showPaywall) {
-                        PaywallView()
-                    }
-                    .onChange(of: locStore.authorizationStatus) { _, newStatus in
-                        // Only show alert for user-initiated requests
-                        guard isUserInitiatedLocationRequest else { return }
-                        
-                        if newStatus == .denied || newStatus == .restricted {
-                            showLocationPermissionAlert = true
-                            isUserInitiatedLocationRequest = false
-                        }
-                    }
-                    .onChange(of: locStore.locationStatus) { _, newStatus in
-                        // Only show alert for user-initiated requests
-                        guard isUserInitiatedLocationRequest else { return }
-                        
-                        switch newStatus {
-                        case .fault_searching:
-                            showLocationTimeoutAlert = true
-                            isUserInitiatedLocationRequest = false
-                        case .active:
-                            // Successfully got location, reset flag
-                            isUserInitiatedLocationRequest = false
-                        default:
-                            break
-                        }
-                    }
-                    .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
-                        locationPermissionAlertActions
-                    } message: {
-                        Text("Please enable location services in settings, or select your position manually using the top left map button.")
-                    }
-                    .alert("Location Timeout", isPresented: $showLocationTimeoutAlert) {
-                        locationTimeoutAlertActions
-                    } message: {
-                        Text("Unable to determine your location. Please check your connection and try again, or select your location manually.")
-                    }
-                    .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
-                        weatherErrorAlertActions
-                    } message: {
-                        Text("Unable to fetch weather data. \(weatherErrorMessage)\n\nYou can set the temperature and snow type manually using the controls below.")
-                    }
-            }
-        }
-
 }
 
-// MARK: - View Extension
+// MARK: - WeatherAttributionView
 
 struct WeatherAttributionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var attribution: WeatherAttribution?
-    @State private var didLoadAttribution = false
+    @State private var isLoaded = false
     
     private var logoURL: URL? {
         guard let attribution else { return nil }
@@ -358,60 +391,60 @@ struct WeatherAttributionView: View {
     }
     
     var body: some View {
-        ZStack {
-            if didLoadAttribution, let attribution {
-                VStack(spacing: 6) {
-                    // Apple Weather logo/trademark
-                    if let logoURL {
-                        AsyncImage(url: logoURL) { image in
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 16)
-                        } placeholder: {
-                            appleWeatherText
-                        }
-                    } else {
-                        appleWeatherText
-                    }
-                    
-                    // Modification notice (required for value-added services)
-                    Text("Data has been modified")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    // Link to data sources (required)
-                    Link(destination: attribution.legalPageURL) {
-                        HStack(spacing: 4) {
-                            Text("Other Data Sources")
-                                .font(.caption)
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+        Group {
+            if isLoaded, let attribution {
+                attributionContent(attribution)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
-                // Loading state
                 ProgressView()
                     .controlSize(.small)
                     .transition(.opacity)
             }
         }
-        // Keep the footer from jumping in height when content loads.
         .frame(minHeight: 44)
         .task {
-            guard !didLoadAttribution else { return }
-            let fetched = try? await WeatherService.shared.attribution
-            withAnimation(.easeInOut(duration: 0.35)) {
-                attribution = fetched
-                didLoadAttribution = fetched != nil
+            guard !isLoaded else { return }
+            if let fetched = try? await WeatherService.shared.attribution {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    attribution = fetched
+                    isLoaded = true
+                }
             }
         }
     }
     
-    private var appleWeatherText: some View {
+    private func attributionContent(_ attribution: WeatherAttribution) -> some View {
+        VStack(spacing: 6) {
+            if let logoURL {
+                AsyncImage(url: logoURL) { image in
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 16)
+                } placeholder: {
+                    appleWeatherFallback
+                }
+            } else {
+                appleWeatherFallback
+            }
+            
+            Text("Data has been modified")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Link(destination: attribution.legalPageURL) {
+                HStack(spacing: 4) {
+                    Text("Other Data Sources")
+                        .font(.caption)
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+    
+    private var appleWeatherFallback: some View {
         HStack(spacing: 4) {
             Image(systemName: "apple.logo")
                 .font(.caption)
@@ -423,6 +456,8 @@ struct WeatherAttributionView: View {
     }
 }
 
+// MARK: - ToolbarButtonStyle
+
 struct ToolbarButtonStyle: ButtonStyle {
     var tint: Color?
     
@@ -431,10 +466,7 @@ struct ToolbarButtonStyle: ButtonStyle {
             .foregroundStyle(tint ?? .primary)
             .frame(width: 20, height: 20)
             .padding(10)
-            .background(
-                Circle()
-                    .fill(.white)
-            )
+            .background(Circle().fill(.white))
             .clipShape(Circle())
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
@@ -446,15 +478,15 @@ extension View {
     @ViewBuilder
     func toolbarButtonStyle(tint: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {
-            if let tint = tint {
+            if let tint {
                 self.tint(tint)
             } else {
                 self
             }
         } else if #available(iOS 18.0, *) {
-            self.buttonStyle(ToolbarButtonStyle(tint: tint))  // Style only on iOS 18-25
+            self.buttonStyle(ToolbarButtonStyle(tint: tint))
         } else {
-            self  // No styling on iOS 17 and earlier
+            self
         }
     }
 }

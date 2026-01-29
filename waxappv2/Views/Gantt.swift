@@ -135,93 +135,60 @@ func assignRows<ID: Hashable, T>(
 
 func clamp(_ x: Double, _ a: Double, _ b: Double) -> Double { min(max(x, a), b) }
 
+// MARK: - Layout Constants
+
+private enum GanttLayoutConstants {
+    static let minTemp: Double = -30
+    static let maxTemp: Double = 30
+    static let rowHeight: Double = 40
+    static let barHeight: Double = 20
+    static let chartWidth: Double = 3000
+    static let axisHeight: Double = 80
+    static let barsTopPadding: Double = 5
+    static let temperatureDebounceNanoseconds: UInt64 = 300_000_000
+    
+    static var degreesCount: Int {
+        Int(maxTemp - minTemp) + 1
+    }
+    
+    static var pxPerDegree: Double {
+        chartWidth / Double(degreesCount)
+    }
+    
+    static var tickXOffset: Double {
+        pxPerDegree / 2.0
+    }
+    
+    static var contentWidth: Double {
+        Double(degreesCount) * pxPerDegree
+    }
+    
+    static func contentHeight(forRowCount rowCount: Int) -> Double {
+        Double(rowCount) * rowHeight + axisHeight + barsTopPadding
+    }
+}
+
 // MARK: - View
 
 struct Gantt: View {
-    /// Temperature in °C, as stored in RecommendationStore.
     @Environment(RecommendationStore.self) private var recStore
-    
-    var selectedWaxes : [SwixWax]
-
-    // Discrete scroll position (degree) for iOS 17 scroll APIs.
-    @State private var scrollPosition: Int?
-    @State private var isProgrammaticScroll: Bool = false
-    @State private var pendingProgrammaticTarget: Int? = nil
-    @State private var scrollAnimationToken: UUID = UUID()
-    @State private var temperatureDebounceTask: Task<Void, Never>? = nil
-
     @Environment(\.displayScale) private var displayScale
-
-    let minTemp: Double = -30
-    let maxTemp: Double = 30
-
-    // Set bar and row height to match SnowTypeButtons (vertical padding 8 + font ~16 + 8 = 32, use 36 for comfort)
-    let rowHeight: Double = 40
-    let barHeight: Double = 20
-    let chartWidth: Double = 3000
-
-    private let axisHeight: Double = 80
-    private let temperatureDebounceNanoseconds: UInt64 = 300_000_000 // 300ms debounce for incoming temperature updates
     
-    // Computed properties to access environment values
-    private var temperature: Int {
-        recStore.effectiveTemperature
-    }
+    let selectedWaxes: [SwixWax]
+
+    @State private var scrollPosition: Int?
+    @State private var isProgrammaticScroll = false
+    @State private var pendingProgrammaticTarget: Int?
+    @State private var scrollAnimationToken = UUID()
+    @State private var temperatureDebounceTask: Task<Void, Never>?
+
+    private typealias Layout = GanttLayoutConstants
     
-    private var snowType: SnowType {
-        recStore.effectiveSnowType
-    }
+    private var temperature: Int { recStore.effectiveTemperature }
+    private var snowType: SnowType { recStore.effectiveSnowType }
 
-    private func normalizeTemperature(_ t: Double) -> Int {
-        Int(clamp(t.rounded(), minTemp, maxTemp))
-    }
-
-    private func clampedTemperature(_ t: Int) -> Int {
-        normalizeTemperature(Double(t))
-    }
-
-    private func x(for temperature: Int, pxPerDegree: Double) -> CGFloat {
-        let t = clamp(Double(temperature), minTemp, maxTemp)
-        return CGFloat((t - minTemp) * pxPerDegree)
-    }
-
-    private func animationSpec() -> Animation { .easeInOut(duration: 0.35) }
-
-    private func driveProgrammaticScroll() {
-        guard let target = pendingProgrammaticTarget else { return }
-        // Start a new programmatic scroll towards the latest target.
-        isProgrammaticScroll = true
-        scrollAnimationToken = UUID() // new token to identify this run
-        let token = scrollAnimationToken
-        withAnimation(animationSpec()) {
-            scrollPosition = target
-        }
-        // Schedule completion check after the animation duration. If a newer target arrived meanwhile, run again.
-        let delay = 0.36
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            // Only continue if this is still the latest animation run.
-            guard token == scrollAnimationToken else { return }
-            // If during the animation a new target was set and it's different from current, animate again.
-            if let latest = pendingProgrammaticTarget, latest != scrollPosition {
-                // Continue chaining to the latest target.
-                driveProgrammaticScroll()
-            } else {
-                // We reached the target; clear pending and allow user-driven updates to propagate.
-                pendingProgrammaticTarget = nil
-                isProgrammaticScroll = false
-            }
-        }
-    }
-
-    var body: some View {
-        // The visual grid has one column per integer degree, inclusive of endpoints.
-        let degreesCount = Int(maxTemp - minTemp) + 1
-        let pxPerDegree: Double = chartWidth / Double(degreesCount)
-
-        let tickXOffset: Double = pxPerDegree / 2.0
-        let tickLineWidth: Double = max(1.0 / Double(displayScale), 1)
-
-        let ganttTasks: [GanttTask<String, SwixWax>] = selectedWaxes.compactMap { wax -> GanttTask<String, SwixWax>? in
+    private var placedTasks: (placements: [PlacedGanttTask<String, SwixWax>], rowsCount: Int) {
+        let ganttTasks: [GanttTask<String, SwixWax>] = selectedWaxes.compactMap { wax in
             guard let r = wax.combinedRange(for: snowType) else { return nil }
             return GanttTask(
                 id: wax.id,
@@ -230,142 +197,221 @@ struct Gantt: View {
                 renderItem: wax
             )
         }
+        return assignRows(tasks: ganttTasks)
+    }
+    
+    private var requiredContentHeight: Double {
+        let rowCount = max(1, placedTasks.rowsCount)
+        return Layout.contentHeight(forRowCount: rowCount)
+    }
 
-        let placedTasks = assignRows(tasks: ganttTasks)
-        let maxRow = placedTasks.placements.map { $0.row }.max() ?? 0
-
-        let contentHeight: Double = Double(maxRow + 1) * rowHeight + 40
-        // Content width should match the scrollable degree columns exactly.
-        let contentWidth: Double = Double(degreesCount) * pxPerDegree
+    var body: some View {
+        let tickLineWidth = max(1.0 / Double(displayScale), 1)
 
         GeometryReader { proxy in
-            // Use the larger of calculated content height or available height from parent
-            let effectiveHeight = max(contentHeight + axisHeight, proxy.size.height)
-            
-            let chartContent: AnyView = {
-                AnyView(
-                    ZStack(alignment: .topLeading) {
-                        // Discrete degree markers used for snapping + scrollPosition.
-                        HStack(spacing: 0) {
-                            ForEach(Int(minTemp)...Int(maxTemp), id: \.self) { degree in
-                                Color.clear
-                                    .frame(width: pxPerDegree, height: 1)
-                                    .id(degree)
-                            }
-                        }
-                        .scrollTargetLayout()
-
-                        // Bars
-                        ForEach(Array(placedTasks.placements.enumerated()), id: \.element.id) { index, task in
-                            let start = clamp(Double(task.start), minTemp, maxTemp)
-                            let end = clamp(Double(task.end), minTemp, maxTemp)
-                            let wax = task.renderItem
-
-                            if end > start {
-                                let x = (start - minTemp) * pxPerDegree + tickXOffset
-                                let width = max(1.0, (end - start) * pxPerDegree)
-                                let y = Double(task.row) * rowHeight + axisHeight
-                                
-                                let baseColor = Color(hex: wax.primaryColor) ?? .blue
-                                let secondaryColor = wax.secondaryColor.flatMap { Color(hex: $0) }
-
-                                GanttBarView(
-                                    wax: wax,
-                                    baseColor: baseColor,
-                                    secondaryColor: secondaryColor,
-                                    barHeight: barHeight
-                                )
-                                .frame(width: width, height: barHeight)
-                                .offset(x: x, y: y)
-                                .transition(.asymmetric(
-                                    insertion: .opacity
-                                        .combined(with: .scale(scale: 0.9, anchor: .leading))
-                                        .combined(with: .offset(x: -20)),
-                                    removal: .opacity
-                                        .combined(with: .scale(scale: 0.9, anchor: .trailing))
-                                ))
-                            }
-                        }
-                        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: snowType)
-                        .padding(.top, 5)
-
-                        // XAxisView on top so labels are always visible
-                        XAxisView(minTemp: minTemp, maxTemp: maxTemp, pxPerDegree: pxPerDegree, tickXOffset: tickXOffset, tickLineWidth: tickLineWidth,axisHeight: axisHeight, centerX: (Double(clampedTemperature(scrollPosition ?? temperature)) - minTemp + 0.5) * pxPerDegree)
-                            .frame(height: 50)
-                    }
-                    .frame(width: contentWidth, height: max(contentHeight + axisHeight, effectiveHeight), alignment: .topLeading)
-                )
-            }()
-
             ZStack(alignment: .top) {
-       
                 ScrollView(.horizontal, showsIndicators: false) {
-                    chartContent
+                    chartContent(tickLineWidth: tickLineWidth, availableHeight: proxy.size.height)
                 }
-                .scrollTargetBehavior(SnapTopClosesestDegree(snapModulus: pxPerDegree, maxColumnIndex: degreesCount - 1))
+                .scrollTargetBehavior(SnapToClosestDegree(
+                    snapModulus: Layout.pxPerDegree,
+                    maxColumnIndex: Layout.degreesCount - 1
+                ))
                 .scrollPosition(id: $scrollPosition, anchor: .center)
                 .defaultScrollAnchor(.center)
                 .contentMargins(.horizontal, proxy.size.width / 2, for: .scrollContent)
                 .sensoryFeedback(.increase, trigger: scrollPosition)
-                // Parent -> Gantt: when temperature changes externally, scroll to it.
-                .onChange(of: temperature) { _, _ in
-                    // Debounce incoming temperature updates to coalesce multiple quick changes (e.g., cached value -> fresh location value).
-                    temperatureDebounceTask?.cancel()
-                    temperatureDebounceTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: temperatureDebounceNanoseconds)
-                        // Use the latest temperature value at the end of the debounce window.
-                        let target = clampedTemperature(temperature)
-                        // If we're already targeting this position and no programmatic target is pending, do nothing.
-                        if scrollPosition == target && pendingProgrammaticTarget == nil { return }
-
-                        // Record the latest desired target and (re)drive programmatic scrolling.
-                        pendingProgrammaticTarget = target
-                        // Always drive programmatic scroll — if one is in progress it will retarget mid-flight.
-                        driveProgrammaticScroll()
-                    }
-                }
-
-                // Gantt -> Parent: when the scroll position changes (any input), update temperature.
-                .onChange(of: scrollPosition) { _, newValue in
-                    guard let degree = newValue else { return }
-                    let clamped = clampedTemperature(degree)
-
-                    if isProgrammaticScroll {
-                        // During programmatic scroll, keep temperature in sync only if this is the final target.
-                        if let pending = pendingProgrammaticTarget, pending == clamped {
-                            if temperature != clamped { recStore.effectiveTemperature = clamped }
-                        }
-                        return
-                    }
-                    // User-driven update
-                    if clamped != temperature {
-                        recStore.effectiveTemperature = clamped
-                    }
-                }
-
-                .onAppear {
-                    let initial = clampedTemperature(temperature)
-                    scrollPosition = initial
-                    pendingProgrammaticTarget = nil
-                    isProgrammaticScroll = false
-                }
+                .onChange(of: temperature, handleTemperatureChange)
+                .onChange(of: scrollPosition, handleScrollPositionChange)
+                .onAppear(perform: initializeScrollPosition)
                 .onDisappear { temperatureDebounceTask?.cancel() }
                 
-                // Temperature gauge
                 TemperatureGauge(temperature: temperature)
                     .padding(.top, 10)
-                    .frame(maxHeight: .infinity, alignment: .top)
-           
             }
-            .frame(maxHeight: .infinity) // Allow ZStack to fill available height
-    
         }
-        .coordinateSpace(name: "gantt-space")
-        .frame(minHeight: contentHeight + axisHeight + 40) // Minimum height based on content, can grow with parent's minHeight
+        .frame(minHeight: requiredContentHeight)
+    }
+    
+    // MARK: - Chart Content
+    
+    @ViewBuilder
+    private func chartContent(tickLineWidth: Double, availableHeight: Double) -> some View {
+        let effectiveHeight = max(requiredContentHeight, availableHeight)
+        
+        ZStack(alignment: .topLeading) {
+            // Invisible degree markers for scroll snapping
+            degreeMarkers
+            
+            // Wax bars
+            barsContent
+            
+            // Temperature axis
+            XAxisView(
+                minTemp: Layout.minTemp,
+                maxTemp: Layout.maxTemp,
+                pxPerDegree: Layout.pxPerDegree,
+                tickXOffset: Layout.tickXOffset,
+                tickLineWidth: tickLineWidth,
+                axisHeight: Layout.axisHeight,
+                centerX: centerX(for: scrollPosition ?? temperature)
+            )
+            .frame(height: 50)
+        }
+        .frame(width: Layout.contentWidth, height: effectiveHeight, alignment: .topLeading)
+    }
+    
+    private var degreeMarkers: some View {
+        HStack(spacing: 0) {
+            ForEach(Int(Layout.minTemp)...Int(Layout.maxTemp), id: \.self) { degree in
+                Color.clear
+                    .frame(width: Layout.pxPerDegree, height: 1)
+                    .id(degree)
+            }
+        }
+        .scrollTargetLayout()
+    }
+    
+    private var barsContent: some View {
+        ForEach(placedTasks.placements) { task in
+            barView(for: task)
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: snowType)
+        .padding(.top, Layout.barsTopPadding)
+    }
+    
+    @ViewBuilder
+    private func barView(for task: PlacedGanttTask<String, SwixWax>) -> some View {
+        let start = clamp(Double(task.start), Layout.minTemp, Layout.maxTemp)
+        let end = clamp(Double(task.end), Layout.minTemp, Layout.maxTemp)
+        let wax = task.renderItem
+
+        if end > start {
+            let xPos = (start - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
+            let width = max(1.0, (end - start) * Layout.pxPerDegree)
+            let yPos = Double(task.row) * Layout.rowHeight + Layout.axisHeight
+            
+            let baseColor = Color(hex: wax.primaryColor) ?? .blue
+            let secondaryColor = wax.secondaryColor.flatMap { Color(hex: $0) }
+
+            GanttBarView(
+                wax: wax,
+                baseColor: baseColor,
+                secondaryColor: secondaryColor,
+                barHeight: Layout.barHeight
+            )
+            .frame(width: width, height: Layout.barHeight)
+            .offset(x: xPos, y: yPos)
+            .transition(.asymmetric(
+                insertion: .opacity
+                    .combined(with: .scale(scale: 0.9, anchor: .leading))
+                    .combined(with: .offset(x: -20)),
+                removal: .opacity
+                    .combined(with: .scale(scale: 0.9, anchor: .trailing))
+            ))
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private func centerX(for temperature: Int) -> Double {
+        (Double(clampedTemperature(temperature)) - Layout.minTemp + 0.5) * Layout.pxPerDegree
+    }
+    
+    private func clampedTemperature(_ t: Int) -> Int {
+        Int(clamp(Double(t).rounded(), Layout.minTemp, Layout.maxTemp))
+    }
+    
+    // MARK: - Scroll Handling
+    
+    private func initializeScrollPosition() {
+        scrollPosition = clampedTemperature(temperature)
+        pendingProgrammaticTarget = nil
+        isProgrammaticScroll = false
+    }
+    
+    private func handleTemperatureChange(_ oldValue: Int, _ newValue: Int) {
+        temperatureDebounceTask?.cancel()
+        temperatureDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Layout.temperatureDebounceNanoseconds)
+            
+            let target = clampedTemperature(temperature)
+            guard scrollPosition != target || pendingProgrammaticTarget != nil else { return }
+
+            pendingProgrammaticTarget = target
+            driveProgrammaticScroll()
+        }
+    }
+    
+    private func handleScrollPositionChange(_ oldValue: Int?, _ newValue: Int?) {
+        guard let degree = newValue else { return }
+        let clamped = clampedTemperature(degree)
+
+        if isProgrammaticScroll {
+            if let pending = pendingProgrammaticTarget, pending == clamped {
+                if temperature != clamped { recStore.effectiveTemperature = clamped }
+            }
+            return
+        }
+        
+        if clamped != temperature {
+            recStore.effectiveTemperature = clamped
+        }
+    }
+    
+    private func driveProgrammaticScroll() {
+        guard let target = pendingProgrammaticTarget else { return }
+        
+        isProgrammaticScroll = true
+        scrollAnimationToken = UUID()
+        let token = scrollAnimationToken
+        
+        withAnimation(.easeInOut(duration: 0.35)) {
+            scrollPosition = target
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) {
+            guard token == scrollAnimationToken else { return }
+            
+            if let latest = pendingProgrammaticTarget, latest != scrollPosition {
+                driveProgrammaticScroll()
+            } else {
+                pendingProgrammaticTarget = nil
+                isProgrammaticScroll = false
+            }
+        }
     }
 }
 
-// MARK: - Snapping
+// MARK: - Snapping Behavior
+
+struct SnapToClosestDegree: ScrollTargetBehavior {
+    let snapModulus: Double
+    let maxColumnIndex: Int
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        guard snapModulus > 0 else { return }
+
+        let velocity = context.velocity.dx
+        let dampingFactor: Double = 0.03
+        let maxExtraColumns: Double = 0.5
+        
+        let extraDistance = min(abs(velocity) * dampingFactor, maxExtraColumns * snapModulus)
+        let signedExtra = velocity > 0 ? extraDistance : -extraDistance
+        
+        let centerX = target.rect.midX + signedExtra
+        
+        var columnIndex = Int(((centerX - snapModulus / 2) / snapModulus).rounded())
+        columnIndex = max(0, min(columnIndex, maxColumnIndex))
+        
+        let snappedCenterX = (Double(columnIndex) + 0.5) * snapModulus
+        let dx = snappedCenterX - target.rect.midX
+
+        target.rect = target.rect.offsetBy(dx: dx, dy: 0)
+    }
+}
+
+// MARK: - Bar View
 
 struct GanttBarView: View {
     let wax: SwixWax
@@ -374,9 +420,7 @@ struct GanttBarView: View {
     let barHeight: Double
     
     private var gradientColors: [Color] {
-        let lighterColor = baseColor.opacity(0.93)
-        let darkerColor = baseColor.opacity(0.72)
-        return [lighterColor, darkerColor]
+        [baseColor.opacity(0.93), baseColor.opacity(0.72)]
     }
     
     private var textColor: Color {
@@ -385,28 +429,9 @@ struct GanttBarView: View {
     
     var body: some View {
         HStack(spacing: 6) {
-            // Wax icon
-            Group {
-                if wax.kind == .klister {
-                    KlisterCanView(
-                        bodyColor: baseColor
-                    )
-                } else {
-                    WaxCanGraphic(
-                        bodyFill: LinearGradient(
-                            colors: [baseColor, baseColor],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        showBand: secondaryColor != nil,
-                        bandPrimaryColor: secondaryColor ?? baseColor,
-                        bandSecondaryColor: secondaryColor
-                    )
-                }
-            }
-            .frame(width: barHeight * 0.5, height: barHeight * 0.85)
+            waxIcon
+                .frame(width: barHeight * 0.5, height: barHeight * 0.85)
             
-            // Wax name
             Text(wax.name)
                 .font(.caption)
                 .fontWeight(.medium)
@@ -419,58 +444,31 @@ struct GanttBarView: View {
         .padding(.vertical, 8)
         .background {
             Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: gradientColors,
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .fill(LinearGradient(colors: gradientColors, startPoint: .top, endPoint: .bottom))
                 .overlay {
                     Capsule()
-                        .strokeBorder(
-                            baseColor.opacity(0.18),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(baseColor.opacity(0.18), lineWidth: 1)
                 }
         }
         .shadow(color: .black.opacity(0.10), radius: 1.5, x: 0, y: 1)
     }
-}
-
-struct SnapTopClosesestDegree: ScrollTargetBehavior {
-    var snapModulus: Double
-    var maxColumnIndex: Int
-
-    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        guard snapModulus > 0 else { return }
-
-        // Dampen velocity for a "sticky" feel - limits how far the scroll travels
-        let velocity = context.velocity.dx
-        let dampingFactor: Double = 0.03
-        let maxExtraColumns: Double = 0.5
-        
-        // Calculate how many extra columns to travel based on velocity
-        let extraDistance = min(abs(velocity) * dampingFactor, maxExtraColumns * snapModulus)
-        let signedExtra = velocity > 0 ? extraDistance : -extraDistance
-        
-        let centerX = target.rect.midX + signedExtra
-        
-        // Snap to center of each degree column.
-        // Column centers are at: 0.5*snapModulus, 1.5*snapModulus, 2.5*snapModulus, ...
-        // i.e., (N + 0.5) * snapModulus for integer N.
-        // To find nearest: subtract half, round to nearest integer, add half back.
-        var columnIndex = Int(((centerX - snapModulus / 2) / snapModulus).rounded())
-        // Clamp to valid column range
-        columnIndex = max(0, min(columnIndex, maxColumnIndex))
-        let snappedCenterX = (Double(columnIndex) + 0.5) * snapModulus
-        let dx = snappedCenterX - target.rect.midX
-
-        target.rect = target.rect.offsetBy(dx: dx, dy: 0)
+    
+    @ViewBuilder
+    private var waxIcon: some View {
+        if wax.kind == .klister {
+            KlisterCanView(bodyColor: baseColor)
+        } else {
+            WaxCanGraphic(
+                bodyFill: LinearGradient(colors: [baseColor, baseColor], startPoint: .top, endPoint: .bottom),
+                showBand: secondaryColor != nil,
+                bandPrimaryColor: secondaryColor ?? baseColor,
+                bandSecondaryColor: secondaryColor
+            )
+        }
     }
 }
 
-
+// MARK: - Preview
 
 #Preview {
     @Previewable @State var appState = AppState()
@@ -481,4 +479,3 @@ struct SnapTopClosesestDegree: ScrollTargetBehavior {
             .environment(appState.recommendation)
     }
 }
-
