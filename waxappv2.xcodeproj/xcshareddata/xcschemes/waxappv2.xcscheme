@@ -75,7 +75,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../GetGrip.storekit">
+         identifier = "../../waxappv2/GetGrip.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

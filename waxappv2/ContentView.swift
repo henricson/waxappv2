@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Observation
+import CoreLocation
 
 enum Tabs {
     case waxes
@@ -16,11 +17,13 @@ enum Tabs {
 struct ContentView: View {
     
     @Environment(StoreManager.self) private var storeManager: StoreManager
+    @Environment(LocationStore.self) private var locStore
 
     @State private var selectedTab: Tabs = .waxes
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @State private var showTrialWarning = false
     @State private var showPaywall = false
+    @State private var hasRequestedInitialLocation = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,6 +38,17 @@ struct ContentView: View {
             Task {
                 // Fetch trial start date from CloudKit
                 await storeManager.performLaunchSync()
+            }
+            
+            // Request location immediately for returning users
+            if hasSeenOnboarding && !hasRequestedInitialLocation {
+                requestInitialLocation()
+            }
+        }
+        .onChange(of: hasSeenOnboarding) { oldValue, newValue in
+            // When onboarding is dismissed (false -> true), request location
+            if !oldValue && newValue && !hasRequestedInitialLocation {
+                requestInitialLocation()
             }
         }
         // MARK: Trial is about to end
@@ -80,6 +94,27 @@ struct ContentView: View {
             .interactiveDismissDisabled()
         }
     }
+    
+    // MARK: - Location Request
+    
+    private func requestInitialLocation() {
+        hasRequestedInitialLocation = true
+        
+        // Check current authorization status
+        switch locStore.authorizationStatus {
+        case .notDetermined:
+            // Request authorization (will trigger location request in LocationStore delegate)
+            locStore.requestAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Already authorized, request location directly
+            locStore.requestLocation()
+        case .denied, .restricted:
+            // Don't request - user has already denied or is restricted
+            break
+        @unknown default:
+            break
+        }
+    }
 }
 
 #Preview {
@@ -94,9 +129,4 @@ struct ContentView: View {
         .environment(app.waxSelection)
         .environment(app.recommendation)
         .environment(app.storeManager)
-        .onAppear {
-            // Request location when preview appears
-            // This will trigger the full chain: location → weather → recommendations
-            app.location.requestLocation()
-        }
 }

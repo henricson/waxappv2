@@ -9,12 +9,26 @@
       }
     ]
   },
-  "identifier" : "86AFDB5F",
+  "identifier" : "75FF1C03",
   "nonRenewingSubscriptions" : [
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "5.99",
+      "familyShareable" : true,
+      "internalID" : "6757531110",
+      "localizations" : [
+        {
+          "description" : "One time purchase to unlock the app",
+          "displayName" : "Unlock App",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.waxappv2.lifetime",
+      "referenceName" : "Unlimited Access",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_applicationInternalID" : "6754203402",
@@ -24,7 +38,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 791380100.32067704,
+    "_lastSynchronizedDate" : 791380886.221843,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",

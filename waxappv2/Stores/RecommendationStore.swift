@@ -23,8 +23,8 @@ final class RecommendationStore {
     // MARK: - Computed Properties (Reactive)
     
     /// Effective temperature for recommendations
-    private var weatherKitTemperature: Int = 0
-    var effectiveTemperature: Int = 0
+    private var weatherKitTemperature: Int = -7
+    var effectiveTemperature: Int = -7
     
     private var weatherKitSnowType : SnowType = .fineGrained
     var effectiveSnowType : SnowType = .fineGrained
