@@ -1,10 +1,3 @@
-//
-//  LocationSourceIndicator.swift
-//  waxappv2
-//
-//  Created by Herman Henriksen on 13/01/2026.
-//
-
 import SwiftUI
 
 /// A pill-shaped indicator showing whether data is from GPS location or manually selected location
@@ -23,7 +16,7 @@ struct LocationSourceIndicator: View {
     }
     
     private var text: String {
-        isManualOverride ? NSLocalizedString("At selected location", comment: "Label indicating that posiiton is selected location") : NSLocalizedString("At your location", comment: "Label indicating that position is current location")
+        isManualOverride ? NSLocalizedString("At selected location", comment: "Label indicating that position is selected location") : NSLocalizedString("At your location", comment: "Label indicating that position is current location")
     }
     
     var body: some View {
@@ -55,6 +48,8 @@ struct LocationSourceIndicator: View {
         }
     }
 }
+
+
 
 #Preview("GPS Location") {
     VStack(spacing: 20) {

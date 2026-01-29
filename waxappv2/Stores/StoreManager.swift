@@ -28,6 +28,7 @@ enum TrialSourceStatus: Equatable {
     var isPurchased: Bool = false
     var products: [Product] = []
     var isPurchasing: Bool = false
+    var productsError: String?
 
     /// Local cache of trial start date for offline enforcement
     private(set) var cachedTrialStartDate: Date?
@@ -144,7 +145,7 @@ enum TrialSourceStatus: Equatable {
         // Fetch products and check purchase status FIRST
         Task {
             await updatePurchasedStatus()
-            await fetchProducts()
+            await retryFetchProducts() // Use retry mechanism
             
             // Mark as initialized after initial checks complete
             await MainActor.run {
@@ -350,12 +351,53 @@ enum TrialSourceStatus: Equatable {
 
     func fetchProducts() async {
         do {
+            print("🛒 Fetching products for IDs: \(productIds)")
             let products = try await Product.products(for: productIds)
-            self.products = products
-            print("✅ Loaded \(products.count) product(s)")
+            await MainActor.run {
+                self.products = products
+                self.productsError = nil
+            }
+            
+            if products.isEmpty {
+                let errorMsg = "No products found. Check: 1) Product ID matches App Store Connect 2) Paid Apps Agreement signed 3) Product is 'Ready to Submit'"
+                print("⚠️ \(errorMsg)")
+                await MainActor.run {
+                    self.productsError = errorMsg
+                }
+            } else {
+                print("✅ Loaded \(products.count) product(s)")
+                for product in products {
+                    print("   - \(product.id): \(product.displayName) (\(product.displayPrice))")
+                }
+            }
         } catch {
-            print("❌ Failed to fetch products: \(error)")
+            let errorMsg = "Failed to load products: \(error.localizedDescription)"
+            print("❌ \(errorMsg)")
+            await MainActor.run {
+                self.productsError = errorMsg
+            }
         }
+    }
+    
+    /// Retry fetching products with exponential backoff
+    func retryFetchProducts(maxAttempts: Int = 3) async {
+        for attempt in 1...maxAttempts {
+            await fetchProducts()
+            
+            // If we successfully loaded products, stop retrying
+            if !products.isEmpty {
+                return
+            }
+            
+            // Wait before retrying (exponential backoff)
+            if attempt < maxAttempts {
+                let delay = Double(attempt * attempt) // 1s, 4s, 9s
+                print("⏳ Retrying in \(delay) seconds... (attempt \(attempt)/\(maxAttempts))")
+                try? await Task.sleep(for: .seconds(delay))
+            }
+        }
+        
+        print("❌ Failed to load products after \(maxAttempts) attempts")
     }
 
     func purchase(_ product: Product) async throws {

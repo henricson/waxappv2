@@ -8,9 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
-		5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */; };
 		5E47AB6F2F2A548B0022E420 /* WeatherAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */; };
 		5E863B4D2F165000004DFAA4 /* TemperatureGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */; };
+		5E9A26542F2B80810096A65C /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5E9A26532F2B80810096A65C /* GetGrip.storekit */; };
 		5EEB329A2F2A4E550061CDC0 /* WeatherAbstractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */; };
 		5EEB329C2F2A4E580061CDC0 /* WeatherKitFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */; };
 /* End PBXBuildFile section */
@@ -34,9 +34,9 @@
 
 /* Begin PBXFileReference section */
 		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
-		5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAnalyzer.swift; sourceTree = "<group>"; };
 		5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureGauge.swift; sourceTree = "<group>"; };
+		5E9A26532F2B80810096A65C /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAbstractions.swift; sourceTree = "<group>"; };
 		5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherKitFactory.swift; sourceTree = "<group>"; };
 		5EFB6CF02EA40981005C4E5D /* waxappv2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = waxappv2.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -103,7 +103,7 @@
 		5EFB6CE72EA40981005C4E5D = {
 			isa = PBXGroup;
 			children = (
-				5E31FED72F0FD65F00BCD04E /* GetGrip.storekit */,
+				5E9A26532F2B80810096A65C /* GetGrip.storekit */,
 				5EFB6CF22EA40981005C4E5D /* waxappv2 */,
 				5EFB6D002EA40982005C4E5D /* waxappv2Tests */,
 				5EFB6D0A2EA40982005C4E5D /* waxappv2UITests */,
@@ -247,7 +247,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5E31FED82F0FD65F00BCD04E /* GetGrip.storekit in Resources */,
+				5E9A26542F2B80810096A65C /* GetGrip.storekit in Resources */,
 				5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

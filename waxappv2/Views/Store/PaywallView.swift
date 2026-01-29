@@ -45,7 +45,25 @@ struct PaywallView: View {
                     .padding(.horizontal)
 
                     VStack(spacing: 16) {
-                        if let product = storeManager.products.first {
+                        if let error = storeManager.productsError {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.orange)
+                                
+                                Text("Unable to Load Products")
+                                    .font(.headline)
+
+                                
+                                Button("Try Again") {
+                                    Task {
+                                        await storeManager.fetchProducts()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            .padding()
+                        } else if let product = storeManager.products.first {
                             Button {
                                 Task {
                                     try? await storeManager.purchase(product)
@@ -86,6 +104,7 @@ struct PaywallView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 6)
                     }
                     .padding(.horizontal)

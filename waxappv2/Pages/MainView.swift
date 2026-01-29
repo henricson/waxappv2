@@ -9,6 +9,7 @@ import SwiftUI
 import CoreLocation
 import TipKit
 import Observation
+import WeatherKit
 
 // MARK: - TipKit
 
@@ -125,8 +126,6 @@ struct MainView: View {
         Gantt(
             selectedWaxes: swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
         )
-        .frame(maxHeight: .infinity) // Tell it to expand
-        .layoutPriority(-1) // Give header/snow sections priority
         .overlay(alignment: .top) {
             TipView(scrollTip, arrowEdge: .top)
                 .padding(.horizontal)
@@ -152,7 +151,9 @@ struct MainView: View {
     }
 
     private var mainContent: some View {
-        GeometryReader { geometry in
+        ZStack {
+            backgroundView
+
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     headerSection
@@ -160,13 +161,24 @@ struct MainView: View {
                     snowTypeSection
                     
                     ganttSection
+                    
+                    // WeatherKit attribution footer
+                    if recStore.isSameAsWeatherKit {
+                        WeatherAttributionView()
+                            .padding(.top, 20)
+                    }
                 }
-                .frame(minHeight: geometry.size.height) // Make VStack fill the screen
             }
-            .background(backgroundView)
             .scrollBounceBehavior(.basedOnSize)
+            .safeAreaInset(edge: .bottom) {
+                // Reserve space for floating button so attribution is never hidden
+                Color.clear
+                    .frame(height: shouldShowPurchaseButton ? 72 : 16)
+            }
+            .animation(.easeInOut(duration: 0.3), value: recStore.isSameAsWeatherKit)
         }
     }
+
 
     // MARK: - Toolbar
 
@@ -236,22 +248,21 @@ struct MainView: View {
 
     // MARK: - Body
 
-    var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
+        var body: some View {
+            NavigationStack {
                 mainContent
-                
-                if shouldShowPurchaseButton {
-                    FloatingPurchaseButton(remainingDays: remainingTrialDays) {
-                        showPaywall = true
+                    .overlay(alignment: .bottom) {
+                        if shouldShowPurchaseButton {
+                            FloatingPurchaseButton(remainingDays: remainingTrialDays) {
+                                showPaywall = true
+                            }
+                            .padding(.bottom, 8)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
-                    .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .navigationTitle(locStore.location?.placeName ?? "")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { mainToolbar }
+                    .navigationTitle(locStore.location?.placeName ?? "")
+                    .navigationBarTitleDisplayMode(.inline)
+                .toolbar { mainToolbar }
             .sheet(isPresented: $showMapSelection) {
                 MapSelectView()
             }
@@ -279,6 +290,70 @@ struct MainView: View {
 }
 
 // MARK: - View Extension
+
+struct WeatherAttributionView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var attribution: WeatherAttribution?
+    
+    private var logoURL: URL? {
+        guard let attribution else { return nil }
+        return colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL
+    }
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            if let attribution {
+                // Apple Weather logo/trademark
+                if let logoURL {
+                    AsyncImage(url: logoURL) { image in
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 16)
+                    } placeholder: {
+                        appleWeatherText
+                    }
+                } else {
+                    appleWeatherText
+                }
+                
+                // Modification notice (required for value-added services)
+                Text("Data has been modified")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                // Link to data sources (required)
+                Link(destination: attribution.legalPageURL) {
+                    HStack(spacing: 4) {
+                        Text("Other Data Sources")
+                            .font(.caption)
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            } else {
+                // Loading state
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .task {
+            attribution = try? await WeatherService.shared.attribution
+        }
+    }
+    
+    private var appleWeatherText: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "apple.logo")
+                .font(.caption)
+            Text("Weather")
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+        .foregroundStyle(.secondary)
+    }
+}
 
 struct ToolbarButtonStyle: ButtonStyle {
     var tint: Color?
