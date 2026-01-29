@@ -126,39 +126,33 @@ private extension MainView {
     var mainContent: some View {
         ZStack {
             backgroundGradient
-            
-            GeometryReader { geometry in
-                let availableGanttHeight = calculateAvailableGanttHeight(in: geometry)
-                
-                ScrollView(.vertical) {
-                    VStack(spacing: 0) {
-                        headerSection
-                        snowTypeSection
-                        ganttSection
-                            .frame(minHeight: availableGanttHeight)
-                        attributionSection
-                    }
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    headerSection
+                    snowTypeSection
+                    ganttSection.frame(minHeight: 150)
+                    attributionSection
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .contentMargins(.bottom, shouldShowPurchaseButton ? LayoutConstants.floatingButtonHeight : 0, for: .scrollContent)
             }
+            
         }
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom) {
+            // Keep the floating button pinned above the Tab Bar / home indicator
             floatingPurchaseButton
+                .padding(.horizontal)
+                .padding(.bottom, 10)
+                .zIndex(1)
+        }
+        .overlay(alignment: .top) {
+            // Show the tip above all content (and above the floating button)
+            TipView(scrollTip, arrowEdge: .top)
+                .padding(.horizontal)
+                .padding(.top, LayoutConstants.headerHeight + LayoutConstants.snowTypeSectionHeight + 24 + 70)
         }
         .animation(.easeInOut(duration: 0.35), value: showAttribution)
         .animation(.easeInOut(duration: 0.35), value: shouldShowPurchaseButton)
     }
-    
-    func calculateAvailableGanttHeight(in geometry: GeometryProxy) -> CGFloat {
-        let fixedHeight = LayoutConstants.headerHeight
-            + LayoutConstants.snowTypeSectionHeight
-            + (shouldShowPurchaseButton ? LayoutConstants.floatingButtonHeight : 0)
-            + (showAttribution ? LayoutConstants.attributionHeight : 0)
-        
-        let available = geometry.size.height - fixedHeight
-        return max(LayoutConstants.minimumGanttHeight, available)
-    }
+
 }
 
 // MARK: - View Components
@@ -240,11 +234,6 @@ private extension MainView {
 
     var ganttSection: some View {
         Gantt(selectedWaxes: selectedWaxes)
-            .overlay(alignment: .top) {
-                TipView(scrollTip, arrowEdge: .top)
-                    .padding(.horizontal)
-                    .padding(.top, 70)
-            }
     }
     
     @ViewBuilder
@@ -502,3 +491,4 @@ extension View {
         .environment(app.waxSelection)
         .environment(app.storeManager)
 }
+
