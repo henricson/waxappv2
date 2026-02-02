@@ -8,340 +8,265 @@
 import Foundation
 import StoreKit
 import SwiftUI
-import Combine
-import CloudKit
-import Observation
 
-enum TrialStatus: Equatable {
-    case active
-    case warning(daysLeft: Int)
+enum AccessState: Equatable {
+    case loading
+    case notSubscribed
+    case trialActive(daysLeft: Int)
+    case subscribed
+    case gracePeriod
+    case billingRetry
     case expired
-}
+    case revoked
 
-enum TrialSourceStatus: Equatable {
-    case cloudKit
-    case localOnly
-    case initializing
-}
-
-@Observable class StoreManager {
-    var isPurchased: Bool = false
-    var products: [Product] = []
-    var isPurchasing: Bool = false
-    var productsError: String?
-
-    /// Local cache of trial start date for offline enforcement
-    private(set) var cachedTrialStartDate: Date?
-    
-    /// Indicates where the trial date is sourced from
-    private(set) var trialSourceStatus: TrialSourceStatus = .initializing
-    
-    /// Cached trial status to prevent multiple updates per frame
-    private(set) var cachedTrialStatus: TrialStatus = .active
-    
-    /// Indicates if initial purchase status check is complete
-    private(set) var isInitialized: Bool = false
-
-    private let productIds = ["com.waxappv2.lifetime"] // Replace with your actual Product ID
-
-    // Local cache keys
-    private let localCacheKey = "localTrialStartDateISO8601"
-    private let lastCloudKitSyncKey = "lastCloudKitSync"
-    private let hasCloudKitSyncedKey = "hasEverSyncedWithCloudKit"
-    private let iso8601 = ISO8601DateFormatter()
-
-    private let trialStore = CloudKitTrialStore()
-    private var updateListenerTask: Task<Void, Error>? = nil
-
-    // MARK: - Trial Date Management
-    
-    /// Returns the effective trial start date (CloudKit-synced or local cache)
-    var trialStartDate: Date {
-        // Use cached date if available (set from either local cache or CloudKit)
-        if let cachedTrialStartDate {
-            return cachedTrialStartDate
-        }
-
-        // Load from local cache (Keychain for security)
-        if let cachedDate = loadLocalCache() {
-            // Don't update @Published property here - defer to async initialization
-            print("📅 Trial date source: Keychain cache")
-            print("📅 Effective date: \(cachedDate)")
-            return cachedDate
-        }
-
-        // First run - return current date without updating @Published
-        let now = Date()
-        print("📅 Trial date source: First run initialization")
-        print("📅 Effective date: \(now)")
-        return now
-    }
-    
-    /// Load and cache the trial start date (call this during async initialization)
-    private func loadAndCacheTrialDate() {
-        if cachedTrialStartDate != nil {
-            return // Already loaded
-        }
-        
-        // Load from local cache (Keychain for security)
-        if let cachedDate = loadLocalCache() {
-            cachedTrialStartDate = cachedDate
-            print("📅 Trial date cached from Keychain: \(cachedDate)")
-            return
-        }
-
-        // First run - initialize with current date
-        let now = Date()
-        saveToLocalCache(now)
-        cachedTrialStartDate = now
-        print("📅 Trial date initialized and cached: \(now)")
-    }
-
-    var daysSinceStart: Int {
-        let calendar = Calendar.current
-        let start = trialStartDate
-        let now = Date()
-        let components = calendar.dateComponents([.day], from: start, to: now)
-        return components.day ?? 0
-    }
-
-    var trialStatus: TrialStatus {
-        return cachedTrialStatus
-    }
-    
-    /// Update the cached trial status based on current date
-    /// Skips if app is purchased
-    private func updateTrialStatus() {
-        // Skip trial status updates if app is purchased
-        if isPurchased {
-            return
-        }
-        
-        let days = daysSinceStart
-        let newStatus: TrialStatus
-        if days >= 14 {
-            newStatus = .expired
-        } else if days >= 10 {
-            newStatus = .warning(daysLeft: 14 - days)
-        } else {
-            newStatus = .active
-        }
-        
-        // Only update if status changed
-        if cachedTrialStatus != newStatus {
-            cachedTrialStatus = newStatus
-            print("📊 Trial status updated: \(newStatus)")
-        }
-    }
-
-    // MARK: - Initialization
-
-    init() {
-        print("\n🚀 StoreManager initializing...")
-        
-        // Listen for StoreKit transactions
-        updateListenerTask = listenForTransactions()
-
-        // Fetch products and check purchase status FIRST
-        Task {
-            await updatePurchasedStatus()
-            await retryFetchProducts() // Use retry mechanism
-            
-            // Mark as initialized after initial checks complete
-            await MainActor.run {
-                // Load trial date into cache if not purchased
-                if !isPurchased {
-                    loadAndCacheTrialDate()
-                }
-                
-                isInitialized = true
-                
-                if isPurchased {
-                    print("✅ App is purchased - skipping trial functionality")
-                } else {
-                    print("ℹ️ Trial mode active - will check trial status")
-                }
-                
-                print("✅ StoreManager fully initialized with purchase status")
-            }
-        }
-        
-        print("✅ StoreManager initialized\n")
-    }
-    
-    /// Call this on every app launch to sync with CloudKit
-    /// Only runs if app is not purchased
-    func performLaunchSync() async {
-        // Wait for initialization to complete first
-        while !isInitialized {
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-        
-        // Skip all trial functionality if app is purchased
-        if isPurchased {
-            print("✅ App is purchased - skipping CloudKit sync")
-            return
-        }
-        
-        print("\n🔄 Starting launch sync with CloudKit...")
-        
-        // Load trial date into cache if needed
-        loadAndCacheTrialDate()
-        
-        if let cached = cachedTrialStartDate {
-            print("📦 Loaded from local cache: \(cached)")
-        }
-        
-        // Update trial status before sync
-        updateTrialStatus()
-        
-        await syncWithCloudKit()
-        print("🔄 Launch sync completed\n")
-    }
-
-    deinit {
-        updateListenerTask?.cancel()
-    }
-
-    // MARK: - Local Cache Management
-    
-    /// Load trial start date from local Keychain cache
-    private func loadLocalCache() -> Date? {
-        guard let dateString = try? KeychainService.getString(forKey: localCacheKey),
-              let date = iso8601.date(from: dateString) else {
-            return nil
-        }
-        return date
-    }
-    
-    /// Save trial start date to local Keychain cache
-    private func saveToLocalCache(_ date: Date) {
-        let dateString = iso8601.string(from: date)
-        try? KeychainService.setString(dateString, forKey: localCacheKey)
-        
-        // Also save last sync time
-        let now = iso8601.string(from: Date())
-        try? KeychainService.setString(now, forKey: lastCloudKitSyncKey)
-    }
-    
-    /// Mark that we have successfully synced with CloudKit at least once
-    private func markCloudKitSynced() {
-        try? KeychainService.setString("true", forKey: hasCloudKitSyncedKey)
-    }
-    
-    /// Check if we have ever synced with CloudKit
-    private func hasEverSyncedWithCloudKit() -> Bool {
-        return (try? KeychainService.getString(forKey: hasCloudKitSyncedKey)) == "true"
-    }
-
-    // MARK: - CloudKit Availability Check
-    
-    /// Check if CloudKit is available (user has iCloud account signed in)
-    private func isCloudKitAvailable() async -> Bool {
-        do {
-            let status = try await CKContainer.default().accountStatus()
-            return status == .available
-        } catch {
-            print("⚠️ Could not check iCloud account status: \(error.localizedDescription)")
+    var hasAccess: Bool {
+        switch self {
+        case .trialActive, .subscribed, .gracePeriod, .billingRetry:
+            return true
+        case .loading, .notSubscribed, .expired, .revoked:
             return false
         }
     }
+}
 
-    // MARK: - CloudKit Sync
-    
-    /// Sync with CloudKit - call on every app launch
-    /// CloudKit is authoritative - if a record exists there, it always wins
-    /// Falls back to local cache if offline
-    func syncWithCloudKit() async {
-        print("\n☁️ === CloudKit Sync Starting ===")
-        
-        // Get local cached date (or create new one for first run)
-        let localDate = loadLocalCache() ?? Date()
-        print("📱 Local date: \(localDate)")
-        
-        // If no local cache existed, save the current date
-        if loadLocalCache() == nil {
-            print("💾 Saving initial local date to cache")
-            saveToLocalCache(localDate)
-            cachedTrialStartDate = localDate
-        }
-        
-        // IMPORTANT: Local cache is always saved first, so offline enforcement
-        // works from first launch, even if CloudKit is never available
-        
-        // Check if CloudKit is available
-        print("🔍 Checking iCloud availability...")
-        let cloudKitAvailable = await isCloudKitAvailable()
-        
-        if !cloudKitAvailable {
-            // No iCloud account - use local storage only
-            trialSourceStatus = .localOnly
-            print("❌ No iCloud account available")
-            print("📦 Using local storage only")
-            print("📅 Effective trial start date: \(localDate)")
-            print("🔒 Source: LOCAL ONLY")
-            print("☁️ === CloudKit Sync Complete ===\n")
-            return
-        }
-        
-        print("✅ iCloud account available")
-        
-        // CloudKit is available - fetch or create record
-        do {
-            print("☁️ Fetching from CloudKit...")
-            let cloudKitDate = try await trialStore.upsertEarliestTrialStartDate(localDate)
-            print("☁️ CloudKit date: \(cloudKitDate)")
-            
-            // CloudKit is authoritative - always use its date
-            let effectiveDate = cloudKitDate
-            
-            // Determine what happened
-            let source: String
-            if effectiveDate < localDate {
-                source = "CLOUDKIT (overwrote local)"
-                print("⚠️ CloudKit date is earlier - overwriting local cache")
-            } else if effectiveDate > localDate {
-                source = "CLOUDKIT (created from local)"
-                print("📤 Created new CloudKit record with local date")
-            } else {
-                source = "CLOUDKIT (synced)"
-                print("✅ CloudKit and local dates match")
-            }
-            
-            // Update local cache and memory with CloudKit's authoritative date
-            saveToLocalCache(effectiveDate)
-            cachedTrialStartDate = effectiveDate
-            markCloudKitSynced()
-            trialSourceStatus = .cloudKit
-            
-            // Update trial status after sync
-            updateTrialStatus()
-            
-            print("📅 Effective trial start date: \(effectiveDate)")
-            print("🔒 Source: \(source)")
-            
-        } catch {
-            // CloudKit request failed (network issues, etc.)
-            trialSourceStatus = hasEverSyncedWithCloudKit() ? .cloudKit : .localOnly
-            print("❌ CloudKit sync failed: \(error.localizedDescription)")
-            print("📦 Using local cache for offline enforcement")
-            print("📅 Effective trial start date: \(localDate)")
-            print("🔒 Source: LOCAL CACHE (offline)")
-        }
-        
-        print("☁️ === CloudKit Sync Complete ===\n")
+@MainActor
+@Observable final class StoreManager {
+    var products: [Product] = []
+    var productsError: String?
+    var isPurchasing: Bool = false
+    var purchaseError: String?
+    var accessState: AccessState = .loading
+    var isInitialized: Bool = false
+    var isEligibleForIntroOffer: Bool = false
+
+    private let productIds = ["no.squarewave.getgrip.annual"]
+
+    /// Must be optional because it’s created after init begins, and it’s cancelled in deinit.
+    private var updateListenerTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
+
+    var primaryProduct: Product? {
+        products.first
     }
 
-    // MARK: - StoreKit Transaction Handling
+    var hasAccess: Bool {
+        accessState.hasAccess
+    }
 
-    func listenForTransactions() -> Task<Void, Error> {
-        return Task.detached { [weak self] in
-            for await result in Transaction.updates {
-                guard let self = self else { return }
+    var trialDaysRemaining: Int? {
+        if case .trialActive(let daysLeft) = accessState {
+            return daysLeft
+        }
+        return nil
+    }
+
+    init() {
+        print("\n🚀 StoreManager initializing...")
+
+        // This is @MainActor init, so storing the task is safe.
+        updateListenerTask = listenForTransactions()
+
+        Task { [weak self] in
+            guard let self else { return }
+            await self.refreshAll()
+            print("✅ StoreManager fully initialized")
+        }
+
+        print("✅ StoreManager initialized\n")
+    }
+
+    deinit {
+        // `deinit` is nonisolated. Don't read main-actor isolated properties here.
+        // Instead, cancel via a helper that hops to the main actor.
+        cancelUpdateListenerTaskOnMainActor()
+    }
+
+    nonisolated private func cancelUpdateListenerTaskOnMainActor() {
+        Task { @MainActor [weak self] in
+            self?.updateListenerTask?.cancel()
+        }
+    }
+
+    // MARK: - Public API
+
+    func refreshAll(force: Bool = false) async {
+        // Coalesce refresh calls (onAppear + scene active + purchase completion etc.)
+        if !force, let task = refreshTask {
+            await task.value
+            return
+        }
+
+        if isInitialized && !force {
+            await updateAccessState()
+            return
+        }
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.fetchProducts()
+            await self.updateAccessState()
+            self.isInitialized = true
+        }
+        refreshTask = task
+        await task.value
+        refreshTask = nil
+    }
+
+    func fetchProducts() async {
+        do {
+            print("🛒 Fetching products for IDs: \(productIds)")
+            let products = try await Product.products(for: productIds)
+            let sorted = products.sorted { $0.price < $1.price }
+
+            self.products = sorted
+            self.productsError = nil
+
+            if let first = sorted.first {
+                // StoreKit eligibility can be async.
+                self.isEligibleForIntroOffer = await (first.subscription?.isEligibleForIntroOffer ?? false)
+            } else {
+                self.isEligibleForIntroOffer = false
+            }
+
+            if sorted.isEmpty {
+                let errorMsg = "No products found. Check: 1) Product ID matches App Store Connect 2) Paid Apps Agreement signed 3) Product is 'Ready to Submit'"
+                print("⚠️ \(errorMsg)")
+                self.productsError = errorMsg
+            } else {
+                print("✅ Loaded \(sorted.count) product(s)")
+                for product in sorted {
+                    print("   - \(product.id): \(product.displayName) (\(product.displayPrice))")
+                }
+            }
+        } catch {
+            let errorMsg = "Failed to load products: \(error.localizedDescription)"
+            print("❌ \(errorMsg)")
+            self.productsError = errorMsg
+        }
+    }
+
+    /// Retry fetching products with exponential backoff
+    func retryFetchProducts(maxAttempts: Int = 3) async {
+        for attempt in 1...maxAttempts {
+            await fetchProducts()
+
+            if !products.isEmpty {
+                return
+            }
+
+            if attempt < maxAttempts {
+                let delay = Double(attempt * attempt)
+                print("⏳ Retrying in \(delay) seconds... (attempt \(attempt)/\(maxAttempts))")
+                try? await Task.sleep(for: .seconds(delay))
+            }
+        }
+
+        print("❌ Failed to load products after \(maxAttempts) attempts")
+    }
+
+    func purchase(_ product: Product) async {
+        guard !isPurchasing else {
+            print("⚠️ Purchase already in progress")
+            return
+        }
+
+        isPurchasing = true
+        purchaseError = nil
+        defer { isPurchasing = false }
+
+        do {
+            let result = try await product.purchase()
+
+            switch result {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    // Update state first, then finish. Finishing early can sometimes remove
+                    // the transaction from streams before we read it (flicker / notSubscribed).
+                    await updateAccessState()
+                    await transaction.finish()
+                    print("✅ Purchase successful")
+                case .unverified:
+                    purchaseError = "Purchase verification failed."
+                    print("❌ Purchase verification failed")
+                }
+            case .userCancelled:
+                print("ℹ️ User cancelled purchase")
+            case .pending:
+                print("⏳ Purchase pending")
+            @unknown default:
+                break
+            }
+        } catch {
+            purchaseError = error.localizedDescription
+            print("❌ Purchase failed: \(error.localizedDescription)")
+        }
+    }
+
+    func restorePurchases() async {
+        purchaseError = nil
+        do {
+            try await AppStore.sync()
+        } catch {
+            purchaseError = error.localizedDescription
+            print("⚠️ Restore failed: \(error.localizedDescription)")
+        }
+        await updateAccessState()
+        print("🔄 Restore purchases completed")
+    }
+
+    // MARK: - Subscription State
+
+    func updateAccessState() async {
+        // Ensure we have products before checking subscription status; otherwise we fall back
+        // to entitlement scan only (which can be slower / less descriptive).
+        if products.isEmpty {
+            await fetchProducts()
+        }
+
+        guard let product = primaryProduct, let subscription = product.subscription else {
+            isEligibleForIntroOffer = false
+            if let entitlement = await currentEntitlementTransaction() {
+                accessState = accessState(from: entitlement)
+            } else {
+                accessState = .notSubscribed
+            }
+            return
+        }
+
+        // StoreKit eligibility can be async.
+        isEligibleForIntroOffer = await subscription.isEligibleForIntroOffer
+
+        do {
+            let statuses = try await subscription.status
+            if let best = bestStatus(from: statuses) {
+                accessState = accessState(from: best)
+                return
+            }
+        } catch {
+            print("⚠️ Failed to fetch subscription status: \(error.localizedDescription)")
+        }
+
+        // Fallback: current entitlement transaction (works even if status fetch fails).
+        if let entitlement = await currentEntitlementTransaction() {
+            accessState = accessState(from: entitlement)
+        } else {
+            accessState = .notSubscribed
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func listenForTransactions() -> Task<Void, Never> {
+        Task { [weak self] in
+            guard let self else { return }
+
+            for await result in StoreKit.Transaction.updates {
                 switch result {
                 case .verified(let transaction):
+                    // Update first, finish afterwards.
+                    await self.updateAccessState()
                     await transaction.finish()
-                    await self.updatePurchasedStatus()
                 case .unverified:
                     print("❌ Transaction unverified")
                 }
@@ -349,104 +274,105 @@ enum TrialSourceStatus: Equatable {
         }
     }
 
-    func fetchProducts() async {
-        do {
-            print("🛒 Fetching products for IDs: \(productIds)")
-            let products = try await Product.products(for: productIds)
-            await MainActor.run {
-                self.products = products
-                self.productsError = nil
-            }
-            
-            if products.isEmpty {
-                let errorMsg = "No products found. Check: 1) Product ID matches App Store Connect 2) Paid Apps Agreement signed 3) Product is 'Ready to Submit'"
-                print("⚠️ \(errorMsg)")
-                await MainActor.run {
-                    self.productsError = errorMsg
-                }
-            } else {
-                print("✅ Loaded \(products.count) product(s)")
-                for product in products {
-                    print("   - \(product.id): \(product.displayName) (\(product.displayPrice))")
-                }
-            }
-        } catch {
-            let errorMsg = "Failed to load products: \(error.localizedDescription)"
-            print("❌ \(errorMsg)")
-            await MainActor.run {
-                self.productsError = errorMsg
+    private func currentEntitlementTransaction() async -> StoreKit.Transaction? {
+        for await result in StoreKit.Transaction.currentEntitlements {
+            if case .verified(let transaction) = result,
+               productIds.contains(transaction.productID) {
+                return transaction
             }
         }
-    }
-    
-    /// Retry fetching products with exponential backoff
-    func retryFetchProducts(maxAttempts: Int = 3) async {
-        for attempt in 1...maxAttempts {
-            await fetchProducts()
-            
-            // If we successfully loaded products, stop retrying
-            if !products.isEmpty {
-                return
-            }
-            
-            // Wait before retrying (exponential backoff)
-            if attempt < maxAttempts {
-                let delay = Double(attempt * attempt) // 1s, 4s, 9s
-                print("⏳ Retrying in \(delay) seconds... (attempt \(attempt)/\(maxAttempts))")
-                try? await Task.sleep(for: .seconds(delay))
-            }
-        }
-        
-        print("❌ Failed to load products after \(maxAttempts) attempts")
+        return nil
     }
 
-    func purchase(_ product: Product) async throws {
-        // Prevent concurrent purchases
-        guard !isPurchasing else {
-            print("⚠️ Purchase already in progress")
-            return
-        }
-        
-        isPurchasing = true
-        defer { isPurchasing = false }
-        
-        let result = try await product.purchase()
+    private func bestStatus(from statuses: [Product.SubscriptionInfo.Status]) -> Product.SubscriptionInfo.Status? {
+        let sorted = statuses.sorted(by: { (lhs: Product.SubscriptionInfo.Status, rhs: Product.SubscriptionInfo.Status) -> Bool in
+            let leftPriority = statusPriority(lhs.state)
+            let rightPriority = statusPriority(rhs.state)
 
-        switch result {
-        case .success(let verification):
-            switch verification {
-            case .verified(let transaction):
-                await transaction.finish()
-                await updatePurchasedStatus()
-                print("✅ Purchase successful")
-            case .unverified:
-                print("❌ Purchase verification failed")
+            if leftPriority != rightPriority {
+                return leftPriority > rightPriority
             }
-        case .userCancelled:
-            print("ℹ️ User cancelled purchase")
-        case .pending:
-            print("⏳ Purchase pending")
+
+            // Prefer comparing verified transaction expirations; treat unverified as very old.
+            let leftExpiry = (try? lhs.transaction.payloadValue.expirationDate) ?? Date.distantPast
+            let rightExpiry = (try? rhs.transaction.payloadValue.expirationDate) ?? Date.distantPast
+            return leftExpiry > rightExpiry
+        })
+
+        return sorted.first
+    }
+
+    private func statusPriority(_ state: Product.SubscriptionInfo.RenewalState) -> Int {
+        switch state {
+        case .subscribed:
+            return 5
+        case .inGracePeriod:
+            return 4
+        case .inBillingRetryPeriod:
+            return 3
+        case .expired:
+            return 2
+        case .revoked:
+            return 1
+        // Treat any new/unknown state as “active” for forward compatibility.
+        default:
+            return 5
+        }
+    }
+
+    private func accessState(from status: Product.SubscriptionInfo.Status) -> AccessState {
+        switch status.state {
+        case .subscribed:
+            // Once purchased, always show as subscribed (not trial countdown)
+            return .subscribed
+        case .inGracePeriod:
+            return .gracePeriod
+        case .inBillingRetryPeriod:
+            return .billingRetry
+        case .expired:
+            return .expired
+        case .revoked:
+            return .revoked
+        default:
+            // Assume access for unknown states (more user-friendly and matches StoreKit's forward-compat needs).
+            return .subscribed
+        }
+    }
+
+    private func accessState(from transaction: StoreKit.Transaction) -> AccessState {
+        // Once purchased, always show as subscribed (not trial countdown)
+        return .subscribed
+    }
+
+    private func trialDaysRemaining(from transaction: StoreKit.Transaction) -> Int? {
+        // NOTE: offerType is deprecated, but still works across OS versions; we can modernize later by checking `transaction.offer`.
+        guard transaction.offer?.type == .introductory,
+              let expirationDate = transaction.expirationDate else {
+            return nil
+        }
+
+        let now = Date()
+        let components = Calendar.current.dateComponents([.day], from: now, to: expirationDate)
+        let days = components.day ?? 0
+        return max(0, days)
+    }
+
+    func subscriptionPeriodText(for product: Product) -> String? {
+        guard let period = product.subscription?.subscriptionPeriod else {
+            return nil
+        }
+
+        switch period.unit {
+        case .day:
+            return period.value == 1 ? "day" : "\(period.value) days"
+        case .week:
+            return period.value == 1 ? "week" : "\(period.value) weeks"
+        case .month:
+            return period.value == 1 ? "month" : "\(period.value) months"
+        case .year:
+            return period.value == 1 ? "year" : "\(period.value) years"
         @unknown default:
-            break
+            return nil
         }
-    }
-
-    func updatePurchasedStatus() async {
-        for await result in Transaction.currentEntitlements {
-            if case .verified(let transaction) = result {
-                if productIds.contains(transaction.productID) {
-                    isPurchased = true
-                    print("✅ Valid purchase found")
-                    return
-                }
-            }
-        }
-        isPurchased = false
-    }
-
-    func restorePurchases() async {
-        try? await AppStore.sync()
-        await updatePurchasedStatus()
-        print("🔄 Restore purchases completed")
     }
 }

@@ -10,6 +10,10 @@ import TipKit
 import CoreLocation
 import WeatherKit
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 // MARK: - TipKit
 
 struct GanttScrollTip: Tip {
@@ -62,19 +66,8 @@ struct MainView: View {
 
     // MARK: Computed Properties
 
-    private var remainingTrialDays: Int {
-        switch storeManager.trialStatus {
-        case .warning(let days):
-            return days
-        case .active:
-            return max(0, 14 - storeManager.daysSinceStart)
-        default:
-            return 0
-        }
-    }
-
     private var shouldShowPurchaseButton: Bool {
-        !storeManager.isPurchased && storeManager.trialStatus != .expired
+        !storeManager.hasAccess
     }
     
     private var showAttribution: Bool {
@@ -91,7 +84,9 @@ struct MainView: View {
         NavigationStack {
             mainContent
                 .navigationTitle(locStore.location?.placeName ?? "")
+#if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+#endif
                 .toolbar { toolbarContent }
                 .sheet(isPresented: $showMapSelection) {
                     MapSelectView()
@@ -250,7 +245,10 @@ private extension MainView {
     @ViewBuilder
     var floatingPurchaseButton: some View {
         if shouldShowPurchaseButton {
-            FloatingPurchaseButton(remainingDays: remainingTrialDays) {
+            FloatingPurchaseButton(
+                subtitle: storeManager.isEligibleForIntroOffer ? "Start your 14-day free trial" : "Unlock full access",
+                actionTitle: storeManager.isEligibleForIntroOffer ? "Start trial" : "Subscribe"
+            ) {
                 showPaywall = true
             }
             .padding(.bottom, 10)
@@ -261,9 +259,26 @@ private extension MainView {
 // MARK: - Toolbar
 
 private extension MainView {
+    // Cross-platform toolbar placements
+    var leadingToolbarPlacement: ToolbarItemPlacement {
+        #if os(macOS)
+        return .automatic
+        #else
+        return .topBarLeading
+        #endif
+    }
+
+    var trailingToolbarPlacement: ToolbarItemPlacement {
+        #if os(macOS)
+        return .automatic
+        #else
+        return .topBarTrailing
+        #endif
+    }
+
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: leadingToolbarPlacement) {
             Button {
                 showMapSelection = true
             } label: {
@@ -274,7 +289,7 @@ private extension MainView {
             )
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: trailingToolbarPlacement) {
             Button(action: handleLocationButtonTap) {
                 Image(systemName: "location.fill")
             }
@@ -333,11 +348,13 @@ private extension MainView {
     @ViewBuilder
     var locationPermissionAlertActions: some View {
         Button("Cancel", role: .cancel) { }
+        #if canImport(UIKit)
         Button("Settings") {
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(url)
             }
         }
+        #endif
     }
 
     @ViewBuilder
@@ -491,4 +508,3 @@ extension View {
         .environment(app.waxSelection)
         .environment(app.storeManager)
 }
-

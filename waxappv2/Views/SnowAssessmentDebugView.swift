@@ -70,7 +70,9 @@ struct SnowAssessmentDebugView: View {
             }
         }
         .navigationTitle("Snow assessment")
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
     }
 
     private func formattedOptional<T>(_ value: T?) -> String {

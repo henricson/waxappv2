@@ -7,19 +7,20 @@
 import SwiftUI
 
 struct FloatingPurchaseButton: View {
-    var remainingDays: Int
+    var subtitle: String
+    var actionTitle: String
     var onPurchase: () -> Void
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "info.circle")
                 .foregroundStyle(.secondary)
-            Text("\(remainingDays) left of trial")
+            Text(subtitle)
                 .foregroundStyle(.secondary)
             Button {
                 onPurchase()
             } label: {
-                Text("Buy now")
+                Text(actionTitle)
                     .fontWeight(.semibold)
             }
             .buttonStyle(.borderedProminent)
@@ -41,7 +42,7 @@ struct FloatingPurchaseButton: View {
 }
 
 #Preview {
-    FloatingPurchaseButton(remainingDays: 5) {
+    FloatingPurchaseButton(subtitle: "Start your 14-day free trial", actionTitle: "Start trial") {
         print("Purchase button tapped!")
     }
 }

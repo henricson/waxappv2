@@ -41,11 +41,11 @@ struct OnboardingView: View {
             }
             .tag(Page.analytics)
 
-            if storeManager.isPurchased {
+            if storeManager.hasAccess {
                 OnboardingPage(
                     image: .system("checkmark.seal.fill"),
                     title: String(localized: "You're All Set", comment: "Onboarding title when user already has purchase"),
-                    description: String(localized: "You already have lifetime access to GetGrip. Enjoy all features!", comment: "Onboarding description when user already has purchase"),
+                    description: String(localized: "You already have an active subscription. Enjoy full access to GetGrip!", comment: "Onboarding description when user already has purchase"),
                     primaryButtonTitle: String(localized: "Start Using App", comment: "Onboarding button to dismiss and start using app"),
                     primaryAction: {
                         showOnboarding = false
@@ -56,18 +56,22 @@ struct OnboardingView: View {
                 OnboardingPage(
                     image: .asset("post-introduction-background"),
                     title: String(localized: "Get started for free", comment: "Onboarding trial page title"),
-                    description: String(localized: "We offer new customers a 14-day, risk-free trial before the app can be unlocked with a one-time purchase.", comment: "Onboarding trial page description"),
+                    description: String(localized: "We offer new customers a 14-day, risk-free trial. After the trial, a subscription keeps full access.", comment: "Onboarding trial page description"),
                     imageMaxSize: 420,
                     primaryButtonTitle: String(localized: "Start trial", comment: "Onboarding button to start free trial"),
                     primaryAction: {
-                        showOnboarding = false
+                        Task {
+                            await startTrialAndContinue()
+                        }
                     }
                 )
                 .tag(Page.access)
             }
         }
+#if os(iOS)
         .tabViewStyle(PageTabViewStyle())
         .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
+#endif
     }
 
     private func goToNextPage(from page: Page) {
@@ -88,15 +92,8 @@ struct OnboardingView: View {
 
     @MainActor
     private func startTrialAndContinue() async {
-        // Make it explicit that the trial begins upon tapping the button.
-        // If purchase/trial start fails for any reason, still allow the user to continue.
-        do {
-            // Try to start the trial / subscription through the existing StoreManager API.
-            if let product = storeManager.products.first {
-                try await storeManager.purchase(product)
-            }
-        } catch {
-            // Intentionally ignore here; user can try again from paywall later.
+        if let product = storeManager.primaryProduct {
+            await storeManager.purchase(product)
         }
 
         showOnboarding = false

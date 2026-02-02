@@ -18,6 +18,7 @@ struct ContentView: View {
     
     @Environment(StoreManager.self) private var storeManager: StoreManager
     @Environment(LocationStore.self) private var locStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var selectedTab: Tabs = .waxes
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
@@ -36,8 +37,7 @@ struct ContentView: View {
         }
         .onAppear() {
             Task {
-                // Fetch trial start date from CloudKit
-                await storeManager.performLaunchSync()
+                await storeManager.refreshAll()
             }
             
             // Request location immediately for returning users
@@ -50,29 +50,41 @@ struct ContentView: View {
             if !oldValue && newValue && !hasRequestedInitialLocation {
                 requestInitialLocation()
             }
+            if !oldValue && newValue && !storeManager.hasAccess {
+                showPaywall = true
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task {
+                    await storeManager.updateAccessState()
+                }
+            }
         }
         // MARK: Trial is about to end
-        .onChange(of: storeManager.trialStatus) { _, newStatus in
-            // Only react if initialized and not purchased
-            guard storeManager.isInitialized, !storeManager.isPurchased else { return }
-            
-            switch newStatus {
-            case .warning:
+        .onChange(of: storeManager.accessState) { _, newStatus in
+            guard storeManager.isInitialized else { return }
+
+            if case .trialActive(let daysLeft) = newStatus, daysLeft > 0, daysLeft <= 4 {
                 showTrialWarning = true
-            case .expired:
+            }
+
+            if !storeManager.hasAccess, hasSeenOnboarding {
                 showPaywall = true
-            case .active:
-                break
+            }
+
+            if storeManager.hasAccess {
+                showPaywall = false
             }
         }
         // MARK: Trial ending alert
         .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
             Button("OK", role: .cancel) { }
-            Button("Buy Now") {
+            Button("Subscribe") {
                 showPaywall = true
             }
         } message: {
-            if case .warning(let days) = storeManager.trialStatus {
+            if let days = storeManager.trialDaysRemaining {
                 Text("You have \(days) days left in your free trial.")
             } else {
                 Text("Your free trial is ending soon.")

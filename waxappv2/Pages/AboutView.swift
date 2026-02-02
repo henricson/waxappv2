@@ -7,42 +7,55 @@
 
 import SwiftUI
 import TipKit
+import StoreKit
 
 struct AboutView: View {
     @Environment(StoreManager.self) private var storeManager
     @State private var showPaywall = false
-
-    private var daysLeftInTrial: Int {
-        max(0, 14 - storeManager.daysSinceStart)
-    }
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Purchase status") {
-                    if storeManager.isPurchased {
-                        Label("App purchased", systemImage: "checkmark.seal.fill")
+                Section("Subscription status") {
+                    switch storeManager.accessState {
+                    case .loading:
+                        Label("Checking subscription…", systemImage: "clock")
+                            .foregroundStyle(.secondary)
+                    case .trialActive(let daysLeft):
+                        Label("Free Trial Active", systemImage: "clock")
                             .foregroundStyle(.green)
-                    } else {
-                        Group {
-                            Label("Free Trial", systemImage: "clock")
-
-                            if storeManager.trialStatus == .expired {
-                                Text("Expired")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.red)
-                            } else {
-                                Text("\(daysLeftInTrial) days left in trial")
-                                    .font(.subheadline)
-                                    .foregroundStyle(daysLeftInTrial <= 4 ? .red : .green)
-                                    .accessibilityLabel("\(daysLeftInTrial) days left in trial")
-                            }
-                        }
+                        Text("\(daysLeft) days left in trial")
+                            .font(.subheadline)
+                            .foregroundStyle(daysLeft <= 4 ? .red : .green)
+                            .accessibilityLabel("\(daysLeft) days left in trial")
+                    case .subscribed:
+                        Label("Subscription active", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                    case .gracePeriod:
+                        Label("Subscription in grace period", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    case .billingRetry:
+                        Label("Payment issue", systemImage: "creditcard.trianglebadge.exclamationmark")
+                            .foregroundStyle(.orange)
+                    case .expired, .revoked, .notSubscribed:
+                        Label("No active subscription", systemImage: "lock")
+                            .foregroundStyle(.secondary)
 
                         Button {
                             showPaywall = true
                         } label: {
-                            Label("Purchase the app", systemImage: "arrow.up.circle")
+                            Label("Start free trial", systemImage: "arrow.up.circle")
+                        }
+                    }
+
+                    if storeManager.hasAccess {
+                        Button {
+                            Task {
+                                await showManageSubscriptions()
+                            }
+                        } label: {
+                            Label("Manage Subscription", systemImage: "gearshape")
                         }
                     }
                 }
@@ -71,11 +84,26 @@ struct AboutView: View {
                 }
             }
             .navigationTitle("About")
+#if os(iOS)
+
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
         }
+    }
+    
+    @MainActor
+    private func showManageSubscriptions() async {
+#if os(iOS)
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            return
+        }
+        try? await AppStore.showManageSubscriptions(in: windowScene)
+#else
+        try? await AppStore.showManageSubscriptions()
+#endif
     }
 }
 

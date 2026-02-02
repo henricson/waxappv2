@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5E00BCF42F2B8142000042A8 /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5E00BCF32F2B8142000042A8 /* GetGrip.storekit */; };
 		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
 		5E47AB6F2F2A548B0022E420 /* WeatherAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */; };
 		5E863B4D2F165000004DFAA4 /* TemperatureGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */; };
+		5EE97CE22F3135900085DBE0 /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EE97CE12F3135900085DBE0 /* GetGrip.storekit */; };
 		5EEB329A2F2A4E550061CDC0 /* WeatherAbstractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */; };
 		5EEB329C2F2A4E580061CDC0 /* WeatherKitFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */; };
 /* End PBXBuildFile section */
@@ -33,10 +33,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5E00BCF32F2B8142000042A8 /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = GetGrip.storekit; path = waxappv2/GetGrip.storekit; sourceTree = "<group>"; };
 		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
 		5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAnalyzer.swift; sourceTree = "<group>"; };
 		5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureGauge.swift; sourceTree = "<group>"; };
+		5EE97CE12F3135900085DBE0 /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAbstractions.swift; sourceTree = "<group>"; };
 		5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherKitFactory.swift; sourceTree = "<group>"; };
 		5EFB6CF02EA40981005C4E5D /* waxappv2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = waxappv2.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -103,7 +103,7 @@
 		5EFB6CE72EA40981005C4E5D = {
 			isa = PBXGroup;
 			children = (
-				5E00BCF32F2B8142000042A8 /* GetGrip.storekit */,
+				5EE97CE12F3135900085DBE0 /* GetGrip.storekit */,
 				5EFB6CF22EA40981005C4E5D /* waxappv2 */,
 				5EFB6D002EA40982005C4E5D /* waxappv2Tests */,
 				5EFB6D0A2EA40982005C4E5D /* waxappv2UITests */,
@@ -247,7 +247,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5E00BCF42F2B8142000042A8 /* GetGrip.storekit in Resources */,
+				5EE97CE22F3135900085DBE0 /* GetGrip.storekit in Resources */,
 				5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -455,7 +455,7 @@
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
 				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
 				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
-				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
@@ -492,7 +492,7 @@
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -562,7 +562,7 @@
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;

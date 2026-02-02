@@ -5,6 +5,9 @@
 //  Created by Herman Henriksen on 08/01/2026.
 //
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct OnboardingWaxCanGrid: View {
     private let waxes: [SwixWax] = swixWaxes.filter { $0.kind == .hardwax || $0.kind == .klister }
@@ -17,7 +20,9 @@ struct OnboardingWaxCanGrid: View {
     @State private var animationTask: Task<Void, Never>? = nil
 
     // Haptics
-    private let feedback = UIImpactFeedbackGenerator(style: .light)
+    #if canImport(UIKit)
+        private let feedback = UIImpactFeedbackGenerator(style: .light)
+    #endif
 
     var body: some View {
         GeometryReader { geo in
@@ -59,7 +64,9 @@ struct OnboardingWaxCanGrid: View {
         // Provide a stable height so the page layout doesn't move.
         .frame(height: 200)
         .onAppear {
+            #if canImport(UIKit)
             feedback.prepare()
+            #endif
             startAnimation()
         }
         .onDisappear {
@@ -111,8 +118,10 @@ struct OnboardingWaxCanGrid: View {
 
                 visibleCount = min(visibleCount + 1, waxes.count)
 
+                #if canImport(UIKit)
                 feedback.impactOccurred(intensity: 0.35)
                 feedback.prepare()
+                #endif
 
                 try? await Task.sleep(nanoseconds: 35_000_000)
             }

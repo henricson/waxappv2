@@ -132,7 +132,9 @@ struct SnowAssessmentExplainView: View {
             }
         }
         .navigationTitle("Snow assessment")
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
     }
 
     private func formattedOptional(_ value: Double?, suffix: String) -> String {

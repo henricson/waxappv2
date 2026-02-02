@@ -30,6 +30,23 @@ final class LocationStore: NSObject {
     private let locationManager: CLLocationManager
     private let geocoder: CLGeocoder
     
+    // MARK: - Authorization Helpers
+    private var isAuthorized: Bool {
+        #if os(macOS)
+        return authorizationStatus == .authorized
+        #else
+        return authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
+        #endif
+    }
+
+    private func isAuthorized(_ status: CLAuthorizationStatus) -> Bool {
+        #if os(macOS)
+        return status == .authorized
+        #else
+        return status == .authorizedWhenInUse || status == .authorizedAlways
+        #endif
+    }
+    
     // MARK: - Init
     
     override init() {
@@ -50,7 +67,7 @@ final class LocationStore: NSObject {
     }
     
     func requestLocation() {
-        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+        guard isAuthorized else {
             return
         }
         
@@ -187,7 +204,7 @@ extension LocationStore: CLLocationManagerDelegate {
         Task { @MainActor in
             self.authorizationStatus = status
             
-            if status == .authorizedWhenInUse || status == .authorizedAlways {
+            if self.isAuthorized(status) {
                 // Request location immediately when authorized, unless user has manually overridden
                 if self.locationStatus != .manual_override {
                     self.requestLocation()
