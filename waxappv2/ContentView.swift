@@ -40,18 +40,19 @@ struct ContentView: View {
                 await storeManager.refreshAll()
             }
             
-            // Request location immediately for returning users
-            if hasSeenOnboarding && !hasRequestedInitialLocation {
-                requestInitialLocation()
+            // Request location immediately for returning users who have access
+            if hasSeenOnboarding && storeManager.hasAccess && !hasRequestedInitialLocation {
+                enableAndRequestLocation()
             }
         }
         .onChange(of: hasSeenOnboarding) { oldValue, newValue in
-            // When onboarding is dismissed (false -> true), request location
-            if !oldValue && newValue && !hasRequestedInitialLocation {
-                requestInitialLocation()
-            }
+            // When onboarding is dismissed, show paywall if no access
             if !oldValue && newValue && !storeManager.hasAccess {
                 showPaywall = true
+            }
+            // If user has access (or gets it during onboarding), request location
+            if !oldValue && newValue && storeManager.hasAccess && !hasRequestedInitialLocation {
+                enableAndRequestLocation()
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -75,6 +76,10 @@ struct ContentView: View {
 
             if storeManager.hasAccess {
                 showPaywall = false
+                // User now has access - enable and request location if onboarding is done
+                if hasSeenOnboarding && !hasRequestedInitialLocation {
+                    enableAndRequestLocation()
+                }
             }
         }
         // MARK: Trial ending alert
@@ -109,8 +114,11 @@ struct ContentView: View {
     
     // MARK: - Location Request
     
-    private func requestInitialLocation() {
+    /// Enables location requests and triggers the initial location fetch.
+    /// Should only be called after onboarding AND paywall are dismissed.
+    private func enableAndRequestLocation() {
         hasRequestedInitialLocation = true
+        locStore.isLocationRequestEnabled = true
         
         // Check current authorization status
         switch locStore.authorizationStatus {

@@ -25,6 +25,10 @@ final class LocationStore: NSObject {
     var locationStatus: LocationStatus = .idle
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     
+    /// Controls whether automatic location requests are allowed.
+    /// Set to true after onboarding and paywall are dismissed.
+    var isLocationRequestEnabled: Bool = false
+    
     // MARK: - Private
     
     private let locationManager: CLLocationManager
@@ -252,8 +256,8 @@ extension LocationStore: CLLocationManagerDelegate {
         Task { @MainActor in
             self.authorizationStatus = status
             
-            if self.isAuthorized(status) {
-                // Request location immediately when authorized, unless user has manually overridden
+            // Only auto-request location if enabled (after onboarding/paywall dismissed)
+            if self.isAuthorized(status) && self.isLocationRequestEnabled {
                 if self.locationStatus != .manual_override {
                     self.requestLocation()
                 }
