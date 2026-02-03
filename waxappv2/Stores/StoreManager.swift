@@ -43,7 +43,9 @@ enum AccessState: Equatable {
 
     /// Must be optional because it’s created after init begins, and it’s cancelled in deinit.
     private var updateListenerTask: Task<Void, Never>?
-    private var refreshTask: Task<Void, Never>?
+    
+    /// Flag to track if a refresh is currently in progress (replaces task-based coalescing)
+    private var isRefreshing: Bool = false
 
     var primaryProduct: Product? {
         products.first
@@ -61,7 +63,9 @@ enum AccessState: Equatable {
     }
 
     init() {
+        #if DEBUG
         print("\n🚀 StoreManager initializing...")
+        #endif
 
         // This is @MainActor init, so storing the task is safe.
         updateListenerTask = listenForTransactions()
@@ -69,10 +73,14 @@ enum AccessState: Equatable {
         Task { [weak self] in
             guard let self else { return }
             await self.refreshAll()
+            #if DEBUG
             print("✅ StoreManager fully initialized")
+            #endif
         }
 
+        #if DEBUG
         print("✅ StoreManager initialized\n")
+        #endif
     }
 
     deinit {
@@ -90,9 +98,9 @@ enum AccessState: Equatable {
     // MARK: - Public API
 
     func refreshAll(force: Bool = false) async {
-        // Coalesce refresh calls (onAppear + scene active + purchase completion etc.)
-        if !force, let task = refreshTask {
-            await task.value
+        // Coalesce refresh calls using a simple flag
+        // Since we're on MainActor, this is thread-safe
+        guard !isRefreshing || force else {
             return
         }
 
@@ -101,20 +109,19 @@ enum AccessState: Equatable {
             return
         }
 
-        let task = Task { [weak self] in
-            guard let self else { return }
-            await self.fetchProducts()
-            await self.updateAccessState()
-            self.isInitialized = true
-        }
-        refreshTask = task
-        await task.value
-        refreshTask = nil
+        isRefreshing = true
+        defer { isRefreshing = false }
+        
+        await fetchProducts()
+        await updateAccessState()
+        isInitialized = true
     }
 
     func fetchProducts() async {
         do {
+            #if DEBUG
             print("🛒 Fetching products for IDs: \(productIds)")
+            #endif
             let products = try await Product.products(for: productIds)
             let sorted = products.sorted { $0.price < $1.price }
 
@@ -130,17 +137,23 @@ enum AccessState: Equatable {
 
             if sorted.isEmpty {
                 let errorMsg = "No products found. Check: 1) Product ID matches App Store Connect 2) Paid Apps Agreement signed 3) Product is 'Ready to Submit'"
+                #if DEBUG
                 print("⚠️ \(errorMsg)")
+                #endif
                 self.productsError = errorMsg
             } else {
+                #if DEBUG
                 print("✅ Loaded \(sorted.count) product(s)")
                 for product in sorted {
                     print("   - \(product.id): \(product.displayName) (\(product.displayPrice))")
                 }
+                #endif
             }
         } catch {
             let errorMsg = "Failed to load products: \(error.localizedDescription)"
+            #if DEBUG
             print("❌ \(errorMsg)")
+            #endif
             self.productsError = errorMsg
         }
     }
@@ -156,17 +169,23 @@ enum AccessState: Equatable {
 
             if attempt < maxAttempts {
                 let delay = Double(attempt * attempt)
+                #if DEBUG
                 print("⏳ Retrying in \(delay) seconds... (attempt \(attempt)/\(maxAttempts))")
+                #endif
                 try? await Task.sleep(for: .seconds(delay))
             }
         }
 
+        #if DEBUG
         print("❌ Failed to load products after \(maxAttempts) attempts")
+        #endif
     }
 
     func purchase(_ product: Product) async {
         guard !isPurchasing else {
+            #if DEBUG
             print("⚠️ Purchase already in progress")
+            #endif
             return
         }
 
@@ -185,21 +204,31 @@ enum AccessState: Equatable {
                     // the transaction from streams before we read it (flicker / notSubscribed).
                     await updateAccessState()
                     await transaction.finish()
+                    #if DEBUG
                     print("✅ Purchase successful")
+                    #endif
                 case .unverified:
                     purchaseError = "Purchase verification failed."
+                    #if DEBUG
                     print("❌ Purchase verification failed")
+                    #endif
                 }
             case .userCancelled:
+                #if DEBUG
                 print("ℹ️ User cancelled purchase")
+                #endif
             case .pending:
+                #if DEBUG
                 print("⏳ Purchase pending")
+                #endif
             @unknown default:
                 break
             }
         } catch {
             purchaseError = error.localizedDescription
+            #if DEBUG
             print("❌ Purchase failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -209,10 +238,14 @@ enum AccessState: Equatable {
             try await AppStore.sync()
         } catch {
             purchaseError = error.localizedDescription
+            #if DEBUG
             print("⚠️ Restore failed: \(error.localizedDescription)")
+            #endif
         }
         await updateAccessState()
+        #if DEBUG
         print("🔄 Restore purchases completed")
+        #endif
     }
 
     // MARK: - Subscription State
@@ -244,7 +277,9 @@ enum AccessState: Equatable {
                 return
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to fetch subscription status: \(error.localizedDescription)")
+            #endif
         }
 
         // Fallback: current entitlement transaction (works even if status fetch fails).
@@ -268,7 +303,9 @@ enum AccessState: Equatable {
                     await self.updateAccessState()
                     await transaction.finish()
                 case .unverified:
+                    #if DEBUG
                     print("❌ Transaction unverified")
+                    #endif
                 }
             }
         }

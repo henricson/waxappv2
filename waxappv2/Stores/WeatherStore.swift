@@ -15,7 +15,15 @@ final class WeatherStore: WeatherAnalyzer {
     
     var weatherDataPoints: [WeatherDataPointModel] = []
     
+    /// Error state for UI feedback
+    var fetchError: Error?
+    var isFetching: Bool = false
+    
     private var locationStore: LocationStore
+    
+    /// Observation tracking is a one-shot mechanism. We track whether we're
+    /// actively observing to avoid re-registering while a callback is in flight.
+    private var isObserving: Bool = false
     
     init(locationStore: LocationStore) {
         self.locationStore = locationStore
@@ -23,14 +31,22 @@ final class WeatherStore: WeatherAnalyzer {
     }
     
     /// Watches `locationStore.location` for changes and triggers a weather fetch.
+    /// Uses a flag to prevent multiple concurrent observation registrations.
     private func startObservingLocation() {
+        guard !isObserving else { return }
+        isObserving = true
+        
         withObservationTracking {
-            _ = locationStore.location
+            _ = self.locationStore.location
         } onChange: { [weak self] in
-            guard let self else { return }
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isObserving = false
+                
                 if self.locationStore.location != nil {
+                    #if DEBUG
                     print("📍 Location changed, fetching weather...")
+                    #endif
                     await self.fetchWeather()
                 }
                 self.startObservingLocation()
@@ -39,16 +55,31 @@ final class WeatherStore: WeatherAnalyzer {
     }
     
     func fetchWeather() async {
+        guard !isFetching else { return }
+        isFetching = true
+        fetchError = nil
+        defer { isFetching = false }
+        
+        #if DEBUG
         print("🌤️ Fetching weather!")
+        #endif
+        
         let weatherFactory = WeatherKitWeatherProviderFactory().makeProvider()
         guard let location = locationStore.location else {
+            #if DEBUG
             print("⚠️ No location available for weather fetch")
+            #endif
             return
         }
         
         let clLocation = CLLocation(latitude: location.lat, longitude: location.lon)
         let now = Date()
-        let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: now)!
+        guard let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: now) else {
+            #if DEBUG
+            print("⚠️ Failed to calculate date range")
+            #endif
+            return
+        }
         let interval = DateInterval(start: tenDaysAgo, end: now)
 
         do {
@@ -57,10 +88,15 @@ final class WeatherStore: WeatherAnalyzer {
             if let lastDataPoint = weatherDataPoints.last {
                 currentTemperature = lastDataPoint.averageTemperature
                 weatherRevision &+= 1
+                #if DEBUG
                 print("✅ Weather fetched! Temperature: \(currentTemperature)°C, revision: \(weatherRevision)")
+                #endif
             }
         } catch {
+            fetchError = error
+            #if DEBUG
             print("❌ Failed to fetch weather data:", error)
+            #endif
         }
     }
     
@@ -141,10 +177,10 @@ final class WeatherStore: WeatherAnalyzer {
         let calendar = Calendar.current
         let significantSnowThreshold = 1.0 // mm
         
-        // Time windows
-        let hours24Ago = calendar.date(byAdding: .hour, value: -24, to: now)!
-        let hours72Ago = calendar.date(byAdding: .hour, value: -72, to: now)!
-        let days7Ago = calendar.date(byAdding: .day, value: -7, to: now)!
+        // Time windows - use safe date arithmetic with fallbacks
+        let hours24Ago = calendar.date(byAdding: .hour, value: -24, to: now) ?? now.addingTimeInterval(-24 * 3600)
+        let hours72Ago = calendar.date(byAdding: .hour, value: -72, to: now) ?? now.addingTimeInterval(-72 * 3600)
+        let days7Ago = calendar.date(byAdding: .day, value: -7, to: now) ?? now.addingTimeInterval(-7 * 24 * 3600)
         
         // Calculate snowfall in each window
         let recentSnowfall = weatherDataPoints
@@ -228,9 +264,10 @@ final class WeatherStore: WeatherAnalyzer {
     
     private func analyzeThermalHistory(now: Date) -> ThermalHistory {
         let calendar = Calendar.current
-        let hours24Ago = calendar.date(byAdding: .hour, value: -24, to: now)!
-        let hours48Ago = calendar.date(byAdding: .hour, value: -48, to: now)!
-        let hours72Ago = calendar.date(byAdding: .hour, value: -72, to: now)!
+        // Safe date arithmetic with fallbacks
+        let hours24Ago = calendar.date(byAdding: .hour, value: -24, to: now) ?? now.addingTimeInterval(-24 * 3600)
+        let hours48Ago = calendar.date(byAdding: .hour, value: -48, to: now) ?? now.addingTimeInterval(-48 * 3600)
+        let hours72Ago = calendar.date(byAdding: .hour, value: -72, to: now) ?? now.addingTimeInterval(-72 * 3600)
         
         let recentPoints = weatherDataPoints.filter { $0.end > hours24Ago }
         let mediumPoints = weatherDataPoints.filter { $0.end > hours48Ago }

@@ -6,6 +6,13 @@
 import Foundation
 import Observation
 
+/// Represents a wax recommendation with match scoring
+struct WaxRecommendation {
+    let wax: SwixWax
+    let reason: String
+    let percentageMatch: Double
+}
+
 /// Store that computes and manages wax recommendations.
 @MainActor
 @Observable
@@ -16,22 +23,21 @@ final class RecommendationStore {
     private let weatherStore: WeatherStore
     private let waxSelectionStore: WaxSelectionStore
     
-    // MARK: - User Input State
-    
-  
-    
     // MARK: - Computed Properties (Reactive)
     
     /// Effective temperature for recommendations
     private var weatherKitTemperature: Int = -7
     var effectiveTemperature: Int = -7
     
-    private var weatherKitSnowType : SnowType = .fineGrained
-    var effectiveSnowType : SnowType = .fineGrained
+    private var weatherKitSnowType: SnowType = .fineGrained
+    var effectiveSnowType: SnowType = .fineGrained
     
     var isSameAsWeatherKit: Bool {
         weatherKitTemperature == effectiveTemperature && weatherKitSnowType == effectiveSnowType
     }
+    
+    /// Flag to prevent multiple concurrent observation registrations
+    private var isObserving: Bool = false
         
     /// Computed recommendations based on current temperature, snow type, and selected waxes
     var recommended: [WaxRecommendation] {
@@ -77,28 +83,38 @@ final class RecommendationStore {
     }
     
     /// Watches `weatherStore` for changes and updates recommendations accordingly.
+    /// Uses a flag to prevent multiple concurrent observation registrations.
     private func startObservingWeather() {
+        guard !isObserving else { return }
+        isObserving = true
+        
         withObservationTracking {
-            _ = weatherStore.currentTemperature
-            _ = weatherStore.currentSnowType
-            _ = weatherStore.weatherRevision
-        } onChange: {
-            DispatchQueue.main.async { [weak self] in
-                self?.handleWeatherChange()
+            _ = self.weatherStore.currentTemperature
+            _ = self.weatherStore.currentSnowType
+            _ = self.weatherStore.weatherRevision
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isObserving = false
+                self.handleWeatherChange()
+                self.startObservingWeather()
             }
         }
     }
 
     private func handleWeatherChange() {
+        #if DEBUG
         print("🎯 Weather data changed, updating recommendations...")
+        #endif
+        
         self.weatherKitTemperature = Int(self.weatherStore.currentTemperature)
         self.effectiveTemperature = self.weatherKitTemperature
         self.weatherKitSnowType = self.weatherStore.currentSnowType
         self.effectiveSnowType = self.weatherKitSnowType
-        print("🎯 Updated temp: \(self.weatherKitTemperature)°C, snow type: \(self.effectiveSnowType)")
         
-        // Re-arm
-        startObservingWeather()
+        #if DEBUG
+        print("🎯 Updated temp: \(self.weatherKitTemperature)°C, snow type: \(self.effectiveSnowType)")
+        #endif
     }
     
     // MARK: - Public Methods

@@ -47,6 +47,17 @@ final class LocationStore: NSObject {
         #endif
     }
     
+    // MARK: - Coordinate Validation
+    
+    /// Validates that coordinates are within valid ranges
+    /// - Parameters:
+    ///   - lat: Latitude (-90 to 90)
+    ///   - lon: Longitude (-180 to 180)
+    /// - Returns: true if coordinates are valid
+    private func isValidCoordinate(lat: Double, lon: Double) -> Bool {
+        return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+    }
+    
     // MARK: - Init
     
     override init() {
@@ -79,16 +90,37 @@ final class LocationStore: NSObject {
     }
     
     func setManualLocation(_ location: AppLocation) {
+        // Validate coordinates before setting
+        guard isValidCoordinate(lat: location.lat, lon: location.lon) else {
+            #if DEBUG
+            print("⚠️ Invalid coordinates: \(location.lat), \(location.lon)")
+            #endif
+            locationStatus = .fault_searching
+            return
+        }
         self.location = location
         locationStatus = .manual_override
     }
     
     func setManualLocation(lat: Double, lon: Double) async {
+        // Validate coordinates
+        guard isValidCoordinate(lat: lat, lon: lon) else {
+            #if DEBUG
+            print("⚠️ Invalid coordinates: \(lat), \(lon)")
+            #endif
+            locationStatus = .fault_searching
+            return
+        }
+        
         locationStatus = .searching
         
+        #if DEBUG
         print("📍 Manual location set: \(lat), \(lon)")
+        #endif
         let placeName = await reverseGeocode(lat: lat, lon: lon)
+        #if DEBUG
         print("📍 Reverse geocoded place name: \(placeName ?? "nil")")
+        #endif
         
         location = AppLocation(lat: lat, lon: lon, placeName: placeName)
         locationStatus = .manual_override
@@ -114,22 +146,32 @@ final class LocationStore: NSObject {
         let clLocation = CLLocation(latitude: lat, longitude: lon)
         
         do {
+            #if DEBUG
             print("🔍 Starting reverse geocode for: \(lat), \(lon)")
+            #endif
             let placemarks = try await geocoder.reverseGeocodeLocation(clLocation)
+            #if DEBUG
             print("🔍 Received \(placemarks.count) placemark(s)")
+            #endif
             
             if let placemark = placemarks.first {
                 let formattedName = formatPlaceName(from: placemark)
+                #if DEBUG
                 print("✅ Formatted place name: \(formattedName)")
+                #endif
                 return formattedName
             } else {
+                #if DEBUG
                 print("⚠️ No placemarks returned")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("❌ Geocoding failed: \(error.localizedDescription)")
             if let clError = error as? CLError {
                 print("❌ CLError code: \(clError.code.rawValue)")
             }
+            #endif
         }
         
         return nil
@@ -160,7 +202,9 @@ final class LocationStore: NSObject {
         let lat = clLocation.coordinate.latitude
         let lon = clLocation.coordinate.longitude
         
+        #if DEBUG
         print("📍 Location updated: \(lat), \(lon)")
+        #endif
         
         let placeName = await reverseGeocode(lat: lat, lon: lon)
         
@@ -172,7 +216,9 @@ final class LocationStore: NSObject {
         location = AppLocation(lat: lat, lon: lon, placeName: placeName)
         locationStatus = .active
         
+        #if DEBUG
         print("📍 Location set: \(placeName ?? "Unknown")")
+        #endif
     }
 }
 
@@ -189,7 +235,9 @@ extension LocationStore: CLLocationManagerDelegate {
     }
     
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        #if DEBUG
         print("❌ Location error: \(error.localizedDescription)")
+        #endif
         
         Task { @MainActor in
             if self.locationStatus != .manual_override {

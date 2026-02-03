@@ -42,10 +42,22 @@ import Observation
         self.persistenceService = persistenceService ?? UserDefaultsPersistenceService()
         
         // Load persisted selection or use defaults
-        if let data = self.persistenceService.load(forKey: AppConstants.PersistenceKeys.selectedWaxIDs),
-           let decoded = try? JSONDecoder().decode(Persisted.self, from: data),
-           !decoded.selectedWaxIDs.isEmpty {
-            self.selectedWaxIDs = decoded.selectedWaxIDs
+        if let data = self.persistenceService.load(forKey: AppConstants.PersistenceKeys.selectedWaxIDs) {
+            do {
+                let decoded = try JSONDecoder().decode(Persisted.self, from: data)
+                if !decoded.selectedWaxIDs.isEmpty {
+                    self.selectedWaxIDs = decoded.selectedWaxIDs
+                } else {
+                    // Empty persisted data, use defaults
+                    self.selectedWaxIDs = defaultSelectedWaxIDs
+                }
+            } catch {
+                // Log error and use defaults - don't silently fail
+                #if DEBUG
+                print("⚠️ Failed to decode wax selection data: \(error). Using defaults.")
+                #endif
+                self.selectedWaxIDs = defaultSelectedWaxIDs
+            }
         } else {
             self.selectedWaxIDs = defaultSelectedWaxIDs
         }
