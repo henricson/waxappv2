@@ -37,7 +37,7 @@ struct PaywallView: View {
                 // Bottom text + buttons
                 VStack(spacing: 16) {
                     VStack(spacing: 10) {
-                        Text("GetGrip Premium")
+                        Text("Unlock GetGrip")
                             .font(.largeTitle)
                             .bold()
                             .multilineTextAlignment(.center)
