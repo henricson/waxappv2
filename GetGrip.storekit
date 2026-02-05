@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 791988591.79112995,
+    "_lastSynchronizedDate" : 791989555.04563999,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -49,25 +49,20 @@
 
           ],
           "displayPrice" : "5.99",
-          "familyShareable" : true,
+          "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "6758634308",
-          "introductoryOffer" : {
-            "internalID" : "AC3E32D1",
-            "numberOfPeriods" : 1,
-            "paymentMode" : "free",
-            "subscriptionPeriod" : "P2W"
-          },
+          "internalID" : "6758774873",
+          "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unrestricted access to GetGrip for one year.",
-              "displayName" : "Annual subscription",
+              "description" : "One year with access to GetGrip.",
+              "displayName" : "GetGrip annual",
               "locale" : "en_US"
             }
           ],
-          "productID" : "no.squarewave.getgrip.annual",
+          "productID" : "no.squarewave.getgrip.annual_subscription",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Annual subscription.",
+          "referenceName" : "GetGrip annual",
           "subscriptionGroupID" : "21916046",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

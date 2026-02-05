@@ -39,7 +39,7 @@ enum AccessState: Equatable {
     var isInitialized: Bool = false
     var isEligibleForIntroOffer: Bool = false
 
-    private let productIds = ["no.squarewave.getgrip.annual"]
+    private let productIds = ["no.squarewave.getgrip.annual_subscription"]
 
     /// Must be optional because it’s created after init begins, and it’s cancelled in deinit.
     private var updateListenerTask: Task<Void, Never>?
