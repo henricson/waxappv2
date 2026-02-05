@@ -23,8 +23,18 @@ struct ContentView: View {
     @State private var selectedTab: Tabs = .waxes
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     @State private var showTrialWarning = false
-    @State private var showPaywall = false
-    @State private var hasRequestedInitialLocation = false
+    
+    /// Computed: Should paywall be shown?
+    /// Shows when: onboarding done AND no access AND store is initialized
+    private var shouldShowPaywall: Bool {
+        hasSeenOnboarding && !storeManager.hasAccess && storeManager.isInitialized
+    }
+    
+    /// Computed: Is user ready to use the app?
+    /// Ready when: onboarding done AND has access
+    private var isReadyForContent: Bool {
+        hasSeenOnboarding && storeManager.hasAccess
+    }
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,24 +45,9 @@ struct ContentView: View {
                 AboutView()
             }
         }
-        .onAppear() {
+        .onAppear {
             Task {
                 await storeManager.refreshAll()
-            }
-            
-            // Request location immediately for returning users who have access
-            if hasSeenOnboarding && storeManager.hasAccess && !hasRequestedInitialLocation {
-                enableAndRequestLocation()
-            }
-        }
-        .onChange(of: hasSeenOnboarding) { oldValue, newValue in
-            // When onboarding is dismissed, show paywall if no access
-            if !oldValue && newValue && !storeManager.hasAccess {
-                showPaywall = true
-            }
-            // If user has access (or gets it during onboarding), request location
-            if !oldValue && newValue && storeManager.hasAccess && !hasRequestedInitialLocation {
-                enableAndRequestLocation()
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -62,32 +57,23 @@ struct ContentView: View {
                 }
             }
         }
-        // MARK: Trial is about to end
+        .onChange(of: isReadyForContent) { wasReady, isNowReady in
+            // When user becomes ready (has access after onboarding), enable location
+            if !wasReady && isNowReady {
+                enableLocationServices()
+            }
+        }
         .onChange(of: storeManager.accessState) { _, newStatus in
             guard storeManager.isInitialized else { return }
-
+            
+            // Show trial warning if applicable
             if case .trialActive(let daysLeft) = newStatus, daysLeft > 0, daysLeft <= 4 {
                 showTrialWarning = true
-            }
-
-            if !storeManager.hasAccess, hasSeenOnboarding {
-                showPaywall = true
-            }
-
-            if storeManager.hasAccess {
-                showPaywall = false
-                // User now has access - enable and request location if onboarding is done
-                if hasSeenOnboarding && !hasRequestedInitialLocation {
-                    enableAndRequestLocation()
-                }
             }
         }
         // MARK: Trial ending alert
         .alert("Trial Ending Soon", isPresented: $showTrialWarning) {
             Button("OK", role: .cancel) { }
-            Button("Subscribe") {
-                showPaywall = true
-            }
         } message: {
             if let days = storeManager.trialDaysRemaining {
                 Text("You have \(days) days left in your free trial.")
@@ -95,9 +81,10 @@ struct ContentView: View {
                 Text("Your free trial is ending soon.")
             }
         }
-        // MARK: PayWallView
-        .sheet(isPresented: $showPaywall) {
+        // MARK: PayWallView - non-dismissable when no access
+        .sheet(isPresented: .constant(shouldShowPaywall)) {
             PaywallView()
+                .interactiveDismissDisabled()
         }
         // MARK: OnboardingView
         .sheet(isPresented: Binding(
@@ -112,24 +99,17 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Location Request
+    // MARK: - Location Services
     
-    /// Enables location requests and triggers the initial location fetch.
-    /// Should only be called after onboarding AND paywall are dismissed.
-    private func enableAndRequestLocation() {
-        hasRequestedInitialLocation = true
+    private func enableLocationServices() {
         locStore.isLocationRequestEnabled = true
         
-        // Check current authorization status
         switch locStore.authorizationStatus {
         case .notDetermined:
-            // Request authorization (will trigger location request in LocationStore delegate)
             locStore.requestAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
-            // Already authorized, request location directly
             locStore.requestLocation()
         case .denied, .restricted:
-            // Don't request - user has already denied or is restricted
             break
         @unknown default:
             break

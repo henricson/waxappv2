@@ -56,7 +56,7 @@ struct MainView: View {
     
     @State private var showMapSelection = false
     @State private var showLocationPermissionAlert = false
-    @State private var showLocationTimeoutAlert = false
+
     @State private var showWeatherErrorAlert = false
     @State private var showPaywall = false
     @State private var weatherErrorMessage = ""
@@ -101,11 +101,7 @@ struct MainView: View {
                 } message: {
                     Text("Please enable location services in settings, or select your position manually using the top left map button.")
                 }
-                .alert("Location Timeout", isPresented: $showLocationTimeoutAlert) {
-                    locationTimeoutAlertActions
-                } message: {
-                    Text("Unable to determine your location. Please check your connection and try again, or select your location manually.")
-                }
+
                 .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
                     weatherErrorAlertActions
                 } message: {
@@ -331,8 +327,8 @@ private extension MainView {
         guard isUserInitiatedLocationRequest else { return }
         
         switch newStatus {
-        case .fault_searching:
-            showLocationTimeoutAlert = true
+        case .denied:
+            showLocationPermissionAlert = true
             isUserInitiatedLocationRequest = false
         case .active:
             isUserInitiatedLocationRequest = false
@@ -357,16 +353,7 @@ private extension MainView {
         #endif
     }
 
-    @ViewBuilder
-    var locationTimeoutAlertActions: some View {
-        Button("Retry") {
-            locStore.requestLocation()
-        }
-        Button("Select Manually") {
-            showMapSelection = true
-        }
-        Button("Cancel", role: .cancel) { }
-    }
+
 
     @ViewBuilder
     var weatherErrorAlertActions: some View {

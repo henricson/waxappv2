@@ -12,7 +12,7 @@ enum LocationStatus: Equatable {
     case searching
     case active
     case manual_override
-    case fault_searching
+    case denied          // User denied location permission
 }
 
 @MainActor
@@ -99,7 +99,6 @@ final class LocationStore: NSObject {
             #if DEBUG
             print("⚠️ Invalid coordinates: \(location.lat), \(location.lon)")
             #endif
-            locationStatus = .fault_searching
             return
         }
         self.location = location
@@ -112,7 +111,6 @@ final class LocationStore: NSObject {
             #if DEBUG
             print("⚠️ Invalid coordinates: \(lat), \(lon)")
             #endif
-            locationStatus = .fault_searching
             return
         }
         
@@ -239,13 +237,25 @@ extension LocationStore: CLLocationManagerDelegate {
     }
     
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        #if DEBUG
-        print("❌ Location error: \(error.localizedDescription)")
-        #endif
-        
-        Task { @MainActor in
-            if self.locationStatus != .manual_override {
-                self.locationStatus = .fault_searching
+        // Only handle permanent failures, not transient ones
+        // CLError.locationUnknown is temporary - location services will keep trying
+        if let clError = error as? CLError {
+            switch clError.code {
+            case .locationUnknown:
+                // Temporary error - location services are still trying
+                #if DEBUG
+                print("📍 Location temporarily unavailable, still searching...")
+                #endif
+                return
+            case .denied:
+                // User denied permission
+                Task { @MainActor in
+                    self.locationStatus = .denied
+                }
+            default:
+                #if DEBUG
+                print("❌ Location error: \(error.localizedDescription)")
+                #endif
             }
         }
     }
@@ -255,6 +265,11 @@ extension LocationStore: CLLocationManagerDelegate {
         
         Task { @MainActor in
             self.authorizationStatus = status
+            
+            // Update status if denied
+            if status == .denied || status == .restricted {
+                self.locationStatus = .denied
+            }
             
             // Only auto-request location if enabled (after onboarding/paywall dismissed)
             if self.isAuthorized(status) && self.isLocationRequestEnabled {
