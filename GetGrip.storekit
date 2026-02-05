@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 791844568.13836503,
+    "_lastSynchronizedDate" : 791988591.79112995,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -53,7 +53,7 @@
           "groupNumber" : 1,
           "internalID" : "6758634308",
           "introductoryOffer" : {
-            "internalID" : "F076F0BE",
+            "internalID" : "AC3E32D1",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
             "subscriptionPeriod" : "P2W"
@@ -67,7 +67,7 @@
           ],
           "productID" : "no.squarewave.getgrip.annual",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Annual subscription",
+          "referenceName" : "Annual subscription.",
           "subscriptionGroupID" : "21916046",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
