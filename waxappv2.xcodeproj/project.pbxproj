@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		5E1C1C0A2EF4270500CA2127 /* Revised WaxApp.icon in Resources */ = {isa = PBXBuildFile; fileRef = 5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */; };
 		5E47AB6F2F2A548B0022E420 /* WeatherAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */; };
-		5E863B4D2F165000004DFAA4 /* TemperatureGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */; };
 		5EE97CE22F3135900085DBE0 /* GetGrip.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EE97CE12F3135900085DBE0 /* GetGrip.storekit */; };
 		5EEB329A2F2A4E550061CDC0 /* WeatherAbstractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */; };
 		5EEB329C2F2A4E580061CDC0 /* WeatherKitFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */; };
@@ -35,7 +34,6 @@
 /* Begin PBXFileReference section */
 		5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Revised WaxApp.icon"; sourceTree = "<group>"; };
 		5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAnalyzer.swift; sourceTree = "<group>"; };
-		5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureGauge.swift; sourceTree = "<group>"; };
 		5EE97CE12F3135900085DBE0 /* GetGrip.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GetGrip.storekit; sourceTree = "<group>"; };
 		5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherAbstractions.swift; sourceTree = "<group>"; };
 		5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherKitFactory.swift; sourceTree = "<group>"; };
@@ -100,6 +98,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		422808EA0298A0D6BF9CB58C /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
 		5EFB6CE72EA40981005C4E5D = {
 			isa = PBXGroup;
 			children = (
@@ -109,10 +115,9 @@
 				5EFB6D0A2EA40982005C4E5D /* waxappv2UITests */,
 				5EFB6CF12EA40981005C4E5D /* Products */,
 				5E1C1C092EF4270500CA2127 /* Revised WaxApp.icon */,
-				5E863B4C2F165000004DFAA4 /* TemperatureGauge.swift */,
-				5EEB32992F2A4E550061CDC0 /* WeatherAbstractions.swift */,
 				5EEB329B2F2A4E580061CDC0 /* WeatherKitFactory.swift */,
 				5E47AB6E2F2A54870022E420 /* WeatherAnalyzer.swift */,
+				6C0FB8B9A71E997E3C4C3C54 /* waxappv2 */,
 			);
 			sourceTree = "<group>";
 		};
@@ -124,6 +129,14 @@
 				5EFB6D072EA40982005C4E5D /* waxappv2UITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		6C0FB8B9A71E997E3C4C3C54 /* waxappv2 */ = {
+			isa = PBXGroup;
+			children = (
+				422808EA0298A0D6BF9CB58C /* Protocols */,
+			);
+			path = waxappv2;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -276,7 +289,6 @@
 				5EEB329A2F2A4E550061CDC0 /* WeatherAbstractions.swift in Sources */,
 				5EEB329C2F2A4E580061CDC0 /* WeatherKitFactory.swift in Sources */,
 				5E47AB6F2F2A548B0022E420 /* WeatherAnalyzer.swift in Sources */,
-				5E863B4D2F165000004DFAA4 /* TemperatureGauge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
