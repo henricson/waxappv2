@@ -1,155 +1,158 @@
-import SwiftUI
 import Observation
+import SwiftUI
 
 struct WaxSelectionView: View {
-    @Environment(WaxSelectionStore.self) var store: WaxSelectionStore
-    
-    // Default expanded state: V-series is expanded
-    @State private var expandedSeries: Set<WaxSeries> = [.V]
+  @Environment(WaxSelectionStore.self) var store: WaxSelectionStore
 
-    var body: some View {
-        List {
-            ForEach(WaxSeries.allCases) { series in
-                let waxes = swixWaxes.filter { $0.waxSeries == series }
-                
-                if !waxes.isEmpty {
-                    DisclosureGroup(
-                        isExpanded: Binding(
-                            get: { expandedSeries.contains(series) },
-                            set: { isExpanded in
-                                withAnimation {
-                                    if isExpanded {
-                                        expandedSeries.insert(series)
-                                    } else {
-                                        expandedSeries.remove(series)
-                                    }
-                                }
-                            }
-                        )
-                    ) {
-                        // Mass toggle buttons for this series
-                        HStack(spacing: 12) {
-                            Button {
-                                store.setAllSelected(true, in: series)
-                            } label: {
-                                Label("Select All", systemImage: "checkmark.circle.fill")
-                                    .labelStyle(.iconOnly)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            
-                            Button {
-                                store.setAllSelected(false, in: series)
-                            } label: {
-                                Label("Deselect All", systemImage: "circle")
-                                    .labelStyle(.iconOnly)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                        .padding(.vertical, 4)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                        
-                        ForEach(waxes) { wax in
-                            WaxRow(wax: wax, isSelected: store.isSelected(wax)) {
-                                store.setSelected(!store.isSelected(wax), for: wax)
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Text(series.title)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            // Show selection status badge
-                            seriesSelectionBadge(for: series)
-                        }
-                    }
+  // Default expanded state: V-series is expanded
+  @State private var expandedSeries: Set<WaxSeries> = [.V]
+
+  var body: some View {
+    List {
+      ForEach(WaxSeries.allCases) { series in
+        let waxes = swixWaxes.filter { $0.waxSeries == series }
+
+        if !waxes.isEmpty {
+          DisclosureGroup(
+            isExpanded: Binding(
+              get: { expandedSeries.contains(series) },
+              set: { isExpanded in
+                withAnimation {
+                  if isExpanded {
+                    expandedSeries.insert(series)
+                  } else {
+                    expandedSeries.remove(series)
+                  }
                 }
+              }
+            )
+          ) {
+            // Mass toggle buttons for this series
+            HStack(spacing: 12) {
+              Button {
+                store.setAllSelected(true, in: series)
+              } label: {
+                Label("Select All", systemImage: "checkmark.circle.fill")
+                  .labelStyle(.iconOnly)
+                  .frame(maxWidth: .infinity)
+              }
+              .buttonStyle(.bordered)
+              .controlSize(.small)
+
+              Button {
+                store.setAllSelected(false, in: series)
+              } label: {
+                Label("Deselect All", systemImage: "circle")
+                  .labelStyle(.iconOnly)
+                  .frame(maxWidth: .infinity)
+              }
+              .buttonStyle(.bordered)
+              .controlSize(.small)
             }
+            .padding(.vertical, 4)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+
+            ForEach(waxes) { wax in
+              WaxRow(wax: wax, isSelected: store.isSelected(wax)) {
+                store.setSelected(!store.isSelected(wax), for: wax)
+              }
+            }
+          } label: {
+            HStack {
+              Text(series.title)
+                .font(.headline)
+                .foregroundColor(.primary)
+
+              Spacer()
+
+              // Show selection status badge
+              seriesSelectionBadge(for: series)
+            }
+          }
         }
-        .navigationTitle("Select Waxes")
+      }
     }
-    
-    @ViewBuilder
-    private func seriesSelectionBadge(for series: WaxSeries) -> some View {
-        let state = store.selectionState(for: series)
-        let waxCount = swixWaxes.filter { $0.waxSeries == series }.count
-        let selectedCount = swixWaxes.filter { $0.waxSeries == series && store.isSelected($0) }.count
-        
-        switch state {
-        case .all:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .font(.caption)
-        case .some:
-            Text("\(selectedCount)/\(waxCount)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .none:
-            Image(systemName: "circle")
-                .foregroundStyle(.secondary)
-                .font(.caption)
-        }
+    .navigationTitle("Select Waxes")
+  }
+
+  @ViewBuilder
+  private func seriesSelectionBadge(for series: WaxSeries) -> some View {
+    let state = store.selectionState(for: series)
+    let waxCount = swixWaxes.filter { $0.waxSeries == series }.count
+    let selectedCount = swixWaxes.filter { $0.waxSeries == series && store.isSelected($0) }.count
+
+    switch state {
+    case .all:
+      Image(systemName: "checkmark.circle.fill")
+        .foregroundStyle(.green)
+        .font(.caption)
+    case .some:
+      Text("\(selectedCount)/\(waxCount)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    case .none:
+      Image(systemName: "circle")
+        .foregroundStyle(.secondary)
+        .font(.caption)
     }
+  }
 }
 
 struct WaxRow: View {
-    let wax: SwixWax
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                // Checkbox
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundColor(isSelected ? .blue : .gray)
-                
-                // Icon
-                waxIcon
-                    .frame(width: 30, height: 45)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(wax.code)
-                        .font(.headline)
-                    Text(wax.name)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
+  let wax: SwixWax
+  let isSelected: Bool
+  let action: () -> Void
 
-    @ViewBuilder
-    var waxIcon: some View {
-        if wax.kind == .hardwax {
-            WaxCanGraphic(
-                bodyFill: AnyShapeStyle(Color(hex: wax.primaryColor) ?? .gray),
-                bodyIllumination: LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
-                bodySpecular: LinearGradient(colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
-                showBand: true,
-                bandPrimaryColor: Color(hex: wax.primaryColor) ?? .white,
-                bandSecondaryColor: (wax.secondaryColor.flatMap { Color(hex: $0) }) ?? .blue
-            )
-        } else {
-            KlisterCanView(bodyColor: Color(hex: wax.primaryColor) ?? .white)
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 12) {
+        // Checkbox
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+          .font(.title2)
+          .foregroundColor(isSelected ? .blue : .gray)
+
+        // Icon
+        waxIcon
+          .frame(width: 30, height: 45)
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(wax.code)
+            .font(.headline)
+          Text(wax.name)
+            .font(.caption)
+            .foregroundColor(.secondary)
         }
+
+        Spacer()
+      }
+      .contentShape(Rectangle())
     }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  var waxIcon: some View {
+    if wax.kind == .hardwax {
+      WaxCanGraphic(
+        bodyFill: AnyShapeStyle(Color(hex: wax.primaryColor) ?? .gray),
+        bodyIllumination: LinearGradient(
+          colors: [.white.opacity(0.35), .clear], startPoint: .topLeading, endPoint: .bottomTrailing
+        ),
+        bodySpecular: LinearGradient(
+          colors: [.white.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom),
+        showBand: true,
+        bandPrimaryColor: Color(hex: wax.primaryColor) ?? .white,
+        bandSecondaryColor: (wax.secondaryColor.flatMap { Color(hex: $0) }) ?? .blue
+      )
+    } else {
+      KlisterCanView(bodyColor: Color(hex: wax.primaryColor) ?? .white)
+    }
+  }
 }
 
 #Preview {
-    NavigationView {
-        WaxSelectionView()
-            .environment(WaxSelectionStore())
-    }
+  NavigationView {
+    WaxSelectionView()
+      .environment(WaxSelectionStore())
+  }
 }

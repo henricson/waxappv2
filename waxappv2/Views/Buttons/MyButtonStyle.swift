@@ -9,20 +9,19 @@
 import SwiftUI
 
 struct CircleBackgroundButtonStyle: ButtonStyle {
-    let backgroundColor: Color
-    
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                Circle()
-                    .fill(backgroundColor)
-            )
-    }
+  let backgroundColor: Color
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .background(
+        Circle()
+          .fill(backgroundColor)
+      )
+  }
 }
 
 extension ButtonStyle where Self == CircleBackgroundButtonStyle {
-    static func circleBackground(_ color: Color) -> CircleBackgroundButtonStyle {
-        CircleBackgroundButtonStyle(backgroundColor: color)
-    }
+  static func circleBackground(_ color: Color) -> CircleBackgroundButtonStyle {
+    CircleBackgroundButtonStyle(backgroundColor: color)
+  }
 }
-

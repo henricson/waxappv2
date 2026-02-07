@@ -1,0 +1,19 @@
+{
+	"name": "xcode build server",
+	"version": "1.3.0",
+	"bspVersion": "2.2.0",
+	"languages": [
+		"c",
+		"cpp",
+		"objective-c",
+		"objective-cpp",
+		"swift"
+	],
+	"argv": [
+		"/opt/homebrew/bin/xcode-build-server"
+	],
+	"workspace": "/Users/hermanhenriksen/git/work/waxappv2/waxappv2.xcodeproj/project.xcworkspace",
+	"build_root": "/Users/hermanhenriksen/Library/Developer/Xcode/DerivedData/waxappv2-aqzijduqtyhshwbunjffsjajebxl",
+	"scheme": "waxappv2",
+	"kind": "xcode"
+}
