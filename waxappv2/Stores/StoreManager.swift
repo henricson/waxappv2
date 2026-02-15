@@ -30,7 +30,7 @@ enum AccessState: Equatable {
 
 @MainActor
 @Observable final class StoreManager {
-  private static let productId = "com.squarewave.getgrip.annual"
+  private static let productId = "com.squarewave.getgrip.yearly"
 
   var product: Product?
   var productsError: String?
