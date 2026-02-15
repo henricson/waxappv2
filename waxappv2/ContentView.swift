@@ -53,7 +53,7 @@ struct ContentView: View {
     .onChange(of: scenePhase) { _, newPhase in
       if newPhase == .active {
         Task {
-          await storeManager.updateAccessState()
+          await storeManager.refreshAll(force: true)
         }
       }
     }

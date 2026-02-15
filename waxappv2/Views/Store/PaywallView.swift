@@ -91,6 +91,11 @@ struct PaywallView: View {
             } else if let product = storeManager.primaryProduct {
               Button {
                 Task {
+                  // If access is already granted, don't attempt a purchase.
+                  guard !storeManager.hasAccess else {
+                    dismiss()
+                    return
+                  }
                   await storeManager.purchase(product)
                 }
               } label: {
@@ -112,8 +117,8 @@ struct PaywallView: View {
                 .foregroundColor(.white)
                 .cornerRadius(12)
               }
-              .disabled(storeManager.isPurchasing)
-              .opacity(storeManager.isPurchasing ? 0.6 : 1.0)
+              .disabled(storeManager.isPurchasing || storeManager.hasAccess)
+              .opacity((storeManager.isPurchasing || storeManager.hasAccess) ? 0.6 : 1.0)
 
               if let purchaseError = storeManager.purchaseError {
                 Text(purchaseError)

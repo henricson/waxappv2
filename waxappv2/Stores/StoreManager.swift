@@ -30,10 +30,6 @@ enum AccessState: Equatable {
 
 @MainActor
 @Observable final class StoreManager {
-  private func debugLog(_ message: String) {
-    print("[StoreManager] \(message)")
-  }
-  
   private static let productId = "com.squarewave.getgrip.annual"
 
   var product: Product?
@@ -44,8 +40,6 @@ enum AccessState: Equatable {
   var isInitialized = false
   var isEligibleForIntroOffer = false
 
-  nonisolated(unsafe) var transactionListener: Task<Void, Never>?
-
   var primaryProduct: Product? { product }
   var hasAccess: Bool { accessState.hasAccess }
   var trialDaysRemaining: Int? {
@@ -54,103 +48,89 @@ enum AccessState: Equatable {
   }
 
   init() {
-    transactionListener = Task { [weak self] in
+    // Listen for transaction updates (renewals, purchases from other devices, etc.)
+    Task { [weak self] in
       for await result in Transaction.updates {
-        self?.debugLog("Received transaction update")
-        if case .verified(let transaction) = result {
-          self?.debugLog("Verified transaction: id=\(transaction.id), productID=\(transaction.productID)")
-          await self?.updateAccessState()
-          await transaction.finish()
-          self?.debugLog("Finished transaction: id=\(transaction.id)")
-        }
+        guard case .verified(let transaction) = result else { continue }
+        await self?.refreshAll(force: true)
+        await transaction.finish()
       }
     }
     Task { await refreshAll() }
   }
 
-  deinit {
-    transactionListener?.cancel()
-  }
-
   // MARK: - Public API
 
   func refreshAll(force: Bool = false) async {
-    debugLog("refreshAll(force: \(force)) called. isInitialized=\(isInitialized)")
     if isInitialized && !force {
-      debugLog("Already initialized; updating access state only")
       await updateAccessState()
       return
     }
     await fetchProducts()
     await updateAccessState()
-    debugLog("Finished refreshAll: product=\(String(describing: product)), accessState=\(accessState)")
     isInitialized = true
   }
 
   func purchase(_ product: Product) async {
-    debugLog("Attempting purchase for productID=\(product.id)")
-    guard !isPurchasing else {
-      debugLog("Purchase already in progress; ignoring new request")
-      return
-    }
+    guard !isPurchasing else { return }
 
     isPurchasing = true
     purchaseError = nil
-    debugLog("Starting purchase...")
     defer { isPurchasing = false }
 
     do {
       let result = try await product.purchase()
-      debugLog("Purchase call returned a result")
-      if case .success(.verified(let transaction)) = result {
-        debugLog("Purchase success verified: id=\(transaction.id), productID=\(transaction.productID)")
-        await updateAccessState()
-        await transaction.finish()
-        debugLog("Transaction finished after purchase: id=\(transaction.id)")
-      } else if case .success(.unverified) = result {
-        purchaseError = "Purchase verification failed."
-        debugLog("Purchase success but unverified signature")
-      } else if case .userCancelled = result {
-        debugLog("Purchase cancelled by user")
+      switch result {
+      case .success(let verificationResult):
+        switch verificationResult {
+        case .verified(let transaction):
+          // Finishing first prevents repeat deliveries, then sync + refresh to
+          // reliably pick up renewals/changes across devices.
+          await transaction.finish()
+          try? await AppStore.sync()
+          await refreshAll(force: true)
+
+        case .unverified:
+          purchaseError = "Purchase verification failed." // keep generic
+        }
+
+      case .pending:
+        purchaseError = "Purchase pending approval or payment confirmation."
+
+      case .userCancelled:
+        // Not an error; user backed out.
+        purchaseError = nil
+
+      @unknown default:
+        purchaseError = "Unknown purchase result."
       }
     } catch {
       purchaseError = error.localizedDescription
-      debugLog("Purchase failed with error: \(error.localizedDescription)")
     }
   }
 
   func restorePurchases() async {
-    debugLog("Restore purchases initiated")
     purchaseError = nil
     do {
       try await AppStore.sync()
-      debugLog("AppStore.sync completed successfully")
     } catch {
       purchaseError = error.localizedDescription
-      debugLog("Restore failed with error: \(error.localizedDescription)")
     }
-    await updateAccessState()
-    debugLog("Restore completed. accessState=\(accessState)")
+    await refreshAll(force: true)
   }
 
   func retryFetchProducts(maxAttempts: Int = 3) async {
-    debugLog("retryFetchProducts(maxAttempts: \(maxAttempts))")
     for attempt in 1...maxAttempts {
       await fetchProducts()
-      debugLog("Attempt #\(attempt): product=\(String(describing: product)) error=\(String(describing: productsError))")
       if product != nil { return }
       if attempt < maxAttempts {
-        debugLog("Retrying fetch in \(attempt * attempt) seconds...")
         try? await Task.sleep(for: .seconds(Double(attempt * attempt)))
       }
     }
   }
 
   func subscriptionPeriodText(for product: Product) -> String? {
-    guard let period = product.subscription?.subscriptionPeriod else {
-      debugLog("No subscription period available for productID=\(product.id)")
-      return nil
-    }
+    guard let period = product.subscription?.subscriptionPeriod else { return nil }
     switch period.unit {
     case .day: return period.value == 1 ? "day" : "\(period.value) days"
     case .week: return period.value == 1 ? "week" : "\(period.value) weeks"
@@ -163,60 +143,74 @@ enum AccessState: Equatable {
   // MARK: - Private
 
   func updateAccessState() async {
-    debugLog("updateAccessState() called")
     if product == nil { await fetchProducts() }
-    debugLog("Product after fetch: \(String(describing: product))")
 
     guard let product, let subscription = product.subscription else {
-      debugLog("No product or subscription info available; checking entitlement")
       accessState = await hasEntitlement() ? .subscribed : .notSubscribed
       isEligibleForIntroOffer = false
       return
     }
 
-    isEligibleForIntroOffer = await subscription.isEligibleForIntroOffer
-    debugLog("isEligibleForIntroOffer=\(isEligibleForIntroOffer)")
+    // Entitlement is the source of truth for access right now.
+    let entitlement = await currentEntitlement(productID: Self.productId)
+    if let entitlement {
+      accessState = accessStateFromEntitlement(entitlement)
+      // If they currently have access, intro offers shouldn't be shown.
+      isEligibleForIntroOffer = false
+      return
+    }
 
-    debugLog("Fetching subscription.status ...")
+    // No current entitlement. Use subscription status for messaging.
+    isEligibleForIntroOffer = await subscription.isEligibleForIntroOffer
+
     if let statuses = try? await subscription.status,
        let best = statuses.max(by: { priority($0.state) < priority($1.state) }) {
-      debugLog("Best subscription state=\(best.state)")
       accessState = mapState(best.state)
     } else {
-      debugLog("Failed to fetch subscription.status; falling back to entitlement check")
-      accessState = await hasEntitlement() ? .subscribed : .notSubscribed
+      accessState = .notSubscribed
     }
-    debugLog("updateAccessState() resolved accessState=\(accessState)")
   }
 
   private func fetchProducts() async {
-    debugLog("Fetching products for id=\(Self.productId)")
     do {
       let products = try await Product.products(for: [Self.productId])
       product = products.first
-      debugLog("Fetched product: \(String(describing: product))")
       productsError = product == nil ? "No products found" : nil
-      if let productsError {
-        debugLog("Products error: \(productsError)")
-      }
       isEligibleForIntroOffer = await product?.subscription?.isEligibleForIntroOffer ?? false
-      debugLog("isEligibleForIntroOffer (from fetch) = \(isEligibleForIntroOffer)")
     } catch {
       productsError = error.localizedDescription
-      debugLog("Products error: \(productsError ?? "unknown error")")
     }
   }
 
   private func hasEntitlement() async -> Bool {
-    debugLog("Checking current entitlements for productId=\(Self.productId)")
+    return await currentEntitlement(productID: Self.productId) != nil
+  }
+
+  private func currentEntitlement(productID: String) async -> Transaction? {
     for await result in Transaction.currentEntitlements {
-      if case .verified(let t) = result, t.productID == Self.productId {
-        debugLog("Found verified entitlement: transactionID=\(t.id), productID=\(t.productID)")
-        return true
+      guard case .verified(let t) = result else { continue }
+      if t.productID == productID {
+        return t
       }
     }
-    debugLog("No entitlement found for productId=\(Self.productId)")
-    return false
+    return nil
+  }
+
+  private func accessStateFromEntitlement(_ transaction: Transaction) -> AccessState {
+    // Refund/revocation should always remove access.
+    if transaction.revocationDate != nil {
+      return .revoked
+    }
+
+    // Show trial if it's a subscription and marked as an intro offer.
+    if transaction.productType == .autoRenewable,
+       (transaction.offer?.type == .introductory),
+       let expiration = transaction.expirationDate {
+      let daysLeft = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0)
+      return .trialActive(daysLeft: daysLeft)
+    }
+
+    return .subscribed
   }
 
   private func priority(_ state: Product.SubscriptionInfo.RenewalState) -> Int {
@@ -226,7 +220,7 @@ enum AccessState: Equatable {
     case .inBillingRetryPeriod: return 3
     case .expired: return 2
     case .revoked: return 1
-    default: return 5
+    default: return 0
     }
   }
 
@@ -237,8 +231,7 @@ enum AccessState: Equatable {
     case .inBillingRetryPeriod: return .billingRetry
     case .expired: return .expired
     case .revoked: return .revoked
-    default: return .subscribed
+    default: return .notSubscribed
     }
   }
 }
-
