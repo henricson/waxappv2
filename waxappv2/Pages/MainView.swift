@@ -69,7 +69,7 @@ struct MainView: View {
   // MARK: Computed Properties
 
   private var shouldShowPurchaseButton: Bool {
-    !storeManager.hasAccess
+    storeManager.isInitialized && !storeManager.hasAccess
   }
 
   private var showAttribution: Bool {

@@ -171,16 +171,18 @@ enum AccessState: Equatable {
     }
   }
 
-  private func fetchProducts() async {
-    do {
-      let products = try await Product.products(for: [Self.productId])
-      product = products.first
-      productsError = product == nil ? "No products found" : nil
-      isEligibleForIntroOffer = await product?.subscription?.isEligibleForIntroOffer ?? false
-    } catch {
-      productsError = error.localizedDescription
+    private func fetchProducts() async {
+        do {
+            let products = try await Product.products(for: [Self.productId])
+            print("StoreKit: fetched \(products.count) products")
+            for p in products { print("  - \(p.id): \(p.displayName)") }
+            product = products.first
+            productsError = product == nil ? "No products found" : nil
+        } catch {
+            print("StoreKit fetch error: \(error)")
+            productsError = error.localizedDescription
+        }
     }
-  }
 
   private func hasEntitlement() async -> Bool {
     return await currentEntitlement(productID: Self.productId) != nil

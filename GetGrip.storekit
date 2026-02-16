@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 792784865.55379903,
+    "_lastSynchronizedDate" : 792845855.17392898,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -48,19 +48,19 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "5.99",
-          "familyShareable" : true,
+          "displayPrice" : "6.99",
+          "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "6758852904",
+          "internalID" : "6759215988",
           "introductoryOffer" : null,
           "localizations" : [
             {
               "description" : "One year access to GetGrip",
-              "displayName" : "GetGrip annual",
+              "displayName" : "Annual subscription",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.squarewave.no.waxappv2.annual",
+          "productID" : "com.squarewave.getgrip.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "GetGrip annual",
           "subscriptionGroupID" : "21916046",
