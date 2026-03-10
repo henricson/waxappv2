@@ -96,6 +96,11 @@ struct MainView: View {
         .sheet(isPresented: $showPaywall) {
           PaywallView()
         }
+        .task(id: locStore.location) {
+          guard locStore.location != nil else { return }
+          await weatherStore.fetchWeather()
+          recStore.syncFromWeather()
+        }
         .onChange(of: locStore.authorizationStatus, handleAuthorizationChange)
         .onChange(of: locStore.locationStatus, handleLocationStatusChange)
         .alert("Location Permission Denied", isPresented: $showLocationPermissionAlert) {
@@ -323,6 +328,7 @@ extension MainView {
       locStore.requestAuthorization()
     case .authorizedWhenInUse, .authorizedAlways:
       isUserInitiatedLocationRequest = true
+      recStore.syncFromWeather()
       locStore.requestLocation()
     @unknown default:
       break

@@ -21,7 +21,7 @@ struct ContentView: View {
   @Environment(\.scenePhase) private var scenePhase
 
   @State private var selectedTab: Tabs = .waxes
-  @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
+  @AppStorage("hasSeenOnb   oarding") private var hasSeenOnboarding: Bool = false
   @State private var showTrialWarning = false
 
   /// Computed: Should paywall be shown?

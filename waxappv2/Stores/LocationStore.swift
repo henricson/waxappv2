@@ -210,10 +210,9 @@ final class LocationStore: NSObject {
 
     let placeName = await reverseGeocode(lat: lat, lon: lon)
 
-    // Reset to nil first so that the @Observable system always sees a
+    // Reset to nil first so that SwiftUI's .task(id:) always sees a
     // change — even if the new coordinates are identical to the previous
-    // ones (e.g. the user hasn't moved). Without this, WeatherStore's
-    // withObservationTracking won't fire and fetchWeather() is skipped.
+    // ones (e.g. the user hasn't moved).
     location = nil
     location = AppLocation(lat: lat, lon: lon, placeName: placeName)
     locationStatus = .active

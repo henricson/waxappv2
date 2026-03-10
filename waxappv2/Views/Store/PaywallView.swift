@@ -1,4 +1,3 @@
-import Observation
 import StoreKit
 import SwiftUI
 
@@ -6,86 +5,37 @@ struct PaywallView: View {
   @Environment(StoreManager.self) private var storeManager: StoreManager
   @Environment(\.dismiss) private var dismiss
 
-  // MARK: - Constants (App Review-friendly, explicit)
-
-  private let heroMaxWidth: CGFloat = 170
-  private let horizontalPadding: CGFloat = 24
-
-  // From your ASC / config:
-  private let subscriptionDisplayNameFallback = "Annual subscription"
-  private let subscriptionDurationFallback = "1 year"
-
-  // Required links (in-app)
   private let privacyPolicyURL = URL(string: "https://www.squarewave.no/apps/getgrip/privacy")
-  private let appleStandardEULAURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
-  private let manageSubscriptionsURL = URL(string: "https://apps.apple.com/account/subscriptions")
-
-  // MARK: - Computed
+  private let eulaURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
+  private let manageSubsURL = URL(string: "https://apps.apple.com/account/subscriptions")
 
   private var product: Product? { storeManager.primaryProduct }
 
-  private var durationText: String {
-    if let p = product, let t = storeManager.subscriptionPeriodText(for: p), !t.isEmpty {
-      return t
-    }
-    return subscriptionDurationFallback
+  private var pricePerPeriod: String {
+    guard let product else { return "—" }
+    let period = storeManager.subscriptionPeriodText(for: product) ?? "year"
+    return "\(product.displayPrice) / \(period)"
   }
 
-  private var priceText: String {
-    product?.displayPrice ?? "—"
-  }
-
-  private var titleText: String {
-    // App Review wants the subscription title; this is best as Product.displayName.
-    // Fallback keeps the UI explicit even if products fail to load.
-    product?.displayName ?? subscriptionDisplayNameFallback
-  }
-
-  private var pricePerPeriodLine: String {
-    "\(priceText) / \(durationText)"
-  }
-
-  private var primaryButtonTitle: String {
-    storeManager.hasAccess ? "Continue" : "Subscribe"
-  }
-
-  private var unlocksHeaderText: String {
-    storeManager.hasAccess ? "Included in your subscription" : "Subscribe to unlock"
-  }
-
-  private var renewalDisclosureText: String {
-    // Keep clear and consistent with Apple guidance.
-    "Payment will be charged to your Apple ID at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period."
-  }
-
-  private var cancelDisclosureText: String {
-    "You can manage or cancel your subscription in Apple ID Settings at any time."
-  }
-
-  // MARK: - View
+  // MARK: - Body
 
   var body: some View {
     NavigationStack {
       ScrollView {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
           hero
-
           header
-
-          unlocksSection
-
+          featureList
           purchaseSection
-
-          legalLinksSection
+          footer
         }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.top, 12)
-        .padding(.bottom, 18)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
       }
       #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
       #endif
-      .toolbar { closeButtonIfEligible }
+      .toolbar { closeButton }
       .interactiveDismissDisabled(!storeManager.hasAccess)
       .onChange(of: storeManager.hasAccess) { _, hasAccess in
         if hasAccess { dismiss() }
@@ -99,108 +49,72 @@ struct PaywallView: View {
     Image("post-introduction-background")
       .resizable()
       .scaledToFit()
-      .frame(maxWidth: heroMaxWidth)
+      .frame(maxWidth: 170)
       .accessibilityHidden(true)
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 2)
   }
 
   private var header: some View {
-    VStack(spacing: 8) {
+    VStack(spacing: 6) {
       Text("Unlock GetGrip")
         .font(.largeTitle.bold())
-        .multilineTextAlignment(.center)
 
-      Text(storeManager.hasAccess
-           ? "Your subscription is active."
-           : "Get full access with an auto-renewable annual subscription. Cancel anytime.")
-      .font(.body)
-      .foregroundStyle(.secondary)
-      .multilineTextAlignment(.center)
-      .fixedSize(horizontal: false, vertical: true)
-
-      // Explicit subscription “what/price/length” line (App Review requirement)
-      VStack(spacing: 4) {
-        Text("\(titleText) • \(pricePerPeriodLine)")
-          .font(.footnote)
+      if storeManager.hasAccess {
+        Text("Your subscription is active.")
+          .font(.subheadline)
           .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .fixedSize(horizontal: false, vertical: true)
-
-        Text("Auto-renews until canceled.")
-          .font(.footnote)
+      } else {
+        Text("\(pricePerPeriod) · Auto-renews yearly")
+          .font(.subheadline)
           .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
       }
-      .padding(.top, 2)
     }
+    .multilineTextAlignment(.center)
     .frame(maxWidth: .infinity)
   }
 
-  private var unlocksSection: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(unlocksHeaderText)
-        .font(.headline)
-
-      VStack(alignment: .leading, spacing: 8) {
-        Label("Unlimited wax & klister recommendations", systemImage: "checkmark.circle.fill")
-        Label("Snow + temperature guidance", systemImage: "checkmark.circle.fill")
-        Label("Forecast planning tools", systemImage: "checkmark.circle.fill")
-      }
-      .font(.subheadline)
-      .foregroundStyle(.secondary)
-      .symbolRenderingMode(.hierarchical)
-
-      // A very explicit “this is what you receive for the price” sentence
-      Text("This subscription unlocks the features listed above for the duration of your subscription.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.top, 2)
+  private var featureList: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Label("Unlimited wax & klister recommendations", systemImage: "checkmark.circle.fill")
+      Label("Snow + temperature guidance", systemImage: "checkmark.circle.fill")
+      Label("Forecast planning tools", systemImage: "checkmark.circle.fill")
     }
+    .font(.subheadline)
+    .foregroundStyle(.secondary)
+    .symbolRenderingMode(.hierarchical)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.top, 4)
   }
 
   private var purchaseSection: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: 10) {
       if let error = storeManager.productsError {
         VStack(spacing: 8) {
-          Text("Unable to Load Subscription")
+          Text("Unable to load subscription")
             .font(.headline)
-
           Text(error)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-
           Button("Try Again") {
             Task { await storeManager.retryFetchProducts() }
           }
           .buttonStyle(.bordered)
         }
-        .padding(.vertical, 6)
-
-        // Even if products fail to load, keep required disclosures + links visible.
-        disclosuresBlock
       } else if let product {
         Button {
           Task {
-            guard !storeManager.hasAccess else {
-              dismiss()
-              return
-            }
+            guard !storeManager.hasAccess else { dismiss(); return }
             await storeManager.purchase(product)
           }
         } label: {
           HStack(spacing: 10) {
             if storeManager.isPurchasing {
               ProgressView()
-              Text("Processing…")
+              Text("Processing...")
             } else {
-              Text(primaryButtonTitle)
+              Text(storeManager.hasAccess ? "Continue" : "Subscribe")
               Spacer(minLength: 8)
-              Text(pricePerPeriodLine)
+              Text(pricePerPeriod)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             }
@@ -217,88 +131,54 @@ struct PaywallView: View {
             .font(.footnote)
             .foregroundStyle(.red)
             .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
         }
 
         Button("Restore Purchases") {
           Task { await storeManager.restorePurchases() }
         }
         .font(.footnote)
-
-        if let manageSubscriptionsURL {
-          Link("Manage Subscriptions", destination: manageSubscriptionsURL)
-            .font(.footnote)
-        }
-
-        disclosuresBlock
       } else {
-        ProgressView("Loading…")
+        ProgressView("Loading...")
           .padding(.vertical, 8)
-
-        disclosuresBlock
       }
     }
-    .padding(.top, 2)
   }
 
-  private var disclosuresBlock: some View {
-    VStack(spacing: 8) {
-      Text(renewalDisclosureText)
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
+  private var footer: some View {
+    VStack(spacing: 6) {
+      if let manageSubsURL {
+        Link("Manage Subscriptions", destination: manageSubsURL)
+          .font(.caption)
+      }
 
-      Text(cancelDisclosureText)
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .padding(.top, 4)
-  }
-
-  private var legalLinksSection: some View {
-    VStack(spacing: 8) {
       HStack(spacing: 12) {
-        if let appleStandardEULAURL {
-          Link("Terms of Use", destination: appleStandardEULAURL)
+        if let eulaURL {
+          Link("Terms of Use", destination: eulaURL)
         }
         if let privacyPolicyURL {
           Link("Privacy Policy", destination: privacyPolicyURL)
         }
       }
-      .font(.caption2)
+      .font(.caption)
 
-      Text("By continuing, you agree to the Terms of Use and Privacy Policy.")
+      Text("Auto-renews until canceled. Cancel anytime in Settings.")
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.tertiary)
         .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
     }
-    .padding(.top, 6)
+    .padding(.top, 4)
   }
 
   @ToolbarContentBuilder
-  private var closeButtonIfEligible: some ToolbarContent {
+  private var closeButton: some ToolbarContent {
     if storeManager.hasAccess {
-      #if os(iOS)
-      ToolbarItem(placement: .topBarTrailing) {
+      ToolbarItem(placement: .confirmationAction) {
         Button { dismiss() } label: {
           Image(systemName: "xmark")
             .symbolRenderingMode(.hierarchical)
         }
         .accessibilityLabel("Close")
       }
-      #else
-      ToolbarItem(placement: .primaryAction) {
-        Button { dismiss() } label: {
-          Image(systemName: "xmark")
-            .symbolRenderingMode(.hierarchical)
-        }
-        .accessibilityLabel("Close")
-      }
-      #endif
     }
   }
 }

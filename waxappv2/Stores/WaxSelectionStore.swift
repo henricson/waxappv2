@@ -5,7 +5,6 @@
 //  Store managing wax selection state with persistence support.
 //
 
-import Combine
 import Foundation
 import Observation
 

@@ -1,17 +1,12 @@
-// `waxappv2/Stores/WeatherStore.swift`
-
+import CoreLocation
 import Foundation
 import Observation
-import _LocationEssentials
 
 /// Store that manages weather data for the current location.
 @MainActor
 @Observable
-final class WeatherStore: WeatherAnalyzer {
+final class WeatherStore {
   var currentTemperature: Double = -7.0
-
-  /// Monotonically increasing counter bumped after each successful fetch.
-  var weatherRevision: UInt64 = 0
 
   var weatherDataPoints: [WeatherDataPointModel] = []
 
@@ -19,39 +14,10 @@ final class WeatherStore: WeatherAnalyzer {
   var fetchError: Error?
   var isFetching: Bool = false
 
-  private var locationStore: LocationStore
-
-  /// Observation tracking is a one-shot mechanism. We track whether we're
-  /// actively observing to avoid re-registering while a callback is in flight.
-  private var isObserving: Bool = false
+  private let locationStore: LocationStore
 
   init(locationStore: LocationStore) {
     self.locationStore = locationStore
-    self.startObservingLocation()
-  }
-
-  /// Watches `locationStore.location` for changes and triggers a weather fetch.
-  /// Uses a flag to prevent multiple concurrent observation registrations.
-  private func startObservingLocation() {
-    guard !isObserving else { return }
-    isObserving = true
-
-    withObservationTracking {
-      _ = self.locationStore.location
-    } onChange: { [weak self] in
-      Task { @MainActor [weak self] in
-        guard let self else { return }
-        self.isObserving = false
-
-        if self.locationStore.location != nil {
-          #if DEBUG
-            print("📍 Location changed, fetching weather...")
-          #endif
-          await self.fetchWeather()
-        }
-        self.startObservingLocation()
-      }
-    }
   }
 
   func fetchWeather() async {
@@ -88,10 +54,8 @@ final class WeatherStore: WeatherAnalyzer {
       weatherDataPoints = dataPoints
       if let lastDataPoint = weatherDataPoints.last {
         currentTemperature = lastDataPoint.averageTemperature
-        weatherRevision &+= 1
         #if DEBUG
-          print(
-            "✅ Weather fetched! Temperature: \(currentTemperature)°C, revision: \(weatherRevision)")
+          print("✅ Weather fetched! Temperature: \(currentTemperature)°C")
         #endif
       }
     } catch {
