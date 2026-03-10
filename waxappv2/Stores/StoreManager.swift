@@ -198,7 +198,7 @@ enum AccessState: Equatable {
     return nil
   }
 
-  private func accessStateFromEntitlement(_ transaction: Transaction) -> AccessState {
+  func accessStateFromEntitlement(_ transaction: Transaction) -> AccessState {
     // Refund/revocation should always remove access.
     if transaction.revocationDate != nil {
       return .revoked
@@ -208,14 +208,19 @@ enum AccessState: Equatable {
     if transaction.productType == .autoRenewable,
        (transaction.offer?.type == .introductory),
        let expiration = transaction.expirationDate {
-      let daysLeft = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0)
-      return .trialActive(daysLeft: daysLeft)
+      let now = Date()
+      guard expiration > now else { return .subscribed }
+      // dateComponents([.day]) truncates — a trial expiring in 23 hours shows 0.
+      // Use seconds and round up so any remaining time counts as at least 1 day.
+      let secondsLeft = expiration.timeIntervalSince(now)
+      let daysLeft = Int(ceil(secondsLeft / 86_400))
+      return .trialActive(daysLeft: max(1, daysLeft))
     }
 
     return .subscribed
   }
 
-  private func priority(_ state: Product.SubscriptionInfo.RenewalState) -> Int {
+  func priority(_ state: Product.SubscriptionInfo.RenewalState) -> Int {
     switch state {
     case .subscribed: return 5
     case .inGracePeriod: return 4
@@ -226,7 +231,7 @@ enum AccessState: Equatable {
     }
   }
 
-  private func mapState(_ state: Product.SubscriptionInfo.RenewalState) -> AccessState {
+  func mapState(_ state: Product.SubscriptionInfo.RenewalState) -> AccessState {
     switch state {
     case .subscribed: return .subscribed
     case .inGracePeriod: return .gracePeriod

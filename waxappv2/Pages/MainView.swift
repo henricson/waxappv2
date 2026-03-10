@@ -298,6 +298,7 @@ extension MainView {
       } label: {
         Image(systemName: "map")
       }
+      .accessibilityIdentifier("mapButton")
       .toolbarButtonStyle(
         tint: locStore.locationStatus == .manual_override && recStore.isSameAsWeatherKit
           ? .accentColor : .primary
@@ -308,6 +309,7 @@ extension MainView {
       Button(action: handleLocationButtonTap) {
         Image(systemName: "location.fill")
       }
+      .accessibilityIdentifier("locationButton")
       .toolbarButtonStyle(
         tint: recStore.isSameAsWeatherKit && locStore.locationStatus != .manual_override
           ? .accentColor : .primary

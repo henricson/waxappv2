@@ -32,6 +32,7 @@ struct LocationSourceIndicator: View {
           .font(.caption)
           .fontWeight(.medium)
       }
+      .accessibilityIdentifier("locationSourceIndicator")
       .foregroundStyle(.secondary)
       .padding(.horizontal, 12)
       .padding(.vertical, 6)

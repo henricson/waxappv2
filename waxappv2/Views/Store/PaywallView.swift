@@ -11,6 +11,8 @@ struct PaywallView: View {
 
   private var product: Product? { storeManager.primaryProduct }
 
+  private var isTrialEligible: Bool { storeManager.isEligibleForIntroOffer }
+
   private var pricePerPeriod: String {
     guard let product else { return "—" }
     let period = storeManager.subscriptionPeriodText(for: product) ?? "year"
@@ -63,6 +65,13 @@ struct PaywallView: View {
         Text("Your subscription is active.")
           .font(.subheadline)
           .foregroundStyle(.secondary)
+      } else if isTrialEligible {
+        Text("Start your 14-day free trial")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+        Text("Then \(pricePerPeriod)")
+          .font(.caption)
+          .foregroundStyle(.tertiary)
       } else {
         Text("\(pricePerPeriod) · Auto-renews yearly")
           .font(.subheadline)
@@ -112,11 +121,13 @@ struct PaywallView: View {
               ProgressView()
               Text("Processing...")
             } else {
-              Text(storeManager.hasAccess ? "Continue" : "Subscribe")
-              Spacer(minLength: 8)
-              Text(pricePerPeriod)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+              Text(storeManager.hasAccess ? "Continue" : isTrialEligible ? "Start Free Trial" : "Subscribe")
+              if !isTrialEligible {
+                Spacer(minLength: 8)
+                Text(pricePerPeriod)
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.8)
+              }
             }
           }
           .font(.headline)
@@ -125,6 +136,7 @@ struct PaywallView: View {
         }
         .buttonStyle(.borderedProminent)
         .disabled(storeManager.isPurchasing || storeManager.hasAccess)
+        .accessibilityIdentifier("subscribeButton")
 
         if let purchaseError = storeManager.purchaseError {
           Text(purchaseError)
@@ -137,6 +149,7 @@ struct PaywallView: View {
           Task { await storeManager.restorePurchases() }
         }
         .font(.footnote)
+        .accessibilityIdentifier("restorePurchasesButton")
       } else {
         ProgressView("Loading...")
           .padding(.vertical, 8)

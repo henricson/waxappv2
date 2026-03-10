@@ -81,6 +81,7 @@ struct MapSelectView: View {
                 .background(.thickMaterial, in: Circle())
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
             }
+            .accessibilityIdentifier("mapMyLocationButton")
             .padding(.trailing, 20)
             .padding(.bottom, 12)
           }
@@ -170,6 +171,7 @@ struct MapSelectView: View {
               .font(.system(size: 20))
 
             TextField("Search for a place", text: $searchQuery)
+              .accessibilityIdentifier("mapSearchField")
               .focused($isSearchFocused)
               .textInputAutocapitalization(.words)
               .autocorrectionDisabled()
@@ -219,6 +221,7 @@ struct MapSelectView: View {
           if selectedCoordinate != nil {
             Button(action: confirmLocation) {
               Text("Use this location")
+                .accessibilityIdentifier("confirmLocationButton")
                 .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -240,6 +243,7 @@ struct MapSelectView: View {
           Button("Cancel") {
             dismiss()
           }
+          .accessibilityIdentifier("mapCancelButton")
         }
       }
       .onAppear {

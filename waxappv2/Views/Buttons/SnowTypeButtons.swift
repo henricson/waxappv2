@@ -25,6 +25,7 @@ struct SnowTypeButtons: View {
               isSelected: type == selected.wrappedValue,
               colorScheme: colorScheme
             )
+            .accessibilityIdentifier("snowType_\(type.rawValue)")
             .background(
               GeometryReader { geo in
                 Color.clear

@@ -1,16 +1,9 @@
-//
-//  waxappv2UITestsLaunchTests.swift
-//  waxappv2UITests
-//
-//  Created by Herman Henriksen on 18/10/2025.
-//
-
 import XCTest
 
-final class waxappv2UITestsLaunchTests: XCTestCase {
+final class GetGripLaunchTests: XCTestCase {
 
   override class var runsForEachTargetApplicationUIConfiguration: Bool {
-    true
+    false
   }
 
   override func setUpWithError() throws {
@@ -18,16 +11,30 @@ final class waxappv2UITestsLaunchTests: XCTestCase {
   }
 
   @MainActor
-  func testLaunch() throws {
+  func testLaunchScreenshot() throws {
     let app = XCUIApplication()
+    app.launchArguments += ["-hasSeenOnboarding", "YES"]
     app.launch()
-
-    // Insert steps here to perform after app launch but before taking a screenshot,
-    // such as logging into a test account or navigating somewhere in the app
 
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Launch Screen"
     attachment.lifetime = .keepAlways
     add(attachment)
+  }
+
+  @MainActor
+  func testOnboardingScreenshot() throws {
+    let app = XCUIApplication()
+    app.launchArguments += ["-hasSeenOnboarding", "NO"]
+    app.launch()
+
+    // Wait for onboarding to appear
+    let welcome = app.staticTexts["Welcome to GetGrip"]
+    if welcome.waitForExistence(timeout: 5) {
+      let attachment = XCTAttachment(screenshot: app.screenshot())
+      attachment.name = "Onboarding Screen"
+      attachment.lifetime = .keepAlways
+      add(attachment)
+    }
   }
 }

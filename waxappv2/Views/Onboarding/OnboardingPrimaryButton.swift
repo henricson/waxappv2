@@ -33,6 +33,7 @@ struct OnboardingPrimaryButton: View {
       .foregroundColor(.white)
       .cornerRadius(10)
     }
+    .accessibilityIdentifier("onboardingPrimaryButton")
     .padding(.horizontal, 40)
     .padding(.bottom, 24)
   }

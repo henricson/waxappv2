@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 792845855.17392898,
+    "_lastSynchronizedDate" : 794855333.24777901,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -34,43 +34,7 @@
     "_timeRate" : 0
   },
   "subscriptionGroups" : [
-    {
-      "id" : "21916046",
-      "localizations" : [
 
-      ],
-      "name" : "Unlock GetGrip",
-      "subscriptions" : [
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "6.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "6759215988",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "One year access to GetGrip",
-              "displayName" : "Annual subscription",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "com.squarewave.getgrip.yearly",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "GetGrip annual",
-          "subscriptionGroupID" : "21916046",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
-        }
-      ]
-    }
   ],
   "version" : {
     "major" : 4,
