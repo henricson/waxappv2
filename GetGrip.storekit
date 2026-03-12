@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 794858581.81873298,
+    "_lastSynchronizedDate" : 795006494.51866901,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -53,7 +53,7 @@
           "groupNumber" : 1,
           "internalID" : "6759215988",
           "introductoryOffer" : {
-            "internalID" : "8A058D67",
+            "internalID" : "46C09371",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
             "subscriptionPeriod" : "P2W"
@@ -67,7 +67,35 @@
           ],
           "productID" : "com.squarewave.getgrip.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "GetGrip annual",
+          "referenceName" : "GetGrip annual ",
+          "subscriptionGroupID" : "21916046",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "0.99",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "6760466227",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Access to wax and klister recommendations for one month",
+              "displayName" : "GetGrip one month access",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.squarewave.getgrip.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "GetGrip monthly",
           "subscriptionGroupID" : "21916046",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

@@ -30,9 +30,11 @@ enum AccessState: Equatable {
 
 @MainActor
 @Observable final class StoreManager {
-  private static let productId = "com.squarewave.getgrip.yearly"
+  private static let yearlyProductId = "com.squarewave.getgrip.yearly"
+  private static let monthlyProductId = "com.squarewave.getgrip.monthly"
 
-  var product: Product?
+  var yearlyProduct: Product?
+  var monthlyProduct: Product?
   var productsError: String?
   var isPurchasing = false
   var purchaseError: String?
@@ -40,7 +42,7 @@ enum AccessState: Equatable {
   var isInitialized = false
   var isEligibleForIntroOffer = false
 
-  var primaryProduct: Product? { product }
+  var primaryProduct: Product? { yearlyProduct ?? monthlyProduct }
   var hasAccess: Bool { accessState.hasAccess }
   var trialDaysRemaining: Int? {
     if case .trialActive(let days) = accessState { return days }
@@ -122,7 +124,7 @@ enum AccessState: Equatable {
   func retryFetchProducts(maxAttempts: Int = 3) async {
     for attempt in 1...maxAttempts {
       await fetchProducts()
-      if product != nil { return }
+      if yearlyProduct != nil || monthlyProduct != nil { return }
       if attempt < maxAttempts {
         try? await Task.sleep(for: .seconds(Double(attempt * attempt)))
       }
@@ -143,17 +145,13 @@ enum AccessState: Equatable {
   // MARK: - Private
 
   func updateAccessState() async {
-    if product == nil { await fetchProducts() }
-
-    guard let product, let subscription = product.subscription else {
-      accessState = await hasEntitlement() ? .subscribed : .notSubscribed
-      isEligibleForIntroOffer = false
-      return
-    }
+    if yearlyProduct == nil && monthlyProduct == nil { await fetchProducts() }
 
     // Entitlement is the source of truth for access right now.
-    let entitlement = await currentEntitlement(productID: Self.productId)
-    if let entitlement {
+    let yearlyEntitlement = await currentEntitlement(productID: Self.yearlyProductId)
+    let monthlyEntitlement = await currentEntitlement(productID: Self.monthlyProductId)
+
+    if let entitlement = yearlyEntitlement ?? monthlyEntitlement {
       accessState = accessStateFromEntitlement(entitlement)
       // If they currently have access, intro offers shouldn't be shown.
       isEligibleForIntroOffer = false
@@ -161,31 +159,54 @@ enum AccessState: Equatable {
     }
 
     // No current entitlement. Use subscription status for messaging.
-    isEligibleForIntroOffer = await subscription.isEligibleForIntroOffer
+    // Trial eligibility applies only to the yearly product.
+    if let subscription = yearlyProduct?.subscription {
+      isEligibleForIntroOffer = await subscription.isEligibleForIntroOffer
+    } else {
+      isEligibleForIntroOffer = false
+    }
 
-    if let statuses = try? await subscription.status,
-       let best = statuses.max(by: { priority($0.state) < priority($1.state) }) {
+    var allStatuses: [Product.SubscriptionInfo.Status] = []
+    if let ys = try? await yearlyProduct?.subscription?.status {
+      allStatuses.append(contentsOf: ys ?? [])
+    }
+    if let ms = try? await monthlyProduct?.subscription?.status {
+      allStatuses.append(contentsOf: ms ?? [])
+    }
+
+    if let best = allStatuses.max(by: { priority($0.state) < priority($1.state) }) {
       accessState = mapState(best.state)
     } else {
       accessState = .notSubscribed
     }
   }
 
-    private func fetchProducts() async {
-        do {
-            let products = try await Product.products(for: [Self.productId])
-            print("StoreKit: fetched \(products.count) products")
-            for p in products { print("  - \(p.id): \(p.displayName)") }
-            product = products.first
-            productsError = product == nil ? "No products found" : nil
-        } catch {
-            print("StoreKit fetch error: \(error)")
-            productsError = error.localizedDescription
+  private func fetchProducts() async {
+    do {
+      let products = try await Product.products(for: [Self.yearlyProductId, Self.monthlyProductId])
+      print("StoreKit: fetched \(products.count) products")
+      for p in products {
+        print("  - \(p.id): \(p.displayName)")
+        switch p.id {
+        case Self.yearlyProductId:
+          yearlyProduct = p
+        case Self.monthlyProductId:
+          monthlyProduct = p
+        default:
+          break
         }
+      }
+      productsError = (yearlyProduct == nil && monthlyProduct == nil) ? "No products found" : nil
+    } catch {
+      print("StoreKit fetch error: \(error)")
+      productsError = error.localizedDescription
     }
+  }
 
   private func hasEntitlement() async -> Bool {
-    return await currentEntitlement(productID: Self.productId) != nil
+    let hasYearly = await currentEntitlement(productID: Self.yearlyProductId) != nil
+    let hasMonthly = await currentEntitlement(productID: Self.monthlyProductId) != nil
+    return hasYearly || hasMonthly
   }
 
   private func currentEntitlement(productID: String) async -> Transaction? {
@@ -242,3 +263,4 @@ enum AccessState: Equatable {
     }
   }
 }
+
