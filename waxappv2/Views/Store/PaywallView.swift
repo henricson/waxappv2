@@ -90,8 +90,8 @@ struct PaywallView: View {
 
   private var planSelector: some View {
     HStack(spacing: 12) {
-      planButton(title: "Yearly", subtitle: (yearlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending("/yr") ?? (yearlyProduct?.displayPrice as? String).map { "\($0)/yr" } ?? "—", isSelected: selectedPlan == .yearly) { selectedPlan = .yearly }
-      planButton(title: "Monthly", subtitle: (monthlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending("/mo") ?? (monthlyProduct?.displayPrice as? String).map { "\($0)/mo" } ?? "—", isSelected: selectedPlan == .monthly) { selectedPlan = .monthly }
+      planButton(title: String(localized: "Yearly"), subtitle: (yearlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending(String(localized: "/yr")) ?? (yearlyProduct?.displayPrice as? String).map { "\($0)" + String(localized: "/yr") } ?? "—", isSelected: selectedPlan == .yearly) { selectedPlan = .yearly }
+      planButton(title: String(localized: "Monthly"), subtitle: (monthlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending(String(localized: "/mo")) ?? (monthlyProduct?.displayPrice as? String).map { "\($0)" + String(localized: "/mo") } ?? "—", isSelected: selectedPlan == .monthly) { selectedPlan = .monthly }
     }
     .padding(.vertical, 4)
   }
