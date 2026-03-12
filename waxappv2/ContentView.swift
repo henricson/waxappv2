@@ -36,6 +36,14 @@ struct ContentView: View {
     hasSeenOnboarding && storeManager.hasAccess
   }
 
+  /// A single binding that drives onboarding presentation and dismissal
+  private var onboardingBinding: Binding<Bool> {
+    Binding(
+      get: { !hasSeenOnboarding },
+      set: { if !$0 { hasSeenOnboarding = true } }
+    )
+  }
+
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Predictions", systemImage: "figure.skiing.crosscountry", value: .waxes) {
@@ -87,19 +95,9 @@ struct ContentView: View {
         .interactiveDismissDisabled()
     }
     // MARK: OnboardingView
-    .sheet(
-      isPresented: Binding(
-        get: { !hasSeenOnboarding },
-        set: { if !$0 { hasSeenOnboarding = true } }
-      )
-    ) {
-      OnboardingView(
-        showOnboarding: Binding(
-          get: { !hasSeenOnboarding },
-          set: { if !$0 { hasSeenOnboarding = true } }
-        )
-      )
-      .interactiveDismissDisabled()
+    .sheet(isPresented: onboardingBinding) {
+      OnboardingView(showOnboarding: onboardingBinding)
+        .interactiveDismissDisabled()
     }
   }
 

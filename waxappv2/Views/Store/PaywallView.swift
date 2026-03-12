@@ -15,7 +15,7 @@ struct PaywallView: View {
 
   private var pricePerPeriod: String {
     guard let product else { return "—" }
-    let period = storeManager.subscriptionPeriodText(for: product) ?? "year"
+    let period = storeManager.subscriptionPeriodText(for: product) ?? String(localized: "year")
     return "\(product.displayPrice) / \(period)"
   }
 
@@ -71,11 +71,11 @@ struct PaywallView: View {
           .foregroundStyle(.secondary)
         Text("Then \(pricePerPeriod)")
           .font(.caption)
-          .foregroundStyle(.tertiary)
+          .foregroundStyle(.primary.opacity(0.7))
       } else {
         Text("\(pricePerPeriod) · Auto-renews yearly")
           .font(.subheadline)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.primary.opacity(0.7))
       }
     }
     .multilineTextAlignment(.center)
@@ -85,8 +85,8 @@ struct PaywallView: View {
   private var featureList: some View {
     VStack(alignment: .leading, spacing: 8) {
       Label("Unlimited wax & klister recommendations", systemImage: "checkmark.circle.fill")
-      Label("Snow + temperature guidance", systemImage: "checkmark.circle.fill")
-      Label("Forecast planning tools", systemImage: "checkmark.circle.fill")
+      Label("Advanced snow type classifier", systemImage: "checkmark.circle.fill")
+      Label("See recommendations for any location", systemImage: "checkmark.circle.fill")
     }
     .font(.subheadline)
     .foregroundStyle(.secondary)

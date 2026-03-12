@@ -24,7 +24,7 @@
     "_developerTeamID" : "L8WRYPHPY7",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 794855333.24777901,
+    "_lastSynchronizedDate" : 794858581.81873298,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -34,7 +34,48 @@
     "_timeRate" : 0
   },
   "subscriptionGroups" : [
+    {
+      "id" : "21916046",
+      "localizations" : [
 
+      ],
+      "name" : "Unlock GetGrip",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "6.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "6759215988",
+          "introductoryOffer" : {
+            "internalID" : "8A058D67",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "localizations" : [
+            {
+              "description" : "12 months of wax & klister advice.",
+              "displayName" : "GetGrip annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.squarewave.getgrip.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "GetGrip annual",
+          "subscriptionGroupID" : "21916046",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
   ],
   "version" : {
     "major" : 4,
