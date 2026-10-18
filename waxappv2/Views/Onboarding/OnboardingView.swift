@@ -29,6 +29,8 @@ struct OnboardingView: View {
     ? (Page(rawValue: DemoMode.onboardingPage) ?? .welcome)
     : .welcome
   @Namespace private var glassNamespace
+  /// Which way the last page change went, for the slide direction.
+  @State private var isMovingForward = true
 
   var body: some View {
     ZStack {
@@ -46,21 +48,52 @@ struct OnboardingView: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
 
-        TabView(selection: $page) {
-          WelcomePage().tag(Page.welcome)
-          HowItWorksPage().tag(Page.howItWorks)
-          LibraryPage().tag(Page.library)
-          AccessPage(hasAccess: storeManager.hasAccess).tag(Page.access)
+        // Pages are switched directly rather than by a paged TabView, whose
+        // selection binding can drop programmatic changes on device and left
+        // Continue doing nothing.
+        ZStack {
+          currentPage
+            .id(page)
+            .transition(
+              .asymmetric(
+                insertion: .move(edge: isMovingForward ? .trailing : .leading).combined(with: .opacity),
+                removal: .move(edge: isMovingForward ? .leading : .trailing).combined(with: .opacity)))
         }
-        #if os(iOS)
-          .tabViewStyle(.page(indexDisplayMode: .never))
-        #endif
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .contentShape(.rect)
+        .simultaneousGesture(swipe)
 
         footer
       }
     }
     .animation(.smooth(duration: 0.3), value: page)
     .interactiveDismissDisabled()
+  }
+
+  @ViewBuilder
+  private var currentPage: some View {
+    switch page {
+    case .welcome: WelcomePage()
+    case .howItWorks: HowItWorksPage()
+    case .library: LibraryPage()
+    case .access: AccessPage(hasAccess: storeManager.hasAccess)
+    }
+  }
+
+  /// Horizontal swipes still page, as they did with the TabView; the last
+  /// page only finishes from its button.
+  private var swipe: some Gesture {
+    DragGesture(minimumDistance: 24)
+      .onEnded { value in
+        let dx = value.translation.width
+        guard abs(dx) > 70, abs(dx) > abs(value.translation.height) * 1.5 else { return }
+        if dx < 0, page != .access {
+          advance()
+        } else if dx > 0 {
+          withAnimation(.smooth(duration: 0.35)) { goBack() }
+        }
+      }
   }
 
   // MARK: - Skip
@@ -168,6 +201,7 @@ struct OnboardingView: View {
   // MARK: - Navigation
 
   private func advance() {
+    isMovingForward = true
     switch page {
     case .welcome:
       withAnimation(.smooth(duration: 0.35)) { page = .howItWorks }
@@ -182,6 +216,7 @@ struct OnboardingView: View {
 
   private func goBack() {
     guard let previous = Page(rawValue: page.rawValue - 1) else { return }
+    isMovingForward = false
     page = previous
   }
 
@@ -275,63 +310,146 @@ private struct HowItWorksPage: View {
           "We read ten days of weather for your location, work out what the snow has become, and match it to the wax you own."
       )
     ) {
-      VStack(spacing: 14) {
+      VStack(alignment: .leading, spacing: 0) {
         StepRow(
-          number: 1,
-          icon: "location.fill",
+          number: 1, isLast: false,
           title: String(localized: "Step_Location_Title"),
           detail: String(localized: "Step_Location_Detail")
-        )
+        ) { LocationTile() }
         StepRow(
-          number: 2,
-          icon: "snowflake",
+          number: 2, isLast: false,
           title: String(localized: "Step_Snow_Title"),
           detail: String(localized: "Step_Snow_Detail")
-        )
+        ) { SnowTile() }
         StepRow(
-          number: 3,
-          icon: "checkmark.seal.fill",
+          number: 3, isLast: true,
           title: String(localized: "Step_Match_Title"),
           detail: String(localized: "Step_Match_Detail")
-        )
+        ) { WaxTile() }
       }
-      .padding(.horizontal, 4)
+      .padding(.horizontal, 6)
+      .frame(maxWidth: 520)
     }
   }
 }
 
-private struct StepRow: View {
+/// One step: a numbered marker on a line running down to the next step,
+/// an illustration, and the copy.
+private struct StepRow<Tile: View>: View {
   let number: Int
-  let icon: String
+  let isLast: Bool
   let title: String
   let detail: String
+  @ViewBuilder var tile: Tile
 
   var body: some View {
-    HStack(alignment: .top, spacing: 14) {
-      ZStack {
-        Circle()
-          .fill(.tint.opacity(0.15))
-          .frame(width: 38, height: 38)
-        Image(systemName: icon)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(.tint)
+    HStack(alignment: .top, spacing: 16) {
+      VStack(spacing: 0) {
+        Text(verbatim: "\(number)")
+          .font(.system(.subheadline, design: .rounded).weight(.bold))
+          .foregroundStyle(.white)
+          .frame(width: 30, height: 30)
+          .background(.tint, in: .circle)
+        if !isLast {
+          Rectangle()
+            .fill(.tint.opacity(0.35))
+            .frame(width: 2)
+            .frame(maxHeight: .infinity)
+            .padding(.vertical, 6)
+        }
       }
+      .frame(width: 30)
 
-      VStack(alignment: .leading, spacing: 3) {
+      tile
+        .frame(width: 64, height: 64)
+
+      VStack(alignment: .leading, spacing: 4) {
         Text(title)
-          .font(.subheadline.weight(.semibold))
+          .font(.headline)
         Text(detail)
-          .font(.caption)
+          .font(.subheadline)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
+      .padding(.top, 4)
 
       Spacer(minLength: 0)
     }
-    .padding(14)
-    .glassEffect(.regular, in: .rect(cornerRadius: 18))
+    .padding(.bottom, isLast ? 0 : 22)
+    .fixedSize(horizontal: false, vertical: true)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Step \(number). \(title). \(detail)")
+  }
+}
+
+// MARK: Step illustrations
+
+/// A scrap of map: contour lines with a location pin on top.
+private struct LocationTile: View {
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .fill(LinearGradient(
+          colors: [Color(red: 0.80, green: 0.91, blue: 0.80), Color(red: 0.62, green: 0.82, blue: 0.70)],
+          startPoint: .topLeading, endPoint: .bottomTrailing))
+      ForEach(0..<3) { ring in
+        Ellipse()
+          .stroke(.white.opacity(0.55), lineWidth: 1)
+          .frame(width: 26 + CGFloat(ring) * 16, height: 18 + CGFloat(ring) * 11)
+          .offset(x: 6, y: 8)
+      }
+      Image(systemName: "mappin.circle.fill")
+        .font(.system(size: 28))
+        .symbolRenderingMode(.palette)
+        .foregroundStyle(.white, Color(red: 0.86, green: 0.20, blue: 0.20))
+        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+        .offset(y: -4)
+    }
+    .clipShape(.rect(cornerRadius: 16, style: .continuous))
+    .accessibilityHidden(true)
+  }
+}
+
+/// A winter sky: falling snow and a thermometer.
+private struct SnowTile: View {
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .fill(LinearGradient(
+          colors: [Color(red: 0.36, green: 0.55, blue: 0.86), Color(red: 0.62, green: 0.78, blue: 0.95)],
+          startPoint: .top, endPoint: .bottom))
+      Image(systemName: "cloud.snow.fill")
+        .font(.system(size: 30))
+        .foregroundStyle(.white)
+        .offset(x: -5, y: -2)
+      Image(systemName: "thermometer.snowflake")
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(5)
+        .background(Color(red: 0.16, green: 0.38, blue: 0.75), in: .circle)
+        .offset(x: 17, y: 17)
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+/// The user's own wax, ticked.
+private struct WaxTile: View {
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 16, style: .continuous)
+        .fill(Color(.secondarySystemGroupedBackground))
+      if let product = WaxCatalog.product(withID: "swix.V40") {
+        WaxIcon(product: product)
+          .frame(width: 30, height: 44)
+      }
+      Image(systemName: "checkmark.circle.fill")
+        .font(.system(size: 18))
+        .symbolRenderingMode(.palette)
+        .foregroundStyle(.white, .green)
+        .offset(x: 18, y: 18)
+    }
+    .accessibilityHidden(true)
   }
 }
 

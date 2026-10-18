@@ -179,6 +179,9 @@ struct Gantt: View {
   @State private var position = ScrollPosition(idType: Int.self)
   /// The temperature under the lens, fractional while the chart moves.
   @State private var liveTemperature: Double = 0
+  /// Left edge of the visible part of the chart, in content coordinates,
+  /// so labels of bars that start off-screen can slide into view.
+  @State private var visibleMinX: Double = 0
   @State private var isUserScrolling = false
   /// Becomes true once the chart has been placed on the current
   /// temperature; until then scroll geometry is layout noise, not input.
@@ -248,10 +251,11 @@ struct Gantt: View {
         .scrollTargetBehavior(SnapToClosestDegree(snapModulus: L.pxPerDegree, maxColumnIndex: L.degreesCount - 1))
         .scrollPosition($position, anchor: .center)
         .contentMargins(.horizontal, max(0, proxy.size.width / 2 - L.pxPerDegree / 2), for: .scrollContent)
-        .onScrollGeometryChange(for: Double.self) { geometry in
-          L.temperature(atX: geometry.visibleRect.midX)
-        } action: { _, new in
-          if isReady { liveTemperature = new }
+        .onScrollGeometryChange(for: CGRect.self) { geometry in
+          geometry.visibleRect
+        } action: { _, rect in
+          visibleMinX = rect.minX
+          if isReady { liveTemperature = L.temperature(atX: rect.midX) }
         }
         .onScrollPhaseChange { old, phase in
           isUserScrolling = phase == .interacting || phase == .decelerating
@@ -329,10 +333,16 @@ struct Gantt: View {
       let wax = task.renderItem
       let range = wax.combinedRange(for: snowType)
 
+      let barX = (start - L.minTemp) * L.pxPerDegree
+      let barWidth = (end - start) * L.pxPerDegree
+
       GanttBarView(
         wax: wax,
         isPinpoint: range.map { $0.min == $0.max } ?? false,
-        emphasis: emphasis(for: wax)
+        emphasis: emphasis(for: wax),
+        // Keep the label on screen while the bar does; stop before it
+        // would run off the bar's own end.
+        labelInset: min(max(0, visibleMinX + 8 - barX), max(0, barWidth - 90))
       )
       .frame(width: (end - start) * L.pxPerDegree, height: L.barHeight)
       .offset(
@@ -467,6 +477,8 @@ struct GanttBarView: View {
   /// True when the manufacturer publishes a single temperature, not a range.
   var isPinpoint: Bool = false
   var emphasis: Emphasis = .match
+  /// How far the label is pushed in from the bar's leading edge.
+  var labelInset: Double = 0
 
   enum Emphasis {
     /// The wax shown in the hero.
@@ -509,7 +521,8 @@ struct GanttBarView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(.horizontal, 10)
+    .padding(.leading, 10 + labelInset)
+    .padding(.trailing, 10)
     .frame(maxHeight: .infinity)
     .background {
       Capsule()

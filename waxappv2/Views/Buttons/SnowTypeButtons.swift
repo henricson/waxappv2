@@ -5,49 +5,56 @@ import SwiftUI
 struct SnowTypeButtons: View {
   @Bindable var store: RecommendationStore
 
-  @State private var scrolledID: SnowType?
   @Namespace private var glassNamespace
 
   private var selected: SnowType { store.effectiveSnowType }
 
   var body: some View {
-    ScrollView(.horizontal) {
-      // Container spacing below the HStack gap: glass shapes closer than the
-      // container's spacing melt into each other, which bridged every chip
-      // to its neighbour.
-      GlassEffectContainer(spacing: 0) {
-        HStack(spacing: 10) {
-          ForEach(store.availableSnowTypes) { type in
-            SnowTypeChip(type: type, isSelected: type == selected)
-              .id(type)
-              .glassEffectID(type.id, in: glassNamespace)
-              .accessibilityIdentifier("snowType_\(type.rawValue)")
-              .accessibilityAddTraits(type == selected ? [.isSelected] : [])
-              .onTapGesture {
-                guard type != selected else { return }
-                withAnimation(.smooth(duration: 0.3)) {
-                  store.effectiveSnowType = type
-                  scrolledID = type
+    // Selection is by tap only, and the chosen chip is always brought to
+    // the middle. The old version snapped chips to the leading edge while
+    // also trying to centre them, so the selected one landed off to the side.
+    ScrollViewReader { proxy in
+      ScrollView(.horizontal) {
+        // Container spacing below the HStack gap: glass shapes closer than
+        // the container's spacing melt into each other.
+        GlassEffectContainer(spacing: 0) {
+          HStack(spacing: 10) {
+            ForEach(store.availableSnowTypes) { type in
+              SnowTypeChip(type: type, isSelected: type == selected)
+                .id(type)
+                .glassEffectID(type.id, in: glassNamespace)
+                .accessibilityIdentifier("snowType_\(type.rawValue)")
+                .accessibilityAddTraits(type == selected ? [.isSelected] : [])
+                .onTapGesture {
+                  guard type != selected else { return }
+                  withAnimation(.smooth(duration: 0.3)) {
+                    store.effectiveSnowType = type
+                  }
                 }
-              }
+            }
           }
         }
-        .scrollTargetLayout()
       }
-    }
-    .scrollIndicators(.hidden)
-    .scrollTargetBehavior(.viewAligned)
-    .scrollPosition(id: $scrolledID, anchor: .center)
-    .contentMargins(.horizontal, 24, for: .scrollContent)
-    .sensoryFeedback(.selection, trigger: selected)
-    .onAppear { scrolledID = selected }
-    .onChange(of: selected) { _, newValue in
-      guard scrolledID != newValue else { return }
-      withAnimation(.smooth(duration: 0.3)) { scrolledID = newValue }
-    }
-    .onChange(of: scrolledID) { _, newValue in
-      guard let newValue, newValue != selected else { return }
-      store.effectiveSnowType = newValue
+      .scrollIndicators(.hidden)
+      .contentMargins(.horizontal, 16, for: .scrollContent)
+      .sensoryFeedback(.selection, trigger: selected)
+      .task {
+        // One layout pass first, so the chips have their widths.
+        await Task.yield()
+        proxy.scrollTo(selected, anchor: .center)
+      }
+      .onChange(of: selected) { _, newValue in
+        withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(newValue, anchor: .center) }
+      }
+      .onChange(of: store.availableSnowTypes) { _, _ in
+        proxy.scrollTo(selected, anchor: .center)
+      }
+      // The row may first be laid out behind onboarding or a sheet at a
+      // different width; re-centre whenever its width settles.
+      .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.width } action: { _, _ in
+        proxy.scrollTo(selected, anchor: .center)
+      }
+      .onAppear { proxy.scrollTo(selected, anchor: .center) }
     }
   }
 }
