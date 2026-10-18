@@ -10,6 +10,8 @@ import SwiftUI
 struct HeaderCanView: View {
   let recommendation: WaxRecommendation
   var showsConfidence: Bool = true
+  /// The base to lay down first, shown as the step before this wax.
+  var preparation: PreparationAdvice? = nil
 
   @Environment(\.colorScheme) private var colorScheme
 
@@ -72,6 +74,18 @@ struct HeaderCanView: View {
       if showsConfidence {
         confidenceBadge
       }
+
+      // The slot is always there, so the artwork above keeps its size
+      // whether or not a base layer is advised.
+      ZStack {
+        if let preparation {
+          PreparationStep(advice: preparation)
+            .transition(.opacity)
+        }
+      }
+      .frame(height: 50)
+      .padding(.top, 6)
+      .animation(.smooth(duration: 0.25), value: preparation)
     }
     .padding(.horizontal, 20)
   }
@@ -91,6 +105,43 @@ struct HeaderCanView: View {
     .glassEffect(.regular, in: .capsule)
     .foregroundStyle(onBackground)
     .padding(.top, 2)
+  }
+}
+
+// MARK: - Preparation step
+
+/// The layer that goes on before the recommended wax: the user's own base
+/// product with its container, or the kind of base to get.
+private struct PreparationStep: View {
+  let advice: PreparationAdvice
+
+  var body: some View {
+    HStack(spacing: 10) {
+      if let product = advice.product {
+        WaxIcon(product: product)
+          .frame(width: 18, height: 28)
+      } else {
+        Image(systemName: "square.stack.3d.down.forward")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .frame(width: 18)
+      }
+
+      VStack(alignment: .leading, spacing: 1) {
+        Text(advice.title)
+          .font(.footnote.weight(.semibold))
+        Text(advice.detail)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 7)
+    .frame(maxWidth: 360)
+    .background(.background.secondary.opacity(0.8), in: .rect(cornerRadius: 14, style: .continuous))
+    .accessibilityElement(children: .combine)
   }
 }
 

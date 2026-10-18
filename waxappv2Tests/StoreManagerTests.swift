@@ -280,7 +280,9 @@ struct TrialDaysCalculationTests {
 
   @Test("1.5 days rounds up to 2")
   func oneAndHalfDays() {
-    let now = Date()
+    // Anchored at midday: counted in calendar days, 36 hours from just after
+    // midnight is only one day away, which made this fail at night.
+    let now = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
     let expiration = now.addingTimeInterval(1.5 * 86_400)
     #expect(daysLeft(from: now, to: expiration) == 2)
   }

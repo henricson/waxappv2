@@ -9,26 +9,53 @@ struct SnowTypeButtons: View {
 
   private var selected: SnowType { store.effectiveSnowType }
 
+  /// One chip, whatever it stands for: a grip snow type, or a glide group.
+  private struct Choice: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let detail: String
+    let icon: String
+    let snowType: SnowType
+    let isSelected: Bool
+  }
+
+  private var choices: [Choice] {
+    if store.activeDomain == .glide {
+      let current = GlideSnow(selected)
+      return GlideSnow.allCases.map {
+        Choice(
+          id: "glide.\($0.rawValue)", title: $0.title, detail: $0.detail, icon: $0.iconName,
+          snowType: $0.representative, isSelected: $0 == current)
+      }
+    }
+    return store.availableSnowTypes.map {
+      Choice(
+        id: "grip.\($0.rawValue)", title: $0.shortTitle, detail: $0.description, icon: $0.iconName,
+        snowType: $0, isSelected: $0 == selected)
+    }
+  }
+
+  private var selectedID: String? { choices.first(where: \.isSelected)?.id }
+
   var body: some View {
     // Selection is by tap only, and the chosen chip is always brought to
-    // the middle. The old version snapped chips to the leading edge while
-    // also trying to centre them, so the selected one landed off to the side.
+    // the middle.
     ScrollViewReader { proxy in
       ScrollView(.horizontal) {
-        // Container spacing below the HStack gap: glass shapes closer than
-        // the container's spacing melt into each other.
         GlassEffectContainer(spacing: 0) {
           HStack(spacing: 10) {
-            ForEach(store.availableSnowTypes) { type in
-              SnowTypeChip(type: type, isSelected: type == selected)
-                .id(type)
-                .glassEffectID(type.id, in: glassNamespace)
-                .accessibilityIdentifier("snowType_\(type.rawValue)")
-                .accessibilityAddTraits(type == selected ? [.isSelected] : [])
+            ForEach(choices) { choice in
+              SnowTypeChip(title: choice.title, icon: choice.icon, isSelected: choice.isSelected)
+                .id(choice.id)
+                .glassEffectID(choice.id, in: glassNamespace)
+                .accessibilityLabel(choice.title)
+                .accessibilityHint(choice.detail)
+                .accessibilityIdentifier("snowType_\(choice.id)")
+                .accessibilityAddTraits(choice.isSelected ? [.isSelected] : [])
                 .onTapGesture {
-                  guard type != selected else { return }
+                  guard !choice.isSelected else { return }
                   withAnimation(.smooth(duration: 0.3)) {
-                    store.effectiveSnowType = type
+                    store.effectiveSnowType = choice.snowType
                   }
                 }
             }
@@ -37,34 +64,32 @@ struct SnowTypeButtons: View {
       }
       .scrollIndicators(.hidden)
       .contentMargins(.horizontal, 16, for: .scrollContent)
-      .sensoryFeedback(.selection, trigger: selected)
+      .sensoryFeedback(.selection, trigger: selectedID)
       .task {
-        // One layout pass first, so the chips have their widths.
         await Task.yield()
-        proxy.scrollTo(selected, anchor: .center)
+        if let selectedID { proxy.scrollTo(selectedID, anchor: .center) }
       }
-      .onChange(of: selected) { _, newValue in
+      .onChange(of: selectedID) { _, newValue in
+        guard let newValue else { return }
         withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(newValue, anchor: .center) }
-      }
-      .onChange(of: store.availableSnowTypes) { _, _ in
-        proxy.scrollTo(selected, anchor: .center)
       }
       // The row may first be laid out behind onboarding or a sheet at a
       // different width; re-centre whenever its width settles.
       .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.width } action: { _, _ in
-        proxy.scrollTo(selected, anchor: .center)
+        if let selectedID { proxy.scrollTo(selectedID, anchor: .center) }
       }
-      .onAppear { proxy.scrollTo(selected, anchor: .center) }
+      .onAppear { if let selectedID { proxy.scrollTo(selectedID, anchor: .center) } }
     }
   }
 }
 
 private struct SnowTypeChip: View {
-  let type: SnowType
+  let title: String
+  let icon: String
   let isSelected: Bool
 
   var body: some View {
-    Label(type.shortTitle, systemImage: type.iconName)
+    Label(title, systemImage: icon)
       .font(.subheadline.weight(.semibold))
       .lineLimit(1)
       .fixedSize(horizontal: true, vertical: false)
@@ -78,8 +103,6 @@ private struct SnowTypeChip: View {
         in: .capsule
       )
       .contentShape(.capsule)
-      .accessibilityLabel(type.title)
-      .accessibilityHint(type.description)
   }
 }
 

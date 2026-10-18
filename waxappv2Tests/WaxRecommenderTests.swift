@@ -11,11 +11,12 @@ struct WaxRecommenderTests {
   private func product(
     _ code: String,
     kind: WaxKind = .hardwax,
+    series: String = "TEST",
     ranges: [SnowType: [TempRangeC]],
     affinity: [SnowType: Double] = [:]
   ) -> WaxProduct {
     WaxProduct(
-      brand: .swix, code: code, nameKey: code, seriesCode: "TEST", kind: kind,
+      brand: .swix, code: code, nameKey: code, seriesCode: series, kind: kind,
       ranges: ranges, snowAffinity: affinity
     )
   }
@@ -120,15 +121,36 @@ struct WaxRecommenderTests {
 
   @Test("Preparation layers are kept out of the main ranking")
   func preparationExcluded() {
-    let binder = product("BIND", kind: .binder, ranges: [.frozenCorn: [TempRangeC(-12, 10)]])
+    let binder = product("BIND", kind: .binder, series: "KX", ranges: [.frozenCorn: [TempRangeC(-12, 10)]])
     let klister = product("KL", kind: .klister, ranges: [.frozenCorn: [TempRangeC(-5, 0)]])
     let conditions = WaxConditions(temperatureC: -3, snowType: .frozenCorn)
 
     let ranked = WaxRecommender.rank(products: [binder, klister], conditions: conditions)
     #expect(ranked.allSatisfy { $0.product.kind != .binder })
 
-    let prep = WaxRecommender.preparation(from: [binder, klister], for: conditions)
-    #expect(prep?.product.code == "BIND")
+    let prep = WaxRecommender.preparation(for: klister, from: [binder, klister], conditions: conditions)
+    #expect(prep?.product?.code == "BIND")
+  }
+
+  @Test("Klister gets a klister base; hard wax never does")
+  func basesMatchTheWaxOnTop() {
+    let kx20 = WaxCatalog.product(withID: "swix.KX20")!
+    let p70 = WaxCatalog.product(withID: "rode.P70")!
+    let kx65 = WaxCatalog.product(withID: "swix.KX65")!
+    let p60 = WaxCatalog.product(withID: "rode.P60")!
+    let library = [kx20, p70, kx65, p60]
+
+    let wet = WaxConditions(temperatureC: 3, snowType: .transformedMoistFine)
+    #expect(WaxRecommender.preparation(for: kx65, from: library, conditions: wet)?.product?.code == "KX20")
+    #expect(WaxRecommender.preparation(for: p60, from: library, conditions: wet)?.product?.code != "KX20")
+
+    // Klister without any base owned still gets the advice, naming the type.
+    let bare = WaxRecommender.preparation(for: kx65, from: [kx65], conditions: wet)
+    #expect(bare != nil && bare?.product == nil)
+
+    // Fresh snow doesn't need a hard-wax base.
+    let fresh = WaxConditions(temperatureC: -8, snowType: .newFallen)
+    #expect(WaxRecommender.preparation(for: p60, from: library, conditions: fresh) == nil)
   }
 
   @Test("A narrow range edges out a very wide one at equal temperature fit")

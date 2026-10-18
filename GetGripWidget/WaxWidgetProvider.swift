@@ -17,7 +17,7 @@ struct DomainPick: Sendable {
   let domain: WaxDomain
   let top: WaxRecommendation?
   let alternatives: [WaxProduct]
-  let preparation: WaxProduct?
+  let preparation: PreparationAdvice?
 }
 
 struct WaxEntry: TimelineEntry {
@@ -119,32 +119,49 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
     let location = CLLocation(latitude: place.latitude, longitude: place.longitude)
     let now = Date()
     let interval = DateInterval(start: now.addingTimeInterval(-10 * 24 * 3600), end: now)
-    guard
-      let points = try? await WeatherKitWeatherProviderFactory().makeProvider()
-        .data(for: location, in: interval, granularity: .hourly),
+    if let points = try? await WeatherKitWeatherProviderFactory().makeProvider()
+      .data(for: location, in: interval, granularity: .hourly),
       let conditions = WeatherDigest(points: points, now: now).conditions
-    else { return entry(.weatherUnavailable, place: place.name) }
+    {
+      return entry(.ready, place: place.name, conditions: conditions)
+    }
 
-    return entry(.ready, place: place.name, conditions: conditions)
+    // The widget couldn't reach the weather; use what the app worked out,
+    // as long as it is recent and for the same spot.
+    if let cached = shared.lastConditions,
+      now.timeIntervalSince(cached.date) < 6 * 3600,
+      location.distance(from: CLLocation(latitude: cached.place.latitude, longitude: cached.place.longitude)) < 10_000
+    {
+      return entry(.ready, place: cached.place.name, conditions: cached.conditions)
+    }
+    return entry(.weatherUnavailable, place: place.name)
   }
 
   private func pick(_ domain: WaxDomain, shared: SharedAppState, conditions: WaxConditions) -> DomainPick {
     let products = shared.visibleProducts(in: domain)
     let ranked = WaxRecommender.rank(products: products, conditions: conditions)
+    let top = ranked.first
+    // Same rule as the app: alternatives are the waxes whose range covers
+    // the temperature, so the widget and the app's chart agree.
+    let covering = ranked.dropFirst().filter {
+      $0.product.combinedRange(for: conditions.snowType)?.contains(conditions.temperatureC) ?? false
+    }
     return DomainPick(
       domain: domain,
-      top: ranked.first,
-      alternatives: ranked.dropFirst().prefix(3).map(\.product),
-      preparation: WaxRecommender.preparation(from: products, for: conditions)?.product)
+      top: top,
+      alternatives: covering.prefix(3).map(\.product),
+      preparation: top.flatMap {
+        WaxRecommender.preparation(for: $0.product, from: products, conditions: conditions)
+      })
   }
 
   /// The device's location when the user has allowed widgets to use it,
   /// otherwise the place the app last showed.
   private func currentPlace(fallback: SharedPlace?) async -> SharedPlace? {
     let manager = CLLocationManager()
-    guard manager.isAuthorizedForWidgetUpdates, let location = manager.location else {
-      return fallback
-    }
+    guard manager.isAuthorizedForWidgetUpdates,
+      let location = await freshLocation() ?? manager.location
+    else { return fallback }
 
     // Reuse the app's name for the spot when the widget is standing on it.
     if let fallback,
@@ -158,6 +175,28 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
     let name = await placeName(for: location) ?? String(localized: "Widget_CurrentLocation")
     return SharedPlace(
       latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, name: name)
+  }
+
+  /// Asks for a current fix rather than trusting a cached one, so the
+  /// widget follows you; gives up after a few seconds.
+  private func freshLocation() async -> CLLocation? {
+    await withTaskGroup(of: CLLocation?.self) { group in
+      group.addTask {
+        do {
+          for try await update in CLLocationUpdate.liveUpdates() {
+            if let location = update.location, location.horizontalAccuracy < 3000 { return location }
+          }
+        } catch {}
+        return nil
+      }
+      group.addTask {
+        try? await Task.sleep(for: .seconds(6))
+        return nil
+      }
+      let first = await group.next() ?? nil
+      group.cancelAll()
+      return first
+    }
   }
 
   private func placeName(for location: CLLocation) async -> String? {

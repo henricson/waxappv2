@@ -232,12 +232,12 @@ struct Gantt: View {
     let placed = placements(for: snowType)
     let height = L.chartHeight(rows: stableRowCount)
 
+    VStack(alignment: .leading, spacing: 8) {
     GeometryReader { proxy in
       ZStack(alignment: .top) {
         ScrollView(.horizontal) {
           ZStack(alignment: .topLeading) {
             degreeColumns(height: height)
-            freezingLine(height: height)
             GanttAxis(liveTemperature: liveTemperature)
               .frame(width: L.contentWidth, height: L.axisHeight)
             bars(placed.placements)
@@ -270,6 +270,8 @@ struct Gantt: View {
       }
     }
     .frame(height: height)
+      legend
+    }
     .task { await placeOnCurrentTemperature() }
     .onChange(of: liveDegree) { _, degree in
       if isUserScrolling { commit(degree) }
@@ -313,17 +315,6 @@ struct Gantt: View {
       }
     }
     .scrollTargetLayout()
-  }
-
-  /// A faint dashed line at 0 °C: where grip wax turns to klister.
-  private func freezingLine(height: Double) -> some View {
-    Path { path in
-      let x = L.x(forTemperature: 0)
-      path.move(to: CGPoint(x: x, y: L.axisHeight))
-      path.addLine(to: CGPoint(x: x, y: height - L.bottomPadding))
-    }
-    .stroke(.secondary.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-    .allowsHitTesting(false)
   }
 
   private func bars(_ placements: [PlacedGanttTask<String, WaxProduct>]) -> some View {
@@ -377,6 +368,26 @@ struct Gantt: View {
       .frame(width: 2, height: height - TemperatureLens.diameter - 6)
       .padding(.top, TemperatureLens.diameter + 6)
       .allowsHitTesting(false)
+  }
+
+  /// What the two bar strengths mean.
+  private var legend: some View {
+    HStack(spacing: 14) {
+      Label {
+        Text("Covers \(TemperatureDisplay().string(fromCelsius: temperature))")
+      } icon: {
+        Capsule().fill(Color.accentColor).frame(width: 14, height: 6)
+      }
+      Label {
+        Text("Other temperatures")
+      } icon: {
+        Capsule().fill(Color.accentColor.opacity(0.3)).frame(width: 14, height: 6)
+      }
+    }
+    .font(.caption2)
+    .foregroundStyle(.secondary)
+    .padding(.horizontal, 16)
+    .accessibilityHidden(true)
   }
 
   // MARK: Helpers

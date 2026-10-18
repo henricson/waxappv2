@@ -33,7 +33,7 @@ struct GanttScrollTip: Tip {
 // MARK: - Layout
 
 private enum LayoutConstants {
-  static let heroHeight: CGFloat = 270
+  static let heroHeight: CGFloat = 330
   /// iPad: a taller hero, and a column that doesn't stretch edge to edge.
   static let regularHeroHeight: CGFloat = 420
   static let regularContentWidth: CGFloat = 760
@@ -273,7 +273,7 @@ extension MainView {
     if recStore.hasNoVisibleSeries {
       emptyLibraryHero
     } else if let top = recStore.topPick {
-      HeaderCanView(recommendation: top)
+      HeaderCanView(recommendation: top, preparation: recStore.preparation)
         .id(top.id)
         .transition(.blurReplace.combined(with: .scale(0.94)))
     } else {
@@ -326,26 +326,21 @@ extension MainView {
 
   // MARK: Alternatives
 
-  /// The pick's companions — the base layer to lay down first and the other
-  /// waxes that cover this temperature — in one row of fixed height. They
-  /// used to be two blocks that appeared and vanished as you scrolled the
-  /// chart, shoving everything below them up and down.
+  /// The other waxes that cover this temperature, in a row of fixed height
+  /// that never appears or vanishes, so nothing below it moves. The base
+  /// layer is not an alternative and sits with the pick in the hero.
   fileprivate var alternativesSection: some View {
     let alternatives = recStore.alternatives
-    let preparation = recStore.preparation
 
     return VStack(alignment: .leading, spacing: 8) {
       SectionHeader("Also works")
 
       ScrollView(.horizontal) {
         HStack(spacing: 10) {
-          if let preparation {
-            PreparationChip(recommendation: preparation)
-          }
           ForEach(alternatives) { alternative in
             AlternativeChip(recommendation: alternative)
           }
-          if alternatives.isEmpty && preparation == nil {
+          if alternatives.isEmpty {
             Text("Nothing else in your library covers this")
               .font(.footnote)
               .foregroundStyle(.secondary)
@@ -595,37 +590,6 @@ private struct AlternativeChip: View {
     .background(.background.secondary, in: .capsule)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(product.name), \(product.brand.displayName)")
-  }
-}
-
-// MARK: - Preparation chip
-
-/// The base layer, shown first in the companions row and marked as a step.
-private struct PreparationChip: View {
-  let recommendation: WaxRecommendation
-
-  private var product: WaxProduct { recommendation.product }
-
-  var body: some View {
-    HStack(spacing: 8) {
-      WaxIcon(product: product)
-        .frame(width: 18, height: 26)
-
-      VStack(alignment: .leading, spacing: 0) {
-        Text("First: \(product.code)")
-          .font(.caption.weight(.semibold))
-        Text(product.name)
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-      }
-    }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 8)
-    .background(.background.secondary, in: .capsule)
-    .overlay(Capsule().strokeBorder(.secondary.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("Lay down \(product.code) first, \(product.name)")
   }
 }
 

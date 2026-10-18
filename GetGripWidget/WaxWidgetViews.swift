@@ -208,14 +208,17 @@ private struct MediumWaxView: View {
   var body: some View {
     let domains = entry.domains(roomForTwo: true)
 
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 10) {
       ConditionsLine(entry: entry)
 
       if domains.count == 1, let domain = domains.first {
         hero(domain)
       } else {
-        HStack(spacing: 10) {
-          ForEach(domains, id: \.self) { domain in
+        HStack(alignment: .top, spacing: 0) {
+          ForEach(Array(domains.enumerated()), id: \.element) { index, domain in
+            if index > 0 {
+              Divider().padding(.horizontal, 12)
+            }
             Link(destination: domain.appURL) { card(domain) }
           }
         }
@@ -225,42 +228,42 @@ private struct MediumWaxView: View {
 
   private func hero(_ domain: WaxDomain) -> some View {
     let pick = entry.pick(for: domain)
-    return HStack(alignment: .bottom, spacing: 14) {
+    return HStack(alignment: .center, spacing: 14) {
       if let top = pick?.top {
-        WaxIcon(product: top.product)
-          .frame(width: 70, height: 104)
+        IconColumn(product: top.product, width: 64, height: 96)
 
         VStack(alignment: .leading, spacing: 3) {
           DomainLabel(domain: domain)
+          Text(verbatim: top.product.code)
+            .font(.title3.weight(.bold))
           Text(top.product.name)
-            .font(.headline)
-            .lineLimit(1)
-          Text(verbatim: "\(top.product.code) · \(top.product.kindDisplay)")
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
-          Spacer(minLength: 4)
-          if let alternatives = pick?.alternatives, !alternatives.isEmpty {
+          if let prep = pick?.preparation {
+            PrepLine(advice: prep)
+          } else if let alternatives = pick?.alternatives, !alternatives.isEmpty {
             AlternativesRow(products: Array(alternatives.prefix(3)))
+              .padding(.top, 4)
           }
         }
+        Spacer(minLength: 0)
       } else {
         NoMatch().frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
-    .frame(maxHeight: .infinity, alignment: .bottom)
+    .frame(maxHeight: .infinity)
   }
 
-  /// One half of the grip-and-glide layout: its label on top, then the
-  /// container standing beside the code and name.
+  /// One half of the grip-and-glide layout, built on the same grid as the
+  /// other half so their texts line up.
   private func card(_ domain: WaxDomain) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: 6) {
       DomainLabel(domain: domain)
 
       if let top = entry.pick(for: domain)?.top {
-        HStack(alignment: .bottom, spacing: 8) {
-          WaxIcon(product: top.product)
-            .frame(width: 46, height: 80)
+        HStack(alignment: .center, spacing: 10) {
+          IconColumn(product: top.product, width: 40, height: 66)
           VStack(alignment: .leading, spacing: 1) {
             Text(verbatim: top.product.code)
               .font(.headline.weight(.bold))
@@ -271,14 +274,50 @@ private struct MediumWaxView: View {
               .foregroundStyle(.secondary)
               .lineLimit(2)
           }
+          Spacer(minLength: 0)
         }
-        .frame(maxHeight: .infinity, alignment: .bottom)
+        .frame(maxHeight: .infinity)
       } else {
         NoMatch().frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .foregroundStyle(.primary)
+  }
+}
+
+/// A fixed-width slot that a container stands in, bottom-aligned and
+/// centred, so a slim tube and a wide tin leave text in the same place.
+private struct IconColumn: View {
+  let product: WaxProduct
+  let width: CGFloat
+  let height: CGFloat
+
+  var body: some View {
+    WaxIcon(product: product)
+      .frame(width: min(width, height * WaxIcon.aspect(for: product)), height: height)
+      .frame(width: width, height: height, alignment: .bottom)
+  }
+}
+
+/// "Lay down KX20 first", with the reason underneath.
+private struct PrepLine: View {
+  let advice: PreparationAdvice
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 1) {
+      Label {
+        Text(advice.title)
+      } icon: {
+        Image(systemName: "square.stack.3d.down.forward")
+      }
+      .font(.caption2.weight(.semibold))
+      Text(advice.detail)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+    }
+    .padding(.top, 4)
   }
 }
 
@@ -305,12 +344,11 @@ private struct LargeWaxView: View {
 
   private func section(_ domain: WaxDomain, isOnly: Bool) -> some View {
     let pick = entry.pick(for: domain)
-    let iconHeight: CGFloat = isOnly ? 190 : 118
+    let iconHeight: CGFloat = isOnly ? 180 : 112
 
-    return HStack(alignment: .bottom, spacing: 16) {
+    return HStack(alignment: .center, spacing: 16) {
       if let top = pick?.top {
-        WaxIcon(product: top.product)
-          .frame(width: iconHeight * 0.68, height: iconHeight)
+        IconColumn(product: top.product, width: isOnly ? 120 : 80, height: iconHeight)
 
         VStack(alignment: .leading, spacing: 4) {
           DomainLabel(domain: domain)
@@ -322,21 +360,19 @@ private struct LargeWaxView: View {
             .foregroundStyle(.secondary)
 
           if let prep = pick?.preparation {
-            Text("Lay down \(prep.code) first")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
+            PrepLine(advice: prep)
           }
-
-          Spacer(minLength: 6)
 
           if let alternatives = pick?.alternatives, !alternatives.isEmpty {
             Text("Also works")
               .font(.caption2.weight(.semibold))
               .textCase(.uppercase)
               .foregroundStyle(.secondary)
+              .padding(.top, 6)
             AlternativesRow(products: alternatives, iconHeight: isOnly ? 30 : 24)
           }
         }
+        Spacer(minLength: 0)
       } else {
         VStack(alignment: .leading) {
           DomainLabel(domain: domain)
@@ -344,7 +380,7 @@ private struct LargeWaxView: View {
         }
       }
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
   }
 }
 

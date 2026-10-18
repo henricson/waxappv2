@@ -298,6 +298,12 @@ public nonisolated struct WaxProduct: Sendable, Identifiable, Hashable {
   }
 
   public var kindDisplay: String { kind.displayName }
+
+  /// A base laid under klister (Swix KX20, Rode K90), as opposed to a
+  /// hard-wax base such as Rode P70.
+  public var isKlisterBase: Bool {
+    kind == .binder && seriesCode.hasPrefix("K")
+  }
 }
 
 // MARK: - Catalogue

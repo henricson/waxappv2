@@ -35,6 +35,9 @@ nonisolated struct SharedAppState: Codable, Sendable, Equatable {
   /// Grip or glide, whichever the app was last showing.
   var activeDomain: WaxDomain
   var usesFahrenheit: Bool
+  /// The conditions the app last worked out from the weather, so a widget
+  /// that can't reach the weather itself still has something true to show.
+  var lastConditions: SharedConditions? = nil
 
   private static let key = "shared.appState.v1"
 
@@ -71,6 +74,38 @@ nonisolated struct SharedAppState: Codable, Sendable, Equatable {
         && selectedSeriesIDs.contains($0.seriesID)
         && !hiddenProductIDs.contains($0.id)
     }
+  }
+}
+
+/// `WaxConditions` as stored for the widgets, with where and when.
+nonisolated struct SharedConditions: Codable, Sendable, Equatable {
+  var place: SharedPlace
+  var date: Date
+  var temperatureC: Int
+  var snowType: Int
+  var relativeHumidity: Double?
+  var recentRainMM: Double
+  var recentSnowMM: Double
+  var isSnowing: Bool
+  var temperatureTrendC: Double?
+
+  init(place: SharedPlace, date: Date, conditions c: WaxConditions) {
+    self.place = place
+    self.date = date
+    temperatureC = c.temperatureC
+    snowType = c.snowType.rawValue
+    relativeHumidity = c.relativeHumidity
+    recentRainMM = c.recentRainMM
+    recentSnowMM = c.recentSnowMM
+    isSnowing = c.isSnowing
+    temperatureTrendC = c.temperatureTrendC
+  }
+
+  var conditions: WaxConditions {
+    WaxConditions(
+      temperatureC: temperatureC, snowType: SnowType(rawValue: snowType) ?? .fineGrained,
+      relativeHumidity: relativeHumidity, recentRainMM: recentRainMM, recentSnowMM: recentSnowMM,
+      isSnowing: isSnowing, temperatureTrendC: temperatureTrendC)
   }
 }
 

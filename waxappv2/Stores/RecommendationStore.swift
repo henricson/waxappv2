@@ -143,8 +143,9 @@ final class RecommendationStore {
   }
 
   /// Binder or base prep to lay down first, when the user has one visible.
-  var preparation: WaxRecommendation? {
-    WaxRecommender.preparation(from: candidates, for: conditions)
+  var preparation: PreparationAdvice? {
+    guard let top = topPick?.product else { return nil }
+    return WaxRecommender.preparation(for: top, from: candidates, conditions: conditions)
   }
 
   /// True when the user has turned off every series in the active domain.

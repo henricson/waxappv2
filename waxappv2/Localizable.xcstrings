@@ -1174,6 +1174,34 @@
         }
       }
     },
+    "Covers %@" : {
+      "localizations" : {
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kattaa %@"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nær yfir %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dekker %@"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Täcker %@"
+          }
+        }
+      }
+    },
     "Current Location" : {
       "localizations" : {
         "fi" : {
@@ -2549,6 +2577,278 @@
         }
       }
     },
+    "GlideSnow_Coarse" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coarse / icy"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karkea / hanki"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grófur / harðfenni"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grov / skare"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grov / skare"
+          }
+        }
+      }
+    },
+    "GlideSnow_Coarse_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Old, transformed or refrozen snow that wears wax off."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanha, muuntunut tai uudelleen jäätynyt lumi, joka kuluttaa voidetta."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamall, umbreyttur eða endurfrosinn snjór sem slítur áburðinn."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gammel, omdannet eller gjenfrossen snø som sliter på smøringen."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gammal, omvandlad eller återfrusen snö som sliter på vallan."
+          }
+        }
+      }
+    },
+    "GlideSnow_Fine" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fine-grained"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hienojakoinen"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fínkorna"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finkornet"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finkornig"
+          }
+        }
+      }
+    },
+    "GlideSnow_Fine_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settled snow with small, rounded grains."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asettunut lumi pienin, pyöristynein rakein."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sestur snjór með smáum, ávölum kornum."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satt snø med små, runde korn."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satt snö med små, runda korn."
+          }
+        }
+      }
+    },
+    "GlideSnow_New" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New snow"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uusi lumi"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nýsnævi"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nysnø"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nysnö"
+          }
+        }
+      }
+    },
+    "GlideSnow_New_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fresh, clean snow with sharp crystals."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuore, puhdas lumi terävin kitein."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferskur, hreinn snjór með hvössum kristöllum."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fersk, ren snø med skarpe krystaller."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Färsk, ren snö med vassa kristaller."
+          }
+        }
+      }
+    },
+    "GlideSnow_Wet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wet"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Märkä"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blautur"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Våt"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blöt"
+          }
+        }
+      }
+    },
+    "GlideSnow_Wet_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snow with free water, around and above freezing."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lumi, jossa on vapaata vettä, nollan tuntumassa tai yli."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snjór með lausu vatni, um eða yfir frostmarki."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snø med fritt vann, rundt og over null."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snö med fritt vatten, runt och över noll."
+          }
+        }
+      }
+    },
     "Grip and Glide" : {
       "localizations" : {
         "fi" : {
@@ -3743,6 +4043,34 @@
         }
       }
     },
+    "No wax in your library covers this snow" : {
+      "localizations" : {
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikään kirjastosi voide ei sovi tälle lumelle"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enginn áburður í safninu þínu hentar þessum snjó"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen smøring i biblioteket ditt passer denne snøen"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen valla i ditt bibliotek passar den här snön"
+          }
+        }
+      }
+    },
     "No waxes selected" : {
       "localizations" : {
         "fi" : {
@@ -3797,6 +4125,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inga"
+          }
+        }
+      }
+    },
+    "Nothing else in your library covers this" : {
+      "localizations" : {
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikään muu kirjastossasi ei kata tätä"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ekkert annað í safninu þínu nær yfir þetta"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingenting annet i biblioteket ditt dekker dette"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inget annat i ditt bibliotek täcker detta"
           }
         }
       }
@@ -4247,6 +4603,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Andra datakällor"
+          }
+        }
+      }
+    },
+    "Other temperatures" : {
+      "localizations" : {
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muut lämpötilat"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annað hitastig"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andre temperaturer"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andra temperaturer"
           }
         }
       }
@@ -4809,6 +5193,210 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inställningar"
+          }
+        }
+      }
+    },
+    "Prep_Generic_Glide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prep the base first"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pohjusta pohja ensin"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grunnaðu sólann fyrst"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grunnsmør sålen først"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grundvalla sulan först"
+          }
+        }
+      }
+    },
+    "Prep_Generic_Hardwax" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put a base wax on first"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Levitä ensin pohjavoide"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settu grunnvax fyrst"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg grunnvoks først"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg grundvalla först"
+          }
+        }
+      }
+    },
+    "Prep_Generic_Klister" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put a klister base on first"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Levitä ensin pohjaklisteri"
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settu grunnklístur fyrst"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg baseklister først"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg grundklister först"
+          }
+        }
+      }
+    },
+    "Prep_Reason_Glide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrasive or very cold snow; a hard base layer protects the glide wax."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kuluttava tai hyvin kylmä lumi; kova pohjakerros suojaa luistovoidetta."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slítandi eða mjög kaldur snjór; hart grunnlag verndar rennsliáburðinn."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slitende eller svært kald snø; et hardt grunnlag beskytter glidevoksen."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slitande eller mycket kall snö; ett hårt grundlager skyddar glidvallan."
+          }
+        }
+      }
+    },
+    "Prep_Reason_Hardwax" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coarse snow wears grip wax off; a base keeps it on."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karkea lumi kuluttaa pitovoidetta; pohjavoide pitää sen paikallaan."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grófur snjór slítur festiáburðinn; grunnvax heldur honum á."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grov snø sliter av festevoksen; grunnvoks holder den på."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grov snö sliter av fästvallan; grundvalla håller den kvar."
+          }
+        }
+      }
+    },
+    "Prep_Reason_Klister" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Holds the klister in place and makes it last."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pitää klisterin paikallaan ja pidentää sen kestoa."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heldur klístrinu á sínum stað og lætur það endast."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Holder klisteret på plass og gjør at det varer lenger."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Håller klistret på plats och gör att det håller längre."
           }
         }
       }

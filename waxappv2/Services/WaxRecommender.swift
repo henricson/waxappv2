@@ -89,6 +89,36 @@ public nonisolated struct WaxRecommendation: Sendable, Equatable, Identifiable {
   public var percentageMatch: Double { score }
 }
 
+/// A base layer to put down before the day's wax.
+public nonisolated struct PreparationAdvice: Sendable, Equatable {
+  public enum Reason: String, Sendable {
+    case klisterBase, hardwaxBase, glideBase
+  }
+
+  /// The user's own base product, or nil when they own none of the right
+  /// kind and the advice names the type instead.
+  public let product: WaxProduct?
+  public let reason: Reason
+
+  public var title: String {
+    if let product { return String(localized: "Lay down \(product.code) first") }
+    switch reason {
+    case .klisterBase: return String(localized: "Prep_Generic_Klister")
+    case .hardwaxBase: return String(localized: "Prep_Generic_Hardwax")
+    case .glideBase: return String(localized: "Prep_Generic_Glide")
+    }
+  }
+
+  /// Why, in a sentence.
+  public var detail: String {
+    switch reason {
+    case .klisterBase: return String(localized: "Prep_Reason_Klister")
+    case .hardwaxBase: return String(localized: "Prep_Reason_Hardwax")
+    case .glideBase: return String(localized: "Prep_Reason_Glide")
+    }
+  }
+}
+
 // MARK: - Recommender
 
 public nonisolated enum WaxRecommender {
@@ -103,7 +133,7 @@ public nonisolated enum WaxRecommender {
 
   /// Ranks `products` for the given conditions, best first.
   /// Preparation layers (binders, base prep) are excluded — use
-  /// `preparation(from:for:)` for those.
+  /// `preparation(for:from:conditions:)` for those.
   public static func rank(
     products: [WaxProduct],
     conditions: WaxConditions
@@ -115,19 +145,51 @@ public nonisolated enum WaxRecommender {
       .sorted(by: isBetter)
   }
 
-  /// The preparation layer (binder / base prep) that fits these conditions,
-  /// if the user has one visible. Shown as an accompanying step, never as
-  /// the recommendation itself.
+  /// What to lay down under the day's wax, if anything.
+  ///
+  /// The base must suit the wax going on top of it:
+  /// - Klister always goes on a klister base (Swix KX20, Rode K90). It keeps
+  ///   the klister in place under the foot and slows wear; skiers do this on
+  ///   every snow, so it is advised even when the user owns no base.
+  /// - Hard wax goes on a hard-wax base (Rode P70) only where the snow wears
+  ///   it off: coarse, transformed or refrozen snow. On fresh snow it's noise.
+  /// - Glide wax gets a base-prep layer on abrasive or very cold snow.
+  /// A klister base is never suggested under hard wax, or the other way round.
   public static func preparation(
+    for top: WaxProduct,
     from products: [WaxProduct],
-    for conditions: WaxConditions
-  ) -> WaxRecommendation? {
-    products
-      .filter { $0.kind.isPreparation }
-      .compactMap { score($0, conditions: conditions) }
-      .filter { $0.score >= cutoff }
-      .sorted(by: isBetter)
-      .first
+    conditions: WaxConditions
+  ) -> PreparationAdvice? {
+    let bases = products.filter(\.kind.isPreparation)
+
+    func best(_ candidates: [WaxProduct]) -> WaxProduct? {
+      let scored = candidates.compactMap { score($0, conditions: conditions) }.sorted(by: isBetter)
+      return scored.first?.product ?? candidates.first
+    }
+
+    switch top.kind {
+    case .klister:
+      let product = best(bases.filter(\.isKlisterBase))
+      return PreparationAdvice(product: product, reason: .klisterBase)
+
+    case .hardwax:
+      let abrasive: Set<SnowType> = [.oldGrained, .transformedMoistFine, .frozenCorn, .moistFineGrained]
+      guard abrasive.contains(conditions.snowType) else { return nil }
+      let candidates = bases.filter { $0.kind == .binder && !$0.isKlisterBase }
+        .filter { score($0, conditions: conditions) != nil }
+      guard let product = best(candidates) else { return nil }
+      return PreparationAdvice(product: product, reason: .hardwaxBase)
+
+    case .glideHot, .glideLiquid, .glidePowder:
+      let abrasive: Set<SnowType> = [.oldGrained, .transformedMoistFine, .frozenCorn]
+      guard abrasive.contains(conditions.snowType) || conditions.temperatureC <= -12 else { return nil }
+      let candidates = bases.filter { $0.kind == .glideBase && score($0, conditions: conditions) != nil }
+      guard let product = best(candidates) else { return nil }
+      return PreparationAdvice(product: product, reason: .glideBase)
+
+    case .binder, .glideBase:
+      return nil
+    }
   }
 
   /// Nearest temperature at which any of `products` has something to say.

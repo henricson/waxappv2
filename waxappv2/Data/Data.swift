@@ -114,3 +114,64 @@ public func products(for snowType: SnowType, in catalog: [WaxProduct] = WaxCatal
 {
   catalog.filter { !$0.ranges(for: snowType).isEmpty }
 }
+
+// MARK: - Glide snow
+
+/// The snow distinctions that actually change a glide wax: clean new snow,
+/// fine-grained, coarse or abrasive, and wet. Grip wax needs all nine types;
+/// glide wax is ranked by temperature and by which of these it is, so the
+/// glide screen offers these four instead.
+public nonisolated enum GlideSnow: String, CaseIterable, Identifiable, Sendable {
+  case new
+  case fine
+  case coarse
+  case wet
+
+  public var id: String { rawValue }
+
+  /// The snow type a tap on this choice selects.
+  public var representative: SnowType {
+    switch self {
+    case .new: return .newFallen
+    case .fine: return .fineGrained
+    case .coarse: return .frozenCorn
+    case .wet: return .wetCorn
+    }
+  }
+
+  public init(_ snowType: SnowType) {
+    switch snowType {
+    case .newFallen, .moistNewFallen: self = .new
+    case .fineGrained, .moistFineGrained: self = .fine
+    case .oldGrained, .transformedMoistFine, .frozenCorn: self = .coarse
+    case .wetCorn, .veryWetCorn: self = .wet
+    }
+  }
+
+  public var title: String {
+    switch self {
+    case .new: return String(localized: "GlideSnow_New")
+    case .fine: return String(localized: "GlideSnow_Fine")
+    case .coarse: return String(localized: "GlideSnow_Coarse")
+    case .wet: return String(localized: "GlideSnow_Wet")
+    }
+  }
+
+  public var detail: String {
+    switch self {
+    case .new: return String(localized: "GlideSnow_New_Detail")
+    case .fine: return String(localized: "GlideSnow_Fine_Detail")
+    case .coarse: return String(localized: "GlideSnow_Coarse_Detail")
+    case .wet: return String(localized: "GlideSnow_Wet_Detail")
+    }
+  }
+
+  public var iconName: String {
+    switch self {
+    case .new: return "snowflake"
+    case .fine: return "circle.hexagongrid"
+    case .coarse: return "circle.grid.cross"
+    case .wet: return "drop"
+    }
+  }
+}

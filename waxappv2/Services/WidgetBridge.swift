@@ -14,7 +14,8 @@ enum WidgetBridge {
     selection: WaxSelectionStore,
     storeManager: StoreManager,
     location: LocationStore,
-    recommendation: RecommendationStore
+    recommendation: RecommendationStore,
+    weather: WeatherStore
   ) {
     // Before StoreKit has answered, access is unknown; publishing "no access"
     // then would flash a locked widget at every subscriber on launch.
@@ -32,7 +33,15 @@ enum WidgetBridge {
       hasAccess: storeManager.hasAccess,
       lastPlace: place,
       activeDomain: recommendation.activeDomain,
-      usesFahrenheit: TemperaturePreference.currentUnit() == .fahrenheit
+      usesFahrenheit: TemperaturePreference.currentUnit() == .fahrenheit,
+      // What the weather says, not what the user has scrubbed the chart to.
+      lastConditions: place.flatMap { place in
+        guard weather.hasLoadedWeather,
+          let conditions = WeatherDigest(points: weather.weatherDataPoints).conditions
+        else { return nil }
+        return SharedConditions(
+          place: place, date: .now, conditions: conditions)
+      }
     )
 
     if state.save() {

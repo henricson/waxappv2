@@ -12,6 +12,7 @@ struct ContentView: View {
   @Environment(LocationStore.self) private var locStore
   @Environment(WaxSelectionStore.self) private var waxStore
   @Environment(RecommendationStore.self) private var recStore
+  @Environment(WeatherStore.self) private var weatherStore
   @Environment(\.scenePhase) private var scenePhase
 
   @State private var showTrialWarning = false
@@ -107,13 +108,14 @@ struct ContentView: View {
       "\(storeManager.isInitialized)-\(storeManager.hasAccess)",
       locStore.location.map { "\($0.lat),\($0.lon),\($0.placeName ?? "")" } ?? "",
       recStore.activeDomain.rawValue,
+      "\(weatherStore.hasLoadedWeather)-\(weatherStore.weatherDataPoints.last?.end.timeIntervalSince1970 ?? 0)",
     ]
   }
 
   private func publishWidgetState() {
     WidgetBridge.publish(
       selection: waxStore, storeManager: storeManager,
-      location: locStore, recommendation: recStore)
+      location: locStore, recommendation: recStore, weather: weatherStore)
   }
 
   // MARK: - Location Services
