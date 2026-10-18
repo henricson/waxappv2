@@ -109,9 +109,6 @@ public nonisolated struct PreparationAdvice: Sendable, Equatable {
   }
 
   public var title: String {
-    if let product, !isOwned {
-      return String(localized: "Lay down \(product.brand.displayName) \(product.code) first")
-    }
     if let product { return String(localized: "Lay down \(product.code) first") }
     switch reason {
     case .klisterBase: return String(localized: "Prep_Generic_Klister")
@@ -122,7 +119,6 @@ public nonisolated struct PreparationAdvice: Sendable, Equatable {
 
   /// Why, in a sentence.
   public var detail: String {
-    if !isOwned { return String(localized: "Prep_NotOwned \(product?.name ?? "")") }
     switch reason {
     case .klisterBase: return String(localized: "Prep_Reason_Klister")
     case .hardwaxBase: return String(localized: "Prep_Reason_Hardwax")
@@ -185,11 +181,12 @@ public nonisolated enum WaxRecommender {
       if let owned = best(bases.filter(\.isKlisterBase)) {
         return PreparationAdvice(product: owned, reason: .klisterBase)
       }
-      // Klister always wants a base, so name one to get even when the user
-      // owns none: the same brand's, if it makes one.
+      // Klister always wants a base, and every skier who uses klister has
+      // one, so a base is named even when it isn't ticked in the library:
+      // the same brand's.
       let options = catalogue.filter(\.isKlisterBase)
       let suggestion = options.first { $0.brand == top.brand } ?? options.first
-      return PreparationAdvice(product: suggestion, reason: .klisterBase, isOwned: false)
+      return PreparationAdvice(product: suggestion, reason: .klisterBase)
 
     case .hardwax:
       let abrasive: Set<SnowType> = [.oldGrained, .transformedMoistFine, .frozenCorn, .moistFineGrained]

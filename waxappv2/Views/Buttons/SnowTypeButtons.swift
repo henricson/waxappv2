@@ -37,61 +37,64 @@ struct SnowTypeButtons: View {
 
   private var selectedID: String? { choices.first(where: \.isSelected)?.id }
 
+  /// The chip currently in the middle of the row.
+  @State private var centredID: String?
+  @State private var isScrolling = false
+
+  /// Every chip sits in a cell of the same width, so the system's own
+  /// view-aligned snapping puts a cell exactly in the middle.
+  private let cellWidth: CGFloat = 168
+
   var body: some View {
-    // Selection is by tap only, and the chosen chip is always brought to
-    // the middle.
+    // A picker wheel: the chip that comes to rest in the middle is the
+    // selection. Tapping a chip scrolls it there; a change from outside
+    // (the weather) does the same.
     GeometryReader { geo in
-    ScrollViewReader { proxy in
       ScrollView(.horizontal) {
         GlassEffectContainer(spacing: 0) {
-          HStack(spacing: 10) {
+          HStack(spacing: 0) {
             ForEach(choices) { choice in
               SnowTypeChip(title: choice.title, icon: choice.icon, isSelected: choice.isSelected)
-                .id(choice.id)
                 .glassEffectID(choice.id, in: glassNamespace)
+                .frame(width: cellWidth)
+                .contentShape(.rect)
+                .id(choice.id)
                 .accessibilityLabel(choice.title)
                 .accessibilityHint(choice.detail)
                 .accessibilityIdentifier("snowType_\(choice.id)")
                 .accessibilityAddTraits(choice.isSelected ? [.isSelected] : [])
                 .onTapGesture {
-                  guard !choice.isSelected else { return }
-                  withAnimation(.smooth(duration: 0.3)) {
-                    store.effectiveSnowType = choice.snowType
-                  }
+                  withAnimation(.smooth(duration: 0.3)) { centredID = choice.id }
+                  select(choice)
                 }
             }
           }
+          .scrollTargetLayout()
         }
       }
       .scrollIndicators(.hidden)
-      // Room on both sides for the first and last chip to reach the middle,
-      // like a picker wheel; selection is always centred.
-      .contentMargins(.horizontal, max(16, geo.size.width / 2 - 56), for: .scrollContent)
+      .contentMargins(.horizontal, max(0, (geo.size.width - cellWidth) / 2), for: .scrollContent)
+      .scrollTargetBehavior(.viewAligned)
+      .scrollPosition(id: $centredID, anchor: .center)
       .onScrollPhaseChange { _, phase in
-        // After a manual scroll, settle back on the selected chip.
-        guard phase == .idle, let selectedID else { return }
-        Task {
-          try? await Task.sleep(for: .seconds(1.2))
-          withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(selectedID, anchor: .center) }
+        isScrolling = phase != .idle
+        // Select only once the wheel has come to rest.
+        if phase == .idle, let id = centredID, let choice = choices.first(where: { $0.id == id }) {
+          select(choice)
         }
       }
-      .sensoryFeedback(.selection, trigger: selectedID)
-      .task {
-        await Task.yield()
-        if let selectedID { proxy.scrollTo(selectedID, anchor: .center) }
-      }
+      .onAppear { centredID = selectedID }
       .onChange(of: selectedID) { _, newValue in
-        guard let newValue else { return }
-        withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(newValue, anchor: .center) }
+        guard !isScrolling, centredID != newValue else { return }
+        withAnimation(.smooth(duration: 0.35)) { centredID = newValue }
       }
-      // The row may first be laid out behind onboarding or a sheet at a
-      // different width; re-centre whenever its width settles.
-      .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.width } action: { _, _ in
-        if let selectedID { proxy.scrollTo(selectedID, anchor: .center) }
-      }
-      .onAppear { if let selectedID { proxy.scrollTo(selectedID, anchor: .center) } }
+      .sensoryFeedback(.selection, trigger: centredID)
     }
-    }
+  }
+
+  private func select(_ choice: Choice) {
+    guard !choice.isSelected else { return }
+    withAnimation(.smooth(duration: 0.3)) { store.effectiveSnowType = choice.snowType }
   }
 }
 

@@ -156,7 +156,7 @@ struct WaxRecommenderTests {
 
     // Klister without any base owned still gets the advice, naming one.
     let bare = WaxRecommender.preparation(for: kx65, from: [kx65], conditions: wet)
-    #expect(bare?.product?.code == "KX20" && bare?.isOwned == false)
+    #expect(bare?.product?.code == "KX20")
 
     // Fresh snow doesn't need a hard-wax base.
     let fresh = WaxConditions(temperatureC: -8, snowType: .newFallen)
