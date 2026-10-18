@@ -41,9 +41,6 @@ struct SnowTypeButtons: View {
   @State private var centredID: String?
   @State private var isScrolling = false
 
-  /// Every chip sits in a cell of the same width, so the system's own
-  /// view-aligned snapping puts a cell exactly in the middle.
-  private let cellWidth: CGFloat = 168
 
   var body: some View {
     // A picker wheel: the chip that comes to rest in the middle is the
@@ -52,12 +49,11 @@ struct SnowTypeButtons: View {
     GeometryReader { geo in
       ScrollView(.horizontal) {
         GlassEffectContainer(spacing: 0) {
-          HStack(spacing: 0) {
+          HStack(spacing: 10) {
             ForEach(choices) { choice in
               SnowTypeChip(title: choice.title, icon: choice.icon, isSelected: choice.isSelected)
                 .glassEffectID(choice.id, in: glassNamespace)
-                .frame(width: cellWidth)
-                .contentShape(.rect)
+                .contentShape(.capsule)
                 .id(choice.id)
                 .accessibilityLabel(choice.title)
                 .accessibilityHint(choice.detail)
@@ -73,8 +69,9 @@ struct SnowTypeButtons: View {
         }
       }
       .scrollIndicators(.hidden)
-      .contentMargins(.horizontal, max(0, (geo.size.width - cellWidth) / 2), for: .scrollContent)
-      .scrollTargetBehavior(.viewAligned)
+      // Room on each side for the first and last chip to reach the middle.
+      .contentMargins(.horizontal, max(16, geo.size.width / 2 - 44), for: .scrollContent)
+      .scrollTargetBehavior(.viewAligned(anchor: .center))
       .scrollPosition(id: $centredID, anchor: .center)
       .onScrollPhaseChange { _, phase in
         isScrolling = phase != .idle
