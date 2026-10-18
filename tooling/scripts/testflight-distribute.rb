@@ -44,8 +44,16 @@ else
 end
 puts "  What to test set"
 
-api("POST", "/v1/betaGroups/#{EXTERNAL_GROUP}/relationships/builds", { data: [{ type: "builds", id: id }] })
-puts "  Added to External testers"
+# A freshly processed build takes a few minutes to become assignable to an
+# external group; wait for it rather than failing.
+added = false
+20.times do
+  added = !api("POST", "/v1/betaGroups/#{EXTERNAL_GROUP}/relationships/builds",
+    { data: [{ type: "builds", id: id }] }, allow: [409, 422]).nil?
+  break if added
+  sleep 30
+end
+puts added ? "  Added to External testers" : "  Not yet assignable to External testers; internal testers have it"
 
 sub = api("POST", "/v1/betaAppReviewSubmissions",
   { data: { type: "betaAppReviewSubmissions", relationships: { build: { data: { type: "builds", id: id } } } } }, allow: [409, 422])
