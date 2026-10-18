@@ -147,10 +147,10 @@ nonisolated enum AccessState: Equatable {
   func subscriptionPeriodText(for product: Product) -> String? {
     guard let period = product.subscription?.subscriptionPeriod else { return nil }
     switch period.unit {
-    case .day: return period.value == 1 ? "day" : "\(period.value) days"
-    case .week: return period.value == 1 ? "week" : "\(period.value) weeks"
-    case .month: return period.value == 1 ? "month" : "\(period.value) months"
-    case .year: return period.value == 1 ? "year" : "\(period.value) years"
+    case .day: return period.value == 1 ? String(localized: "day") : String(localized: "\(period.value) days")
+    case .week: return period.value == 1 ? String(localized: "week") : String(localized: "\(period.value) weeks")
+    case .month: return period.value == 1 ? String(localized: "month") : String(localized: "\(period.value) months")
+    case .year: return period.value == 1 ? String(localized: "year") : String(localized: "\(period.value) years")
     @unknown default: return nil
     }
   }

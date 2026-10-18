@@ -75,12 +75,12 @@ struct MapSelectView: View {
             Spacer()
             Button(action: useCurrentLocation) {
               Image(systemName: "location.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.blue)
-                .padding(12)
-                .background(.thickMaterial, in: Circle())
-                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(.tint)
+                .frame(width: 48, height: 48)
             }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityIdentifier("mapMyLocationButton")
             .padding(.trailing, 20)
             .padding(.bottom, 12)
@@ -150,10 +150,7 @@ struct MapSelectView: View {
               }
             }
             .scrollIndicators(.hidden)
-            .background(
-              .ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+            .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
             .padding(.horizontal, 16)
             .padding(.bottom, 10)
             .frame(height: targetHeight)
@@ -210,10 +207,7 @@ struct MapSelectView: View {
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 14)
-          .background(
-            .ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-          )
-          .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+          .glassEffect(.regular.interactive(), in: .capsule)
           .padding(.horizontal, 16)
           .padding(.bottom, selectedCoordinate != nil ? 10 : 20)
 
@@ -223,13 +217,11 @@ struct MapSelectView: View {
               Text("Use this location")
                 .accessibilityIdentifier("confirmLocationButton")
                 .font(.headline)
-                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(12)
-                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
+                .padding(.vertical, 6)
             }
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
             .transition(.move(edge: .bottom).combined(with: .opacity))

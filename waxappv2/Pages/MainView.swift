@@ -37,7 +37,7 @@ private enum LayoutConstants {
   /// iPad: a taller hero, and a column that doesn't stretch edge to edge.
   static let regularHeroHeight: CGFloat = 420
   static let regularContentWidth: CGFloat = 760
-  static let minimumGanttHeight: CGFloat = 260
+  static let companionRowHeight: CGFloat = 52
 }
 
 // MARK: - MainView
@@ -171,15 +171,12 @@ extension MainView {
             }
 
             alternativesSection
-
-            preparationSection
           }
           .frame(maxWidth: horizontalSizeClass == .regular ? LayoutConstants.regularContentWidth : .infinity)
 
           conditionsSection
 
           ganttSection
-            .frame(minHeight: LayoutConstants.minimumGanttHeight)
 
           attributionSection
         }
@@ -329,54 +326,37 @@ extension MainView {
 
   // MARK: Alternatives
 
-  @ViewBuilder
+  /// The pick's companions — the base layer to lay down first and the other
+  /// waxes that cover this temperature — in one row of fixed height. They
+  /// used to be two blocks that appeared and vanished as you scrolled the
+  /// chart, shoving everything below them up and down.
   fileprivate var alternativesSection: some View {
     let alternatives = recStore.alternatives
+    let preparation = recStore.preparation
 
-    if !alternatives.isEmpty {
-      VStack(alignment: .leading, spacing: 8) {
-        SectionHeader("Also works")
+    return VStack(alignment: .leading, spacing: 8) {
+      SectionHeader("Also works")
 
-        // Alternatives are content, not controls, so they sit on solid
-        // cards. Glass is kept for the things you touch.
-        ScrollView(.horizontal) {
-          HStack(spacing: 10) {
-            ForEach(alternatives) { alternative in
-              AlternativeChip(recommendation: alternative)
-            }
+      ScrollView(.horizontal) {
+        HStack(spacing: 10) {
+          if let preparation {
+            PreparationChip(recommendation: preparation)
           }
-          .padding(.horizontal)
+          ForEach(alternatives) { alternative in
+            AlternativeChip(recommendation: alternative)
+          }
+          if alternatives.isEmpty && preparation == nil {
+            Text("Nothing else in your library covers this")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .padding(.vertical, 8)
+          }
         }
-        .scrollIndicators(.hidden)
+        .padding(.horizontal)
+        .animation(.smooth(duration: 0.25), value: alternatives.map(\.id))
       }
-      .transition(.blurReplace)
-    }
-  }
-
-  // MARK: Preparation layer
-
-  @ViewBuilder
-  fileprivate var preparationSection: some View {
-    if let prep = recStore.preparation {
-      HStack(spacing: 12) {
-        WaxIcon(product: prep.product)
-          .frame(width: 22, height: 32)
-
-        VStack(alignment: .leading, spacing: 1) {
-          Text("Lay down \(prep.product.code) first")
-            .font(.footnote.weight(.semibold))
-          Text(prep.product.name)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        }
-
-        Spacer(minLength: 0)
-      }
-      .padding(.horizontal, 14)
-      .padding(.vertical, 10)
-      .background(.background.secondary, in: .rect(cornerRadius: 18))
-      .padding(.horizontal)
-      .transition(.blurReplace)
+      .scrollIndicators(.hidden)
+      .frame(height: LayoutConstants.companionRowHeight)
     }
   }
 
@@ -615,6 +595,37 @@ private struct AlternativeChip: View {
     .background(.background.secondary, in: .capsule)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(product.name), \(product.brand.displayName)")
+  }
+}
+
+// MARK: - Preparation chip
+
+/// The base layer, shown first in the companions row and marked as a step.
+private struct PreparationChip: View {
+  let recommendation: WaxRecommendation
+
+  private var product: WaxProduct { recommendation.product }
+
+  var body: some View {
+    HStack(spacing: 8) {
+      WaxIcon(product: product)
+        .frame(width: 18, height: 26)
+
+      VStack(alignment: .leading, spacing: 0) {
+        Text("First: \(product.code)")
+          .font(.caption.weight(.semibold))
+        Text(product.name)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 8)
+    .background(.background.secondary, in: .capsule)
+    .overlay(Capsule().strokeBorder(.secondary.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Lay down \(product.code) first, \(product.name)")
   }
 }
 

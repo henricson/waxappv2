@@ -125,294 +125,320 @@ func assignRows<ID: Hashable, T>(
 
 func clamp(_ x: Double, _ a: Double, _ b: Double) -> Double { min(max(x, a), b) }
 
-// MARK: - Layout Constants
+// MARK: - Layout
 
-private enum GanttLayoutConstants {
+private enum GanttLayout {
   static let minTemp: Double = -30
   static let maxTemp: Double = 30
+  static let pxPerDegree: Double = 48
+  static let axisHeight: Double = 74
   static let rowHeight: Double = 40
-  static let barHeight: Double = 20
-  static let chartWidth: Double = 3000
-  static let axisHeight: Double = 80
-  static let barsTopPadding: Double = 5
-  static let temperatureDebounceNanoseconds: UInt64 = 300_000_000
+  static let barHeight: Double = 32
+  static let barsTopPadding: Double = 8
+  static let bottomPadding: Double = 12
   /// Clear space between bars sharing a row, in tenths of a degree.
   static let rowGapTenths = 3
+  /// The chart never shrinks below this many rows, so a short list doesn't
+  /// collapse the page.
+  static let minimumRows = 3
+
+  static var degreeRange: ClosedRange<Int> { Int(minTemp)...Int(maxTemp) }
+  static var degreesCount: Int { degreeRange.count }
+  static var contentWidth: Double { Double(degreesCount) * pxPerDegree }
+
+  /// Centre of a degree's column, in content coordinates.
+  static func x(forTemperature t: Double) -> Double {
+    (t - minTemp + 0.5) * pxPerDegree
+  }
+
+  static func temperature(atX x: Double) -> Double {
+    x / pxPerDegree - 0.5 + minTemp
+  }
+
+  static func chartHeight(rows: Int) -> Double {
+    axisHeight + barsTopPadding + Double(max(rows, minimumRows)) * rowHeight + bottomPadding
+  }
 
   /// Narrowest a bar may be drawn and still show its icon and code.
   static func minimumBarDegrees(forCode code: String) -> Double {
-    let points = 46 + 9 * Double(code.count)
-    return points / pxPerDegree
-  }
-
-  static var degreesCount: Int {
-    Int(maxTemp - minTemp) + 1
-  }
-
-  static var pxPerDegree: Double {
-    chartWidth / Double(degreesCount)
-  }
-
-  static var tickXOffset: Double {
-    pxPerDegree / 2.0
-  }
-
-  static var contentWidth: Double {
-    Double(degreesCount) * pxPerDegree
-  }
-
-  static func contentHeight(forRowCount rowCount: Int) -> Double {
-    Double(rowCount) * rowHeight + axisHeight + barsTopPadding
+    (50 + 9 * Double(code.count)) / pxPerDegree
   }
 }
 
 // MARK: - View
 
+/// The temperature scrubber: every wax in the library as a bar across its
+/// range, scrolled under a glass lens that magnifies the temperature it is
+/// resting on. Dragging the chart changes the temperature the whole screen
+/// recommends for, one detent per degree.
 struct Gantt: View {
   @Environment(RecommendationStore.self) private var recStore
-  @Environment(\.displayScale) private var displayScale
 
   let selectedWaxes: [WaxProduct]
 
-  @State private var scrollPosition: Int?
-  @State private var isProgrammaticScroll = false
-  @State private var pendingProgrammaticTarget: Int?
-  @State private var scrollAnimationToken = UUID()
-  @State private var temperatureDebounceTask: Task<Void, Never>?
+  @State private var position = ScrollPosition(idType: Int.self)
+  /// The temperature under the lens, fractional while the chart moves.
+  @State private var liveTemperature: Double = 0
+  @State private var isUserScrolling = false
+  /// Becomes true once the chart has been placed on the current
+  /// temperature; until then scroll geometry is layout noise, not input.
+  @State private var isReady = false
 
-  private typealias Layout = GanttLayoutConstants
+  private typealias L = GanttLayout
 
   private var temperature: Int { recStore.effectiveTemperature }
   private var snowType: SnowType { recStore.effectiveSnowType }
+  private var liveDegree: Int { Int(liveTemperature.rounded()) }
 
-  /// Bars are placed in tenths of a degree using the extent they are drawn
-  /// at, not just the published range. Single-point and one-degree waxes
-  /// are widened to fit their label, and rows are packed with a small gap,
-  /// so a cluster of 0 °C waxes no longer stacks bars on top of each other.
-  private var placedTasks: (placements: [PlacedGanttTask<String, WaxProduct>], rowsCount: Int) {
-    let ganttTasks: [GanttTask<String, WaxProduct>] = selectedWaxes.compactMap { wax in
-      guard let r = wax.combinedRange(for: snowType) else { return nil }
-      let extent = drawnExtent(for: wax, range: r)
+  // MARK: Rows
+
+  private func placements(for snowType: SnowType) -> (placements: [PlacedGanttTask<String, WaxProduct>], rowsCount: Int) {
+    let tasks: [GanttTask<String, WaxProduct>] = selectedWaxes.compactMap { wax in
+      guard let range = wax.combinedRange(for: snowType) else { return nil }
+      let extent = drawnExtent(for: wax, range: range)
       return GanttTask(
         id: wax.id,
         start: Int((extent.start * 10).rounded()),
         end: Int((extent.end * 10).rounded()),
-        renderItem: wax
-      )
+        renderItem: wax)
     }
-    return assignRows(tasks: ganttTasks, padding: Layout.rowGapTenths)
+    return assignRows(tasks: tasks, padding: L.rowGapTenths)
   }
 
-  /// Start and end in degrees of the bar as drawn.
-  private func drawnExtent(for wax: WaxProduct, range r: TempRangeC) -> (start: Double, end: Double) {
-    let start = Double(r.min)
-    let span = Double(r.max - r.min)
-    let minimum = Layout.minimumBarDegrees(forCode: wax.code)
+  /// Height is fixed to the busiest snow type, so switching snow type never
+  /// makes the page jump.
+  private var stableRowCount: Int {
+    SnowType.allCases.map { placements(for: $0).rowsCount }.max() ?? 0
+  }
 
-    if span >= minimum { return (start, start + span) }
-    // Too short for its label: grow around the middle of the range, which
-    // keeps a single-point wax centred on its temperature.
-    let middle = start + span / 2
+  /// Start and end, in degrees, of the bar as drawn. Ranges too short for
+  /// their label grow around their middle, which keeps a single-point wax
+  /// centred on its temperature.
+  private func drawnExtent(for wax: WaxProduct, range r: TempRangeC) -> (start: Double, end: Double) {
+    let start = Double(r.min) - 0.5
+    let end = Double(r.max) + 0.5
+    let minimum = L.minimumBarDegrees(forCode: wax.code)
+    guard end - start < minimum else { return (start, end) }
+    let middle = (start + end) / 2
     return (middle - minimum / 2, middle + minimum / 2)
   }
 
-  private var requiredContentHeight: Double {
-    let rowCount = max(1, placedTasks.rowsCount)
-    return Layout.contentHeight(forRowCount: rowCount)
-  }
+  // MARK: Body
 
   var body: some View {
-    let tickLineWidth = max(1.0 / Double(displayScale), 1)
+    let placed = placements(for: snowType)
+    let height = L.chartHeight(rows: stableRowCount)
 
     GeometryReader { proxy in
       ZStack(alignment: .top) {
-        ScrollView(.horizontal, showsIndicators: false) {
-          chartContent(tickLineWidth: tickLineWidth, availableHeight: proxy.size.height)
+        ScrollView(.horizontal) {
+          ZStack(alignment: .topLeading) {
+            degreeColumns(height: height)
+            freezingLine(height: height)
+            GanttAxis(liveTemperature: liveTemperature)
+              .frame(width: L.contentWidth, height: L.axisHeight)
+            bars(placed.placements)
+            if placed.placements.isEmpty {
+              emptyState(viewportWidth: proxy.size.width)
+            }
+          }
+          .frame(width: L.contentWidth, height: height, alignment: .topLeading)
         }
-        .scrollTargetBehavior(
-          SnapToClosestDegree(
-            snapModulus: Layout.pxPerDegree,
-            maxColumnIndex: Layout.degreesCount - 1
-          )
-        )
-        .scrollPosition(id: $scrollPosition, anchor: .center)
-        .defaultScrollAnchor(.center)
-        .contentMargins(.horizontal, proxy.size.width / 2, for: .scrollContent)
-        .sensoryFeedback(.increase, trigger: scrollPosition)
-        .onChange(of: temperature, handleTemperatureChange)
-        .onChange(of: scrollPosition, handleScrollPositionChange)
-        .onAppear(perform: initializeScrollPosition)
-        .onDisappear { temperatureDebounceTask?.cancel() }
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(SnapToClosestDegree(snapModulus: L.pxPerDegree, maxColumnIndex: L.degreesCount - 1))
+        .scrollPosition($position, anchor: .center)
+        .contentMargins(.horizontal, max(0, proxy.size.width / 2 - L.pxPerDegree / 2), for: .scrollContent)
+        .onScrollGeometryChange(for: Double.self) { geometry in
+          L.temperature(atX: geometry.visibleRect.midX)
+        } action: { _, new in
+          if isReady { liveTemperature = new }
+        }
+        .onScrollPhaseChange { old, phase in
+          isUserScrolling = phase == .interacting || phase == .decelerating
+          // Only a drag that has come to rest sets the temperature.
+          if phase == .idle, old == .decelerating || old == .interacting { commit(liveDegree) }
+        }
 
-        TemperatureGauge(temperature: temperature)
-          .padding(.top, 10)
+        playhead(height: height)
+        TemperatureLens(temperature: liveTemperature)
+          .padding(.top, 6)
+          .allowsHitTesting(false)
       }
     }
-    .frame(minHeight: requiredContentHeight)
-  }
-
-  // MARK: - Chart Content
-
-  @ViewBuilder
-  private func chartContent(tickLineWidth: Double, availableHeight: Double) -> some View {
-    let effectiveHeight = max(requiredContentHeight, availableHeight)
-
-    ZStack(alignment: .topLeading) {
-      // Invisible degree markers for scroll snapping
-      degreeMarkers
-
-      // Wax bars
-      barsContent
-
-      // Temperature axis
-      XAxisView(
-        minTemp: Layout.minTemp,
-        maxTemp: Layout.maxTemp,
-        pxPerDegree: Layout.pxPerDegree,
-        tickXOffset: Layout.tickXOffset,
-        tickLineWidth: tickLineWidth,
-        axisHeight: Layout.axisHeight,
-        centerX: centerX(for: scrollPosition ?? temperature)
-      )
-      .frame(height: 50)
+    .frame(height: height)
+    .task { await placeOnCurrentTemperature() }
+    .onChange(of: liveDegree) { _, degree in
+      if isUserScrolling { commit(degree) }
     }
-    .frame(width: Layout.contentWidth, height: effectiveHeight, alignment: .topLeading)
+    .onChange(of: temperature) { _, newValue in
+      guard !isUserScrolling, newValue != liveDegree else { return }
+      withAnimation(.smooth(duration: 0.45)) {
+        position.scrollTo(id: clamped(newValue), anchor: .center)
+      }
+    }
+    // A detent per degree, a firmer one at freezing, where the wax choice
+    // changes most.
+    .sensoryFeedback(trigger: liveDegree) { _, degree in
+      guard isUserScrolling else { return nil }
+      return degree == 0 ? .impact(weight: .medium, intensity: 0.9) : .selection
+    }
+    .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.7), trigger: recStore.topPick?.id) { _, _ in
+      isUserScrolling
+    }
+    .accessibilityElement()
+    .accessibilityLabel("Temperature")
+    .accessibilityValue(TemperatureDisplay().string(fromCelsius: temperature))
+    .accessibilityHint("Swipe up or down to change the temperature")
+    .accessibilityAdjustableAction { direction in
+      switch direction {
+      case .increment: recStore.effectiveTemperature = clamped(temperature + 1)
+      case .decrement: recStore.effectiveTemperature = clamped(temperature - 1)
+      @unknown default: break
+      }
+    }
   }
 
-  private var degreeMarkers: some View {
+  // MARK: Layers
+
+  private func degreeColumns(height: Double) -> some View {
     HStack(spacing: 0) {
-      ForEach(Int(Layout.minTemp)...Int(Layout.maxTemp), id: \.self) { degree in
+      ForEach(L.degreeRange, id: \.self) { degree in
         Color.clear
-          .frame(width: Layout.pxPerDegree, height: 1)
+          .frame(width: L.pxPerDegree, height: height)
           .id(degree)
       }
     }
     .scrollTargetLayout()
   }
 
-  private var barsContent: some View {
-    ForEach(placedTasks.placements) { task in
-      barView(for: task)
+  /// A faint dashed line at 0 °C: where grip wax turns to klister.
+  private func freezingLine(height: Double) -> some View {
+    Path { path in
+      let x = L.x(forTemperature: 0)
+      path.move(to: CGPoint(x: x, y: L.axisHeight))
+      path.addLine(to: CGPoint(x: x, y: height - L.bottomPadding))
     }
-    .animation(.spring(response: 0.45, dampingFraction: 0.8), value: snowType)
-    .padding(.top, Layout.barsTopPadding)
+    .stroke(.secondary.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+    .allowsHitTesting(false)
   }
 
-  @ViewBuilder
-  private func barView(for task: PlacedGanttTask<String, WaxProduct>) -> some View {
-    let start = clamp(Double(task.start) / 10, Layout.minTemp, Layout.maxTemp)
-    let end = clamp(Double(task.end) / 10, Layout.minTemp, Layout.maxTemp)
-    let wax = task.renderItem
-    let range = wax.combinedRange(for: snowType)
+  private func bars(_ placements: [PlacedGanttTask<String, WaxProduct>]) -> some View {
+    ForEach(placements) { task in
+      let start = Double(task.start) / 10
+      let end = Double(task.end) / 10
+      let wax = task.renderItem
+      let range = wax.combinedRange(for: snowType)
 
-    let xPos = (start - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
-    let width = max(Layout.pxPerDegree, (end - start) * Layout.pxPerDegree)
-    let yPos = Double(task.row) * Layout.rowHeight + Layout.axisHeight
-
-    let baseColor = Color(hex: wax.primaryColor) ?? .blue
-    let secondaryColor = wax.secondaryColor.flatMap { Color(hex: $0) }
-
-    GanttBarView(
-      wax: wax,
-      baseColor: baseColor,
-      secondaryColor: secondaryColor,
-      barHeight: Layout.barHeight,
-      // A manufacturer may publish a single-point range (Swix V50 is
-      // "0 °C" exactly); its bar is widened to fit, and marked as a point.
-      isPinpoint: range.map { $0.min == $0.max } ?? false,
-      emphasis: emphasis(for: wax)
-    )
-    .frame(width: width, height: Layout.barHeight)
-    .offset(x: xPos, y: yPos)
-    .transition(
-      .asymmetric(
-        insertion: .opacity
-          .combined(with: .scale(scale: 0.9, anchor: .leading))
-          .combined(with: .offset(x: -20)),
-        removal: .opacity
-          .combined(with: .scale(scale: 0.9, anchor: .trailing))
-      ))
+      GanttBarView(
+        wax: wax,
+        isPinpoint: range.map { $0.min == $0.max } ?? false,
+        emphasis: emphasis(for: wax)
+      )
+      .frame(width: (end - start) * L.pxPerDegree, height: L.barHeight)
+      .offset(
+        x: (start - L.minTemp) * L.pxPerDegree,
+        y: L.axisHeight + L.barsTopPadding + Double(task.row) * L.rowHeight + (L.rowHeight - L.barHeight) / 2)
+      .onTapGesture {
+        guard let range else { return }
+        // Tapping a bar brings its middle under the lens.
+        let middle = clamped(Int((Double(range.min + range.max) / 2).rounded()))
+        withAnimation(.smooth(duration: 0.45)) {
+          position.scrollTo(id: middle, anchor: .center)
+        }
+        recStore.effectiveTemperature = middle
+      }
+      .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .leading)))
+    }
+    .animation(.smooth(duration: 0.35), value: snowType)
   }
 
-  // MARK: - Helpers
+  private func emptyState(viewportWidth: Double) -> some View {
+    Text("No wax in your library covers this snow")
+      .font(.footnote)
+      .foregroundStyle(.secondary)
+      .frame(width: viewportWidth * 0.8)
+      .position(x: L.x(forTemperature: liveTemperature), y: L.axisHeight + 50)
+  }
+
+  private func playhead(height: Double) -> some View {
+    LinearGradient(
+      colors: [.accentColor.opacity(0.9), .accentColor.opacity(0.08)],
+      startPoint: .top, endPoint: .bottom)
+      .frame(width: 2, height: height - TemperatureLens.diameter - 6)
+      .padding(.top, TemperatureLens.diameter + 6)
+      .allowsHitTesting(false)
+  }
+
+  // MARK: Helpers
 
   /// Ties the chart to the hero and "Also works": the pick is outlined, the
-  /// other waxes under the temperature line stay bright, the rest recede.
+  /// other waxes under the lens stay bright, the rest recede.
   private func emphasis(for wax: WaxProduct) -> GanttBarView.Emphasis {
     if wax.id == recStore.topPick?.id { return .topPick }
     return recStore.coversCurrentTemperature(wax) ? .match : .other
   }
 
-  private func centerX(for temperature: Int) -> Double {
-    (Double(clampedTemperature(temperature)) - Layout.minTemp + 0.5) * Layout.pxPerDegree
+  private func clamped(_ t: Int) -> Int {
+    min(max(t, Int(L.minTemp)), Int(L.maxTemp))
   }
 
-  private func clampedTemperature(_ t: Int) -> Int {
-    Int(clamp(Double(t).rounded(), Layout.minTemp, Layout.maxTemp))
+  private func commit(_ degree: Int) {
+    let value = clamped(degree)
+    if recStore.effectiveTemperature != value { recStore.effectiveTemperature = value }
   }
 
-  // MARK: - Scroll Handling
-
-  private func initializeScrollPosition() {
-    scrollPosition = clampedTemperature(temperature)
-    pendingProgrammaticTarget = nil
-    isProgrammaticScroll = false
-  }
-
-  private func handleTemperatureChange(_ oldValue: Int, _ newValue: Int) {
-    temperatureDebounceTask?.cancel()
-    temperatureDebounceTask = Task { @MainActor in
-      try? await Task.sleep(nanoseconds: Layout.temperatureDebounceNanoseconds)
-
-      let target = clampedTemperature(temperature)
-      guard scrollPosition != target || pendingProgrammaticTarget != nil else { return }
-
-      pendingProgrammaticTarget = target
-      driveProgrammaticScroll()
-    }
-  }
-
-  private func handleScrollPositionChange(_ oldValue: Int?, _ newValue: Int?) {
-    guard let degree = newValue else { return }
-    let clamped = clampedTemperature(degree)
-
-    if isProgrammaticScroll {
-      if let pending = pendingProgrammaticTarget, pending == clamped {
-        if temperature != clamped { recStore.effectiveTemperature = clamped }
-      }
-      return
-    }
-
-    if clamped != temperature {
-      recStore.effectiveTemperature = clamped
-    }
-  }
-
-  private func driveProgrammaticScroll() {
-    guard let target = pendingProgrammaticTarget else { return }
-
-    isProgrammaticScroll = true
-    scrollAnimationToken = UUID()
-    let token = scrollAnimationToken
-
-    withAnimation(.easeInOut(duration: 0.35)) {
-      scrollPosition = target
-    }
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) {
-      guard token == scrollAnimationToken else { return }
-
-      if let latest = pendingProgrammaticTarget, latest != scrollPosition {
-        driveProgrammaticScroll()
-      } else {
-        pendingProgrammaticTarget = nil
-        isProgrammaticScroll = false
-      }
-    }
+  /// Waits one layout pass so the scroll view knows its size, then centres
+  /// the current temperature without animation.
+  private func placeOnCurrentTemperature() async {
+    guard !isReady else { return }
+    liveTemperature = Double(temperature)
+    await Task.yield()
+    position.scrollTo(id: clamped(temperature), anchor: .center)
+    try? await Task.sleep(for: .milliseconds(120))
+    isReady = true
   }
 }
 
-// MARK: - Snapping Behavior
+// MARK: - Axis
+
+/// Degree ticks and labels along the top of the chart. Labels fade out as
+/// they pass under the lens, which shows them magnified instead.
+private struct GanttAxis: View {
+  let liveTemperature: Double
+
+  private var display: TemperatureDisplay { TemperatureDisplay() }
+
+  /// Label every degree in Celsius, every other one in Fahrenheit — 1 °C is
+  /// 1.8 °F, so labelling them all would collide.
+  private var labelStep: Int { display.unit.axisTickStep }
+
+  var body: some View {
+    let lensRadiusDegrees = TemperatureLens.diameter / 2 / GanttLayout.pxPerDegree
+
+    ZStack(alignment: .topLeading) {
+      ForEach(GanttLayout.degreeRange, id: \.self) { degree in
+        let isMajor = degree % labelStep == 0
+        let distance = abs(Double(degree) - liveTemperature)
+        let underLens = max(0, min(1, (distance - lensRadiusDegrees * 0.55) / (lensRadiusDegrees * 0.5)))
+
+        VStack(spacing: 4) {
+          Text(display.degreesOnlyString(fromCelsius: degree))
+            .font(.caption2.weight(degree == 0 ? .semibold : .regular))
+            .monospacedDigit()
+            .foregroundStyle(degree == 0 ? .primary : .secondary)
+            .opacity(isMajor ? underLens : 0)
+          Capsule()
+            .fill(.secondary.opacity(isMajor ? 0.6 : 0.3))
+            .frame(width: 1, height: isMajor ? 8 : 5)
+        }
+        .position(x: GanttLayout.x(forTemperature: Double(degree)), y: TemperatureLens.diameter / 2 + 6)
+      }
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+// MARK: - Snapping
 
 struct SnapToClosestDegree: ScrollTargetBehavior {
   let snapModulus: Double
@@ -421,32 +447,23 @@ struct SnapToClosestDegree: ScrollTargetBehavior {
   func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
     guard snapModulus > 0 else { return }
 
+    // Let a flick carry a little further than where the finger left off.
     let velocity = context.velocity.dx
-    let dampingFactor: Double = 0.03
-    let maxExtraColumns: Double = 0.5
+    let extra = min(abs(velocity) * 0.03, 0.5 * snapModulus) * (velocity > 0 ? 1 : -1)
 
-    let extraDistance = min(abs(velocity) * dampingFactor, maxExtraColumns * snapModulus)
-    let signedExtra = velocity > 0 ? extraDistance : -extraDistance
+    let centerX = target.rect.midX + extra
+    var column = Int(((centerX - snapModulus / 2) / snapModulus).rounded())
+    column = max(0, min(column, maxColumnIndex))
 
-    let centerX = target.rect.midX + signedExtra
-
-    var columnIndex = Int(((centerX - snapModulus / 2) / snapModulus).rounded())
-    columnIndex = max(0, min(columnIndex, maxColumnIndex))
-
-    let snappedCenterX = (Double(columnIndex) + 0.5) * snapModulus
-    let dx = snappedCenterX - target.rect.midX
-
-    target.rect = target.rect.offsetBy(dx: dx, dy: 0)
+    let snapped = (Double(column) + 0.5) * snapModulus
+    target.rect = target.rect.offsetBy(dx: snapped - target.rect.midX, dy: 0)
   }
 }
 
-// MARK: - Bar View
+// MARK: - Bar
 
 struct GanttBarView: View {
   let wax: WaxProduct
-  let baseColor: Color
-  let secondaryColor: Color?
-  let barHeight: Double
   /// True when the manufacturer publishes a single temperature, not a range.
   var isPinpoint: Bool = false
   var emphasis: Emphasis = .match
@@ -460,17 +477,8 @@ struct GanttBarView: View {
     case other
   }
 
-  private var fillColor: Color {
-    Color(hex: wax.backgroundColor) ?? baseColor
-  }
-
-  private var gradientColors: [Color] {
-    [fillColor.opacity(0.95), fillColor.opacity(0.74)]
-  }
-
-  private var textColor: Color {
-    fillColor.isLight ? .black.opacity(0.85) : .white
-  }
+  private var fill: Color { Color(hex: wax.backgroundColor) ?? .blue }
+  private var textColor: Color { fill.isLight ? .black.opacity(0.85) : .white }
 
   private var code: some View {
     Text(isPinpoint ? "\(wax.code) ·" : wax.code)
@@ -483,7 +491,7 @@ struct GanttBarView: View {
   var body: some View {
     HStack(spacing: 6) {
       WaxIcon(product: wax)
-        .frame(width: barHeight * 0.5, height: barHeight * 0.85)
+        .frame(width: 14, height: 22)
 
       // The name only appears when the bar has room for all of it; a
       // truncated "Ro…" reads as clutter.
@@ -501,15 +509,12 @@ struct GanttBarView: View {
 
       Spacer(minLength: 0)
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 8)
+    .padding(.horizontal, 10)
+    .frame(maxHeight: .infinity)
     .background {
       Capsule()
-        .fill(LinearGradient(colors: gradientColors, startPoint: .top, endPoint: .bottom))
-        .overlay {
-          Capsule()
-            .strokeBorder(.white.opacity(0.22), lineWidth: 0.75)
-        }
+        .fill(LinearGradient(colors: [fill.opacity(0.96), fill.opacity(0.78)], startPoint: .top, endPoint: .bottom))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 0.75))
     }
     .overlay {
       if emphasis == .topPick {
@@ -522,6 +527,7 @@ struct GanttBarView: View {
     .opacity(emphasis == .other ? 0.45 : 1)
     .shadow(color: .black.opacity(emphasis == .other ? 0 : 0.12), radius: 2, y: 1)
     .animation(.smooth(duration: 0.25), value: emphasis)
+    .contentShape(.capsule)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(wax.code), \(wax.name), \(wax.brand.displayName)")
   }
@@ -531,10 +537,6 @@ struct GanttBarView: View {
 
 #Preview {
   @Previewable @State var appState = AppState()
-  VStack {
-    Text("Temperature: \(appState.recommendation.effectiveTemperature)°C")
-    Text("Snow Type: \(appState.recommendation.effectiveSnowType.rawValue)")
-    Gantt(selectedWaxes: WaxCatalog.all)
-      .environment(appState.recommendation)
-  }
+  Gantt(selectedWaxes: WaxCatalog.all.filter { $0.domain == .grip })
+    .environment(appState.recommendation)
 }
