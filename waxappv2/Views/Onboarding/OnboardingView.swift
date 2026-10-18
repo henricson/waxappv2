@@ -45,7 +45,7 @@ struct OnboardingView: View {
           }
         }
         .frame(height: 44)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.top, 4)
 
         // Pages are switched directly rather than by a paged TabView, whose
@@ -131,7 +131,7 @@ struct OnboardingView: View {
   // MARK: - Footer
 
   private var footer: some View {
-    VStack(spacing: 16) {
+    VStack(spacing: 18) {
       pageDots
 
       GlassEffectContainer(spacing: 12) {
@@ -170,6 +170,7 @@ struct OnboardingView: View {
       .animation(.smooth(duration: 0.3), value: page)
     }
     .padding(.horizontal, 24)
+    .padding(.top, 8)
     .padding(.bottom, 20)
   }
 
@@ -241,7 +242,7 @@ private struct WelcomePage: View {
           "Grip and glide recommendations for cross-country skis, built from the weather where you ski."
       )
     ) {
-      WaxShelf(products: heroProducts, height: 250)
+      WaxShelf(products: heroProducts, height: 220)
         .frame(maxWidth: .infinity)
     }
   }
@@ -284,11 +285,9 @@ struct WaxShelf: View {
           WaxIcon(product: product)
             .frame(width: itemHeight * WaxIcon.aspect(for: product), height: itemHeight)
             .shadow(color: .black.opacity(0.14), radius: 12, y: 8)
-            .offset(y: appeared ? 0 : 24)
+            .offset(y: appeared ? 0 : 6)
             .opacity(appeared ? 1 : 0)
-            .animation(
-              .spring(response: 0.6, dampingFraction: 0.78).delay(Double(index) * 0.07),
-              value: appeared)
+            .animation(.easeOut(duration: 0.5).delay(Double(index) * 0.04), value: appeared)
         }
       }
       .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
@@ -315,17 +314,17 @@ private struct HowItWorksPage: View {
           number: 1, isLast: false,
           title: String(localized: "Step_Location_Title"),
           detail: String(localized: "Step_Location_Detail")
-        ) { LocationTile() }
+        )
         StepRow(
           number: 2, isLast: false,
           title: String(localized: "Step_Snow_Title"),
           detail: String(localized: "Step_Snow_Detail")
-        ) { SnowTile() }
+        )
         StepRow(
           number: 3, isLast: true,
           title: String(localized: "Step_Match_Title"),
           detail: String(localized: "Step_Match_Detail")
-        ) { WaxTile() }
+        )
       }
       .padding(.horizontal, 6)
       .frame(maxWidth: 520)
@@ -335,12 +334,11 @@ private struct HowItWorksPage: View {
 
 /// One step: a numbered marker on a line running down to the next step,
 /// an illustration, and the copy.
-private struct StepRow<Tile: View>: View {
+private struct StepRow: View {
   let number: Int
   let isLast: Bool
   let title: String
   let detail: String
-  @ViewBuilder var tile: Tile
 
   var body: some View {
     HStack(alignment: .top, spacing: 16) {
@@ -360,9 +358,6 @@ private struct StepRow<Tile: View>: View {
       }
       .frame(width: 30)
 
-      tile
-        .frame(width: 64, height: 64)
-
       VStack(alignment: .leading, spacing: 4) {
         Text(title)
           .font(.headline)
@@ -371,85 +366,14 @@ private struct StepRow<Tile: View>: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
-      .padding(.top, 4)
+      .padding(.top, 3)
 
       Spacer(minLength: 0)
     }
-    .padding(.bottom, isLast ? 0 : 22)
+    .padding(.bottom, isLast ? 0 : 20)
     .fixedSize(horizontal: false, vertical: true)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Step \(number). \(title). \(detail)")
-  }
-}
-
-// MARK: Step illustrations
-
-/// A scrap of map: contour lines with a location pin on top.
-private struct LocationTile: View {
-  var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(LinearGradient(
-          colors: [Color(red: 0.80, green: 0.91, blue: 0.80), Color(red: 0.62, green: 0.82, blue: 0.70)],
-          startPoint: .topLeading, endPoint: .bottomTrailing))
-      ForEach(0..<3) { ring in
-        Ellipse()
-          .stroke(.white.opacity(0.55), lineWidth: 1)
-          .frame(width: 26 + CGFloat(ring) * 16, height: 18 + CGFloat(ring) * 11)
-          .offset(x: 6, y: 8)
-      }
-      Image(systemName: "mappin.circle.fill")
-        .font(.system(size: 28))
-        .symbolRenderingMode(.palette)
-        .foregroundStyle(.white, Color(red: 0.86, green: 0.20, blue: 0.20))
-        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-        .offset(y: -4)
-    }
-    .clipShape(.rect(cornerRadius: 16, style: .continuous))
-    .accessibilityHidden(true)
-  }
-}
-
-/// A winter sky: falling snow and a thermometer.
-private struct SnowTile: View {
-  var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(LinearGradient(
-          colors: [Color(red: 0.36, green: 0.55, blue: 0.86), Color(red: 0.62, green: 0.78, blue: 0.95)],
-          startPoint: .top, endPoint: .bottom))
-      Image(systemName: "cloud.snow.fill")
-        .font(.system(size: 30))
-        .foregroundStyle(.white)
-        .offset(x: -5, y: -2)
-      Image(systemName: "thermometer.snowflake")
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(.white)
-        .padding(5)
-        .background(Color(red: 0.16, green: 0.38, blue: 0.75), in: .circle)
-        .offset(x: 17, y: 17)
-    }
-    .accessibilityHidden(true)
-  }
-}
-
-/// The user's own wax, ticked.
-private struct WaxTile: View {
-  var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(Color(.secondarySystemGroupedBackground))
-      if let product = WaxCatalog.product(withID: "swix.V40") {
-        WaxIcon(product: product)
-          .frame(width: 30, height: 44)
-      }
-      Image(systemName: "checkmark.circle.fill")
-        .font(.system(size: 18))
-        .symbolRenderingMode(.palette)
-        .foregroundStyle(.white, .green)
-        .offset(x: 18, y: 18)
-    }
-    .accessibilityHidden(true)
   }
 }
 
@@ -587,7 +511,7 @@ private struct AccessPage: View {
         : String(localized: "Get started for free"),
       subtitle: subtitle
     ) {
-      WaxShelf(products: shelf, height: 230)
+      WaxShelf(products: shelf, height: 220)
         .frame(maxWidth: .infinity)
     }
   }
@@ -619,8 +543,8 @@ private struct OnboardingScaffold<Content: View>: View {
 
         ScrollView {
           content
-            .padding(.horizontal, 22)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
         }
         .scrollIndicators(.hidden)
         .scrollEdgeEffectStyle(.soft, for: .top)
@@ -629,19 +553,19 @@ private struct OnboardingScaffold<Content: View>: View {
         Spacer(minLength: 12)
 
         content
-          .padding(.horizontal, 22)
+          .padding(.horizontal, 24)
           .frame(maxHeight: .infinity)
 
-        Spacer(minLength: 12)
+        Spacer(minLength: 16)
 
         titleBlock
-          .padding(.bottom, 8)
+          .padding(.bottom, 24)
       }
     }
   }
 
   private var titleBlock: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 12) {
       Text(title)
         .font(.largeTitle.bold())
         .multilineTextAlignment(.center)
@@ -654,7 +578,7 @@ private struct OnboardingScaffold<Content: View>: View {
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
     }
-    .padding(.horizontal, 28)
+    .padding(.horizontal, 24)
   }
 }
 

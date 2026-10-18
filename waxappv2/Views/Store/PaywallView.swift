@@ -309,8 +309,8 @@ private struct PaywallShelf: View {
     .task {
       guard !reduceMotion else { return }
       while !Task.isCancelled {
-        try? await Task.sleep(for: .seconds(2.6))
-        withAnimation(.smooth(duration: 0.6)) { tick += 1 }
+        try? await Task.sleep(for: .seconds(4))
+        withAnimation(.easeInOut(duration: 0.8)) { tick += 1 }
       }
     }
     .accessibilityHidden(true)
@@ -324,7 +324,7 @@ private struct BobModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content
-      .offset(y: enabled ? CGFloat(sin(time * 0.9)) * 3 : 0)
+      .offset(y: enabled ? CGFloat(sin(time * 0.6)) * 1.5 : 0)
   }
 }
 
