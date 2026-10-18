@@ -2,136 +2,218 @@
 //  WaxSelectionStore.swift
 //  waxappv2
 //
-//  Store managing wax selection state with persistence support.
+//  Store managing which wax series and products the user wants to see.
 //
 
 import Foundation
 import Observation
 
-/// Store that manages which wax products are selected for display in the app.
-/// Uses PersistenceService to save/load selections across app launches.
+/// Which wax lines the app shows.
+///
+/// The user picks **series** (Swix V-line, Swix Top Speed, Rode klister…) —
+/// that is the unit shown in onboarding and in Settings. Power users can
+/// additionally hide individual products from a series; those overrides live
+/// in `hiddenProductIDs`.
 @MainActor
-@Observable class WaxSelectionStore {
-  /// Internal structure for persisting selected wax IDs
+@Observable
+final class WaxSelectionStore {
+
+  // MARK: - Persistence shape
+
   private struct Persisted: Codable {
+    var selectedSeriesIDs: Set<String>
+    var hiddenProductIDs: Set<String>
+  }
+
+  /// Pre-1.1 shape: a flat set of bare Swix product codes ("V05", "KX30"…).
+  private struct LegacyPersisted: Codable {
     let selectedWaxIDs: Set<String>
   }
 
-  /// Service for persisting selection state
+  // MARK: - State
+
   private let persistenceService: PersistenceService
 
-  /// Wax IDs (SwixWax.id) that should be shown in the app.
-  private(set) var selectedWaxIDs: Set<String>
+  private(set) var selectedSeriesIDs: Set<String>
+  private(set) var hiddenProductIDs: Set<String>
 
-  /// Convenience initializer using default dependencies
+  /// True when the user has never completed the current onboarding.
+  private(set) var needsOnboarding: Bool
+
+  // MARK: - Init
+
   convenience init() {
-    // Exclude VP series by default
-    let defaultWaxes = swixWaxes.filter { $0.series != "VP" }
-    self.init(
-      defaultSelectedWaxIDs: Set(defaultWaxes.map { $0.id }),
-      persistenceService: UserDefaultsPersistenceService()
-    )
+    self.init(persistenceService: UserDefaultsPersistenceService())
   }
 
-  /// Initializes the store with custom dependencies.
-  /// - Parameters:
-  ///   - defaultSelectedWaxIDs: The default set of selected wax IDs to use if no persisted data exists
-  ///   - persistenceService: The service to use for persistence operations
-  init(defaultSelectedWaxIDs: Set<String>, persistenceService: PersistenceService? = nil) {
-    self.persistenceService = persistenceService ?? UserDefaultsPersistenceService()
+  init(
+    defaultSeriesIDs: Set<String> = WaxCatalog.defaultSeriesIDs,
+    persistenceService: PersistenceService? = nil
+  ) {
+    let service = persistenceService ?? UserDefaultsPersistenceService()
+    self.persistenceService = service
 
-    // Load persisted selection or use defaults
-    if let data = self.persistenceService.load(forKey: AppConstants.PersistenceKeys.selectedWaxIDs)
+    if let data = service.load(forKey: AppConstants.PersistenceKeys.waxSelection),
+      let decoded = try? JSONDecoder().decode(Persisted.self, from: data),
+      !decoded.selectedSeriesIDs.isEmpty
     {
-      do {
-        let decoded = try JSONDecoder().decode(Persisted.self, from: data)
-        if !decoded.selectedWaxIDs.isEmpty {
-          self.selectedWaxIDs = decoded.selectedWaxIDs
-        } else {
-          // Empty persisted data, use defaults
-          self.selectedWaxIDs = defaultSelectedWaxIDs
-        }
-      } catch {
-        // Log error and use defaults - don't silently fail
-        #if DEBUG
-          print("⚠️ Failed to decode wax selection data: \(error). Using defaults.")
-        #endif
-        self.selectedWaxIDs = defaultSelectedWaxIDs
-      }
-    } else {
-      self.selectedWaxIDs = defaultSelectedWaxIDs
+      self.selectedSeriesIDs = decoded.selectedSeriesIDs
+      self.hiddenProductIDs = decoded.hiddenProductIDs
+      self.needsOnboarding = false
+      return
+    }
+
+    // Migrate a pre-1.1 install: derive the series the user had visible, and
+    // keep any individual products they had switched off.
+    if let legacyData = service.load(forKey: AppConstants.PersistenceKeys.legacySelectedWaxIDs),
+      let legacy = try? JSONDecoder().decode(LegacyPersisted.self, from: legacyData),
+      !legacy.selectedWaxIDs.isEmpty
+    {
+      let migratedIDs = Set(legacy.selectedWaxIDs.map { "\(WaxBrand.swix.rawValue).\($0)" })
+      let migratedProducts = WaxCatalog.all.filter { migratedIDs.contains($0.id) }
+      let series = Set(migratedProducts.map(\.seriesID))
+
+      // Products that belong to a kept series but were individually turned off.
+      let hidden = Set(
+        WaxCatalog.all
+          .filter { series.contains($0.seriesID) && !migratedIDs.contains($0.id) }
+          .map(\.id)
+      )
+
+      self.selectedSeriesIDs = series.isEmpty ? defaultSeriesIDs : series
+      self.hiddenProductIDs = hidden
+      // Upgraders should still see the new onboarding — it introduces gliders
+      // and the second brand, neither of which existed in their old install.
+      self.needsOnboarding = true
+      self.persist()
+      return
+    }
+
+    self.selectedSeriesIDs = defaultSeriesIDs
+    self.hiddenProductIDs = []
+    self.needsOnboarding = true
+  }
+
+  // MARK: - Derived
+
+  /// Every product the user has chosen to see.
+  var visibleProducts: [WaxProduct] {
+    WaxCatalog.all.filter {
+      selectedSeriesIDs.contains($0.seriesID) && !hiddenProductIDs.contains($0.id)
     }
   }
 
-  /// Checks if a specific wax is selected.
-  /// - Parameter wax: The wax to check
-  /// - Returns: true if the wax is selected, false otherwise
-  func isSelected(_ wax: SwixWax) -> Bool {
-    selectedWaxIDs.contains(wax.id)
+  func visibleProducts(in domain: WaxDomain) -> [WaxProduct] {
+    visibleProducts.filter { $0.domain == domain }
   }
 
-  /// Sets the selection state for a specific wax.
-  /// - Parameters:
-  ///   - isSelected: Whether the wax should be selected
-  ///   - wax: The wax to update
-  func setSelected(_ isSelected: Bool, for wax: SwixWax) {
+  /// Series the user has enabled, in catalogue order.
+  var selectedSeries: [WaxSeries] {
+    WaxCatalog.series.filter { selectedSeriesIDs.contains($0.id) }
+  }
+
+  func hasAnySeries(in domain: WaxDomain) -> Bool {
+    selectedSeries.contains { $0.domain == domain }
+  }
+
+  var selectedBrands: Set<WaxBrand> {
+    Set(selectedSeries.map(\.brand))
+  }
+
+  // MARK: - Series selection
+
+  func isSelected(series: WaxSeries) -> Bool {
+    selectedSeriesIDs.contains(series.id)
+  }
+
+  func setSelected(_ isSelected: Bool, series: WaxSeries) {
     if isSelected {
-      selectedWaxIDs.insert(wax.id)
+      selectedSeriesIDs.insert(series.id)
     } else {
-      selectedWaxIDs.remove(wax.id)
+      selectedSeriesIDs.remove(series.id)
     }
     persist()
   }
 
-  /// Resets selection to include all available waxes.
-  func resetToAllSelected() {
-    selectedWaxIDs = Set(swixWaxes.map { $0.id })
-    persist()
+  func toggle(series: WaxSeries) {
+    setSelected(!isSelected(series: series), series: series)
   }
 
-  /// Sets the selection state for all waxes in a series.
-  /// - Parameters:
-  ///   - isSelected: Whether all waxes in the series should be selected
-  ///   - series: The wax series to update
-  func setAllSelected(_ isSelected: Bool, in series: WaxSeries) {
-    let ids =
-      swixWaxes
-      .filter { WaxSeries(rawValue: $0.series.uppercased()) == series }
-      .map { $0.id }
-
+  func setSelected(_ isSelected: Bool, brand: WaxBrand) {
+    let ids = WaxCatalog.series.filter { $0.brand == brand }.map(\.id)
     if isSelected {
-      selectedWaxIDs.formUnion(ids)
+      selectedSeriesIDs.formUnion(ids)
     } else {
-      selectedWaxIDs.subtract(ids)
+      selectedSeriesIDs.subtract(ids)
     }
     persist()
   }
 
-  /// Gets the selection state for a wax series.
-  /// - Parameter series: The wax series to check
-  /// - Returns: The selection state (none, some, or all)
-  func selectionState(for series: WaxSeries) -> SeriesSelectionState {
-    let ids =
-      swixWaxes
-      .filter { WaxSeries(rawValue: $0.series.uppercased()) == series }
-      .map { $0.id }
+  // MARK: - Product overrides
 
-    guard !ids.isEmpty else { return .none }
+  func isSelected(_ product: WaxProduct) -> Bool {
+    selectedSeriesIDs.contains(product.seriesID) && !hiddenProductIDs.contains(product.id)
+  }
 
-    let selectedCount = ids.reduce(into: 0) { partial, id in
-      if selectedWaxIDs.contains(id) { partial += 1 }
+  func setSelected(_ isSelected: Bool, for product: WaxProduct) {
+    if isSelected {
+      hiddenProductIDs.remove(product.id)
+      // Turning a product on implies its series is on.
+      selectedSeriesIDs.insert(product.seriesID)
+    } else {
+      hiddenProductIDs.insert(product.id)
     }
+    persist()
+  }
 
+  func setAllSelected(_ isSelected: Bool, inSeries seriesID: String) {
+    let ids = WaxCatalog.products(inSeries: seriesID).map(\.id)
+    if isSelected {
+      selectedSeriesIDs.insert(seriesID)
+      hiddenProductIDs.subtract(ids)
+    } else {
+      hiddenProductIDs.formUnion(ids)
+    }
+    persist()
+  }
+
+  func selectionState(forSeries seriesID: String) -> SeriesSelectionState {
+    let products = WaxCatalog.products(inSeries: seriesID)
+    guard !products.isEmpty, selectedSeriesIDs.contains(seriesID) else { return .none }
+
+    let selectedCount = products.count { !hiddenProductIDs.contains($0.id) }
     if selectedCount == 0 { return .none }
-    if selectedCount == ids.count { return .all }
+    if selectedCount == products.count { return .all }
     return .some
   }
 
-  /// Persists the current selection state using the persistence service.
+  // MARK: - Lifecycle
+
+  /// Forces onboarding to run again. Used by demo mode when capturing the
+  /// onboarding screenshots on a simulator that has already been through it.
+  func resetOnboarding() {
+    needsOnboarding = true
+  }
+
+  /// Called when the user finishes onboarding, so it isn't shown again.
+  func markOnboardingComplete() {
+    needsOnboarding = false
+    persist()
+  }
+
+  func resetToDefaults() {
+    selectedSeriesIDs = WaxCatalog.defaultSeriesIDs
+    hiddenProductIDs = []
+    persist()
+  }
+
   private func persist() {
-    let value = Persisted(selectedWaxIDs: selectedWaxIDs)
+    let value = Persisted(
+      selectedSeriesIDs: selectedSeriesIDs,
+      hiddenProductIDs: hiddenProductIDs
+    )
     if let data = try? JSONEncoder().encode(value) {
-      persistenceService.save(data, forKey: AppConstants.PersistenceKeys.selectedWaxIDs)
+      persistenceService.save(data, forKey: AppConstants.PersistenceKeys.waxSelection)
     }
   }
 }

@@ -2,45 +2,44 @@
 //  ContentView.swift
 //  waxappv2
 //
-//  Created by Herman Henriksen on 15/12/2025.
-//
 
 import CoreLocation
-import Observation
 import SwiftUI
 
-enum Tabs {
+enum Tabs: Hashable {
   case waxes
   case about
 }
 
 struct ContentView: View {
 
-  @Environment(StoreManager.self) private var storeManager: StoreManager
+  @Environment(StoreManager.self) private var storeManager
   @Environment(LocationStore.self) private var locStore
+  @Environment(WaxSelectionStore.self) private var waxStore
+  @Environment(RecommendationStore.self) private var recStore
   @Environment(\.scenePhase) private var scenePhase
 
   @State private var selectedTab: Tabs = .waxes
-  @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
   @State private var showTrialWarning = false
 
-  /// Computed: Should paywall be shown?
-  /// Shows when: onboarding done AND no access AND store is initialized
+  /// Onboarding ownership lives in `WaxSelectionStore`, because finishing it
+  /// is what produces the user's wax selection. Upgraders from a version
+  /// without gliders or Rode are flagged for onboarding during migration.
+  private var isOnboarding: Bool { waxStore.needsOnboarding }
+
+  /// Paywall shows once onboarding is done and the user has no access.
   private var shouldShowPaywall: Bool {
-    hasSeenOnboarding && !storeManager.hasAccess && storeManager.isInitialized
+    !isOnboarding && !storeManager.hasAccess && storeManager.isInitialized
   }
 
-  /// Computed: Is user ready to use the app?
-  /// Ready when: onboarding done AND has access
   private var isReadyForContent: Bool {
-    hasSeenOnboarding && storeManager.hasAccess
+    !isOnboarding && storeManager.hasAccess
   }
 
-  /// A single binding that drives onboarding presentation and dismissal
   private var onboardingBinding: Binding<Bool> {
     Binding(
-      get: { !hasSeenOnboarding },
-      set: { if !$0 { hasSeenOnboarding = true } }
+      get: { isOnboarding },
+      set: { if !$0 { waxStore.markOnboardingComplete() } }
     )
   }
 
@@ -53,28 +52,32 @@ struct ContentView: View {
         AboutView()
       }
     }
+    .tabBarMinimizeBehavior(.onScrollDown)
     .onAppear {
-      Task {
-        await storeManager.refreshAll()
-      }
+      Task { await storeManager.refreshAll() }
+      publishWidgetState()
     }
     .onChange(of: scenePhase) { _, newPhase in
       if newPhase == .active {
-        Task {
-          await storeManager.refreshAll(force: true)
-        }
+        Task { await storeManager.refreshAll(force: true) }
       }
+      if newPhase == .background { publishWidgetState() }
+    }
+    // Keep the widgets' copy of the library, access and place current.
+    .onChange(of: widgetInputs) { _, _ in publishWidgetState() }
+    .onOpenURL { url in
+      guard let domain = WaxDomain(appURL: url) else { return }
+      selectedTab = .waxes
+      recStore.activeDomain = domain
+      recStore.reconcileSnowType()
     }
     .onChange(of: isReadyForContent) { wasReady, isNowReady in
-      // When user becomes ready (has access after onboarding), enable location
       if !wasReady && isNowReady {
         enableLocationServices()
       }
     }
     .onChange(of: storeManager.accessState) { _, newStatus in
       guard storeManager.isInitialized else { return }
-
-      // Show trial warning if applicable
       if case .trialActive(let daysLeft) = newStatus, daysLeft > 0, daysLeft <= 4 {
         showTrialWarning = true
       }
@@ -89,16 +92,41 @@ struct ContentView: View {
         Text("Your free trial is ending soon.")
       }
     }
-    // MARK: PayWallView - non-dismissable when no access
+    // MARK: Paywall — non-dismissable when there is no access
     .sheet(isPresented: .constant(shouldShowPaywall)) {
       PaywallView()
         .interactiveDismissDisabled()
     }
-    // MARK: OnboardingView
-    .sheet(isPresented: onboardingBinding) {
-      OnboardingView(showOnboarding: onboardingBinding)
-        .interactiveDismissDisabled()
+    // MARK: Onboarding
+    .fullScreenCover(isPresented: onboardingBinding) {
+      OnboardingView(isPresented: onboardingBinding)
     }
+    #if DEBUG
+      .overlay {
+        if DemoMode.showsArtCatalogue {
+          WaxArtCatalogue(domain: DemoMode.domain, isLarge: DemoMode.artCatalogueIsLarge)
+        }
+      }
+    #endif
+  }
+
+  // MARK: - Widgets
+
+  /// Everything the widgets read, so one `onChange` covers it.
+  private var widgetInputs: [String] {
+    [
+      waxStore.selectedSeriesIDs.sorted().joined(separator: ","),
+      waxStore.hiddenProductIDs.sorted().joined(separator: ","),
+      "\(storeManager.isInitialized)-\(storeManager.hasAccess)",
+      locStore.location.map { "\($0.lat),\($0.lon),\($0.placeName ?? "")" } ?? "",
+      recStore.activeDomain.rawValue,
+    ]
+  }
+
+  private func publishWidgetState() {
+    WidgetBridge.publish(
+      selection: waxStore, storeManager: storeManager,
+      location: locStore, recommendation: recStore)
   }
 
   // MARK: - Location Services
@@ -121,9 +149,6 @@ struct ContentView: View {
 
 #Preview {
   let app = AppState()
-
-  // Location services DO work in previews!
-  // The preview will request location permission and fetch real data
 
   ContentView()
     .environment(app.location)

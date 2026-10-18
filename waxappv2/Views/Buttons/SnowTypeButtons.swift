@@ -1,182 +1,88 @@
-import Observation
 import SwiftUI
 
+/// Horizontally snapping snow-type picker. The selected chip sits in the
+/// centre of the track so it reads as the current condition.
 struct SnowTypeButtons: View {
   @Bindable var store: RecommendationStore
 
-  private var selected: Binding<SnowType> { $store.effectiveSnowType }
-
-  @Environment(\.colorScheme) private var colorScheme
-
-  private let interItemSpacing: CGFloat = 8
-
   @State private var scrolledID: SnowType?
-  @State private var chipWidths: [SnowType: CGFloat] = [:]
+  @Namespace private var glassNamespace
+
+  private var selected: SnowType { store.effectiveSnowType }
 
   var body: some View {
-    GeometryReader { geometry in
-      let containerWidth = geometry.size.width
-
-      ScrollView(.horizontal) {
-        HStack(spacing: interItemSpacing) {
-          ForEach(SnowType.allCases) { type in
-            SnowTypeChip(
-              type: type,
-              isSelected: type == selected.wrappedValue,
-              colorScheme: colorScheme
-            )
-            .accessibilityIdentifier("snowType_\(type.rawValue)")
-            .background(
-              GeometryReader { geo in
-                Color.clear
-                  .onAppear {
-                    chipWidths[type] = geo.size.width
-                  }
+    ScrollView(.horizontal) {
+      // Container spacing below the HStack gap: glass shapes closer than the
+      // container's spacing melt into each other, which bridged every chip
+      // to its neighbour.
+      GlassEffectContainer(spacing: 0) {
+        HStack(spacing: 10) {
+          ForEach(store.availableSnowTypes) { type in
+            SnowTypeChip(type: type, isSelected: type == selected)
+              .id(type)
+              .glassEffectID(type.id, in: glassNamespace)
+              .accessibilityIdentifier("snowType_\(type.rawValue)")
+              .accessibilityAddTraits(type == selected ? [.isSelected] : [])
+              .onTapGesture {
+                guard type != selected else { return }
+                withAnimation(.smooth(duration: 0.3)) {
+                  store.effectiveSnowType = type
+                  scrolledID = type
+                }
               }
-            )
-            .id(type)
-            .onTapGesture {
-              guard type != selected.wrappedValue else { return }
-              selected.wrappedValue = type
-            }
           }
         }
         .scrollTargetLayout()
       }
-      .safeAreaPadding(.horizontal, containerWidth / 2)
-      .scrollTargetBehavior(
-        CenterSnappingBehavior(
-          chipWidths: chipWidths,
-          interItemSpacing: interItemSpacing,
-          containerWidth: containerWidth
-        )
-      )
-      .scrollPosition(id: $scrolledID, anchor: .center)
-      .scrollIndicators(.hidden)
-      .onAppear {
-        scrolledID = selected.wrappedValue
-      }
-      .onChange(of: selected.wrappedValue) { _, newValue in
-        withAnimation(.easeOut(duration: 0.25)) {
-          scrolledID = newValue
-        }
-      }
-      .onChange(of: scrolledID) { _, newValue in
-        guard let newValue, newValue != selected.wrappedValue else { return }
-        selected.wrappedValue = newValue
-      }.frame(height: .leastNormalMagnitude)
-
     }
-    .frame(height: .leastNormalMagnitude)
-
-  }
-}
-
-private struct CenterSnappingBehavior: ScrollTargetBehavior {
-  let chipWidths: [SnowType: CGFloat]
-  let interItemSpacing: CGFloat
-  let containerWidth: CGFloat
-
-  func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-    guard chipWidths.count == SnowType.allCases.count else { return }
-
-    // With safeAreaPadding, content starts at 0 and the padding is outside
-    // target.rect.origin.x is the scroll offset
-    // At offset 0, the first chip's leading edge is at the container's center
-
-    // Current target center in content space
-    let targetCenter = target.rect.midX
-
-    // Build chip centers
-    var chipCenters: [(SnowType, CGFloat)] = []
-    var x: CGFloat = 0
-    for type in SnowType.allCases {
-      let width = chipWidths[type] ?? 0
-      chipCenters.append((type, x + width / 2))
-      x += width + interItemSpacing
+    .scrollIndicators(.hidden)
+    .scrollTargetBehavior(.viewAligned)
+    .scrollPosition(id: $scrolledID, anchor: .center)
+    .contentMargins(.horizontal, 24, for: .scrollContent)
+    .sensoryFeedback(.selection, trigger: selected)
+    .onAppear { scrolledID = selected }
+    .onChange(of: selected) { _, newValue in
+      guard scrolledID != newValue else { return }
+      withAnimation(.smooth(duration: 0.3)) { scrolledID = newValue }
     }
-
-    // Find nearest
-    // var nearest = SnowType.allCases.first!
-    var nearestCenter: CGFloat = 0
-    var nearestDist = CGFloat.infinity
-
-    for (_, center) in chipCenters {
-      let dist = abs(targetCenter - center)
-      if dist < nearestDist {
-        nearestDist = dist
-        // nearest = type
-        nearestCenter = center
-      }
+    .onChange(of: scrolledID) { _, newValue in
+      guard let newValue, newValue != selected else { return }
+      store.effectiveSnowType = newValue
     }
-
-    // Adjust target so nearest chip's center is at rect's center
-    let halfWidth = target.rect.width / 2
-    target.rect.origin.x = nearestCenter - halfWidth
   }
 }
 
 private struct SnowTypeChip: View {
   let type: SnowType
   let isSelected: Bool
-  let colorScheme: ColorScheme
 
   var body: some View {
-    let unselectedText: Color = (colorScheme == .dark) ? .white : .primary
-
-    Label(type.title, systemImage: type.iconName)
-
+    Label(type.shortTitle, systemImage: type.iconName)
       .font(.subheadline.weight(.semibold))
-      .foregroundStyle(isSelected ? Color.accentColor : unselectedText)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 8)
-      .background(.ultraThinMaterial, in: Capsule())
-      .overlay(
-        Capsule()
-          .strokeBorder(
-            isSelected
-              ? Color.accentColor.opacity(0.6)
-              : Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.15),
-            lineWidth: isSelected ? 1.25 : 0.75
-          )
+      .lineLimit(1)
+      .fixedSize(horizontal: true, vertical: false)
+      .foregroundStyle(isSelected ? Color.white : Color.primary)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 9)
+      .glassEffect(
+        isSelected
+          ? .regular.tint(.accentColor).interactive()
+          : .regular.interactive(),
+        in: .capsule
       )
-
-      .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.15 : 0.08), radius: 1, x: 0, y: 1)
-      .contentShape(Capsule())
-
+      .contentShape(.capsule)
+      .accessibilityLabel(type.title)
+      .accessibilityHint(type.description)
   }
 }
 
 #Preview {
-  PreviewWrapper()
-}
+  @Previewable @State var app = AppState()
 
-private struct PreviewWrapper: View {
-  @State private var locStore = LocationStore()
-  @State private var weatherStore: WeatherStore
-  @State private var waxSelectionStore = WaxSelectionStore()
-  @State private var recStore: RecommendationStore
-
-  init() {
-    let locStore = LocationStore()
-    let weatherStore = WeatherStore(locationStore: locStore)
-    let waxSelectionStore = WaxSelectionStore()
-    let recStore = RecommendationStore(
-      weatherStore: weatherStore, waxSelectionStore: waxSelectionStore)
-
-    _locStore = State(initialValue: locStore)
-    _weatherStore = State(initialValue: weatherStore)
-    _waxSelectionStore = State(initialValue: waxSelectionStore)
-    _recStore = State(initialValue: recStore)
-  }
-
-  var body: some View {
-    ZStack {
-      SnowTypeButtons(store: recStore)
-
-      Rectangle()
-        .frame(width: 1)
-        .foregroundColor(.red)
-    }
+  VStack {
+    SnowTypeButtons(store: app.recommendation)
+      .frame(height: 46)
+    Text(app.recommendation.effectiveSnowType.title)
+      .font(.caption)
   }
 }

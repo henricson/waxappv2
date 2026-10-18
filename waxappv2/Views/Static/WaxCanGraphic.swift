@@ -2,310 +2,266 @@
 //  WaxCanGraphic.swift
 //  waxappv2
 //
-//  Created by Herman Henriksen on 19/10/2025.
+//  Hard-wax tins, drawn from the manufacturers' packshots.
 //
-//  Goal:
-//  - Make the lid have a shadow on the bottom side to create a 3D effect on the main body.
-//  - Make the lid have a clearer gradient as if illuminated from above.
-//  - Apply an illumination effect on the main body as well.
+//  Swix V-line:  grade-colour tin, white snap lid, and the
+//                signature band rising diagonally across the body, with the
+//                product code set along it and a skier pictogram.
+//  Swix VP-line: black tin and black lid, a large grey "VP" over the grade
+//                digits, and a grade-colour mountain ridge round the foot.
+//  Rode:         white lid, a white printed panel framed top and bottom by
+//                the grade colour, and the big blue Rode snowflake.
+//
+//  A 45 g tin is about 47 mm across and 70 mm tall with its lid on, so all
+//  three are drawn at that 2:3 proportion. Brand wordmarks are left off on
+//  purpose — a faux logo reads as a knock-off — but product codes are
+//  printed once the tin is large enough to read them.
+//
 
 import SwiftUI
 
-// MARK: - Split shapes
+// MARK: - Geometry
 
-// 1) Top ellipse (lid/rim)
-struct WaxCanTopEllipse: Shape {
+nonisolated enum TinGeometry {
+  static let aspect: CGFloat = 0.67
+
+  /// Half-height of every rim ellipse: how far we look down onto the tin.
+  static let rim: CGFloat = 0.026
+
+  // Lid: centre line of the top ellipse, and the skirt's lower rim.
+  static let lidTop: CGFloat = 0.040
+  static let lidBottom: CGFloat = 0.180
+  static let lidLeft: CGFloat = 0.060
+  static let lidRight: CGFloat = 0.940
+
+  // The body is a touch narrower than the lid, which snaps over it.
+  static let bodyTop: CGFloat = 0.170
+  static let bodyBottom: CGFloat = 0.960
+  static let bodyLeft: CGFloat = 0.095
+  static let bodyRight: CGFloat = 0.905
+
+  /// The printable side of the body, for laying out bands and print.
+  static func bodyRect(in size: CGSize) -> CGRect {
+    CGRect(
+      x: bodyLeft * size.width, y: bodyTop * size.height,
+      width: (bodyRight - bodyLeft) * size.width,
+      height: (bodyBottom - bodyTop) * size.height)
+  }
+
+  static let lidSide = CylinderSide(left: lidLeft, right: lidRight, top: lidTop, bottom: lidBottom, rim: rim)
+  static let lidFace = CylinderTop(left: lidLeft, right: lidRight, top: lidTop, rim: rim)
+  static let lidShadow = CylinderRimShadow(left: bodyLeft, right: bodyRight, rimY: lidBottom, rim: rim, depth: 0.045)
+}
+
+/// The can body: a cylinder whose foot curves away from the eye on the same
+/// ellipse as the lid rim.
+nonisolated struct TinBody: Shape {
   func path(in rect: CGRect) -> Path {
-    var path = Path()
-    let width = rect.size.width
-    let height = rect.size.height
-    path.addEllipse(in: CGRect(x: 0, y: 0, width: width, height: 0.187610619469 * height))
-    return path
+    CylinderSide(
+      left: TinGeometry.bodyLeft, right: TinGeometry.bodyRight,
+      top: TinGeometry.bodyTop, bottom: TinGeometry.bodyBottom, rim: TinGeometry.rim
+    ).path(in: rect)
   }
 }
 
-// 2) Middle band (curved side under the rim and above the body)
-struct WaxCanMiddleBand: Shape {
-  func path(in rect: CGRect) -> Path {
-    var path = Path()
-    let w = rect.size.width
-    let h = rect.size.height
+// MARK: - Shared tin
 
-    path.move(to: CGPoint(x: 0.5 * w, y: 0.187610619469 * h))
-    path.addCurve(
-      to: CGPoint(x: w, y: 0.093805309735 * h),
-      control1: CGPoint(x: 0.776142374419 * w, y: 0.187610619469 * h),
-      control2: CGPoint(x: w, y: 0.145612551681 * h))
-    path.addLine(to: CGPoint(x: w, y: 0.253097345133 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.5 * w, y: 0.346902654867 * h),
-      control1: CGPoint(x: w, y: 0.304904587611 * h),
-      control2: CGPoint(x: 0.776142374419 * w, y: 0.346902654867 * h))
-    path.addCurve(
-      to: CGPoint(x: 0, y: 0.253097345133 * h),
-      control1: CGPoint(x: 0.223857625116 * w, y: 0.346902654867 * h),
-      control2: CGPoint(x: 0, y: 0.304904587611 * h))
-    path.addLine(to: CGPoint(x: 0, y: 0.093805309735 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.5 * w, y: 0.187610619469 * h),
-      control1: CGPoint(x: 0, y: 0.145612551681 * h),
-      control2: CGPoint(x: 0.223857625116 * w, y: 0.187610619469 * h))
-    path.closeSubpath()
-
-    return path
-  }
-}
-
-// 3) Main body (lower can body)
-struct WaxCanBody: Shape {
-  func path(in rect: CGRect) -> Path {
-    var path = Path()
-    let w = rect.size.width
-    let h = rect.size.height
-
-    path.move(to: CGPoint(x: 0.051162790698 * w, y: 0.881415929204 * h))
-    path.addLine(to: CGPoint(x: 0.051150412791 * w, y: 0.294476476106 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.5 * w, y: 0.346902654867 * h),
-      control1: CGPoint(x: 0.132647113721 * w, y: 0.325532853097 * h),
-      control2: CGPoint(x: 0.30302157907 * w, y: 0.346902654867 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.951162295349 * w, y: 0.29358320885 * h),
-      control1: CGPoint(x: 0.698861376744 * w, y: 0.346902654867 * h),
-      control2: CGPoint(x: 0.870607739535 * w, y: 0.325122343363 * h))
-    path.addLine(to: CGPoint(x: 0.951160465116 * w, y: 0.881339823009 * h))
-    path.addLine(to: CGPoint(x: 0.951162790698 * w, y: 0.881415929204 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.508604362791 * w, y: 0.999984113274 * h),
-      control1: CGPoint(x: 0.951162790698 * w, y: 0.946253180531 * h),
-      control2: CGPoint(x: 0.753700218605 * w, y: 0.998936922124 * h))
-    path.addLine(to: CGPoint(x: 0.501162790698 * w, y: h))
-    path.addCurve(
-      to: CGPoint(x: 0.051162790698 * w, y: 0.881415929204 * h),
-      control1: CGPoint(x: 0.252634653488 * w, y: h),
-      control2: CGPoint(x: 0.051162790698 * w, y: 0.946908102655 * h))
-    path.closeSubpath()
-
-    return path
-  }
-}
-
-// 4) Optional diagonal band (extracted from the user's MyIcon second subpath)
-struct WaxCanDiagonalBand: Shape {
-  func path(in rect: CGRect) -> Path {
-    var path = Path()
-    let w = rect.size.width
-    let h = rect.size.height
-
-    path.move(to: CGPoint(x: 0.95116 * w, y: 0.29358 * h))
-    path.addLine(to: CGPoint(x: 0.95116 * w, y: 0.40298 * h))
-    path.addLine(to: CGPoint(x: 0.20515 * w, y: 0.97073 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.05116 * w, y: 0.88142 * h),
-      control1: CGPoint(x: 0.11078 * w, y: 0.94900 * h),
-      control2: CGPoint(x: 0.05116 * w, y: 0.91704 * h))
-    path.addLine(to: CGPoint(x: 0.05116 * w, y: 0.77756 * h))
-    path.addLine(to: CGPoint(x: 0.62064 * w, y: 0.34415 * h))
-    path.addCurve(
-      to: CGPoint(x: 0.95116 * w, y: 0.29358 * h),
-      control1: CGPoint(x: 0.76672 * w, y: 0.33736 * h),
-      control2: CGPoint(x: 0.88746 * w, y: 0.31853 * h))
-    path.closeSubpath()
-
-    return path
-  }
-}
-
-// MARK: - View
-
-struct WaxCanGraphic: View {
-  // Configurable styles
-  var topFill: LinearGradient
-  var middleFill: LinearGradient
-  var bodyFill: AnyShapeStyle
-
-  // Lighting configuration
-  var bodyIllumination: LinearGradient
-  var bodySpecular: LinearGradient
-
-  // Optional band configuration
-  var showBand: Bool
-  var bandPrimaryColor: Color
-  var bandSecondaryColor: Color?
-
-  // Aspect ratio (width:height). Default based on prior 200x300 size -> 2:3.
-  private let aspect: CGFloat = 2.0 / 3.0
-
-  init(
-    // Stronger, clearer illumination on the lid (top ellipse)
-    topFill: LinearGradient = LinearGradient(
-      colors: [
-        Color.white,  // highlight
-        Color.white.opacity(0.85),
-        Color.black.opacity(0.10),  // subtle falloff
-      ],
-      startPoint: .top,
-      endPoint: .bottom
-    ),
-    // Middle band: stronger definition
-    middleFill: LinearGradient = LinearGradient(
-      colors: [
-        Color.white.opacity(0.95),
-        Color.black.opacity(0.15),
-      ],
-      startPoint: .top,
-      endPoint: .bottom
-    ),
-    // Body base color (can be solid or gradient)
-    bodyFill: some ShapeStyle = LinearGradient(
-      colors: [Color.blue.opacity(0.9), Color.blue.opacity(0.65)],
-      startPoint: .top,
-      endPoint: .bottom
-    ),
-
-    // Body illumination: vertical soft light from top-left to bottom-right
-    bodyIllumination: LinearGradient = LinearGradient(
-      gradient: Gradient(stops: [
-        .init(color: Color.white.opacity(0.35), location: 0.0),
-        .init(color: Color.white.opacity(0.12), location: 0.35),
-        .init(color: Color.black.opacity(0.08), location: 0.9),
-      ]),
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    ),
-    // Specular highlight stripe on body
-    bodySpecular: LinearGradient = LinearGradient(
-      colors: [
-        Color.white.opacity(0.55),
-        Color.white.opacity(0.15),
-        .clear,
-      ],
-      startPoint: .leading,
-      endPoint: .trailing
-    ),
-    // Band options
-    showBand: Bool = false,
-    bandPrimaryColor: Color = .white,
-    bandSecondaryColor: Color? = nil
-  ) {
-    self.topFill = topFill
-    self.middleFill = middleFill
-    self.bodyFill = AnyShapeStyle(bodyFill)
-    self.bodyIllumination = bodyIllumination
-    self.bodySpecular = bodySpecular
-    self.showBand = showBand
-    self.bandPrimaryColor = bandPrimaryColor
-    self.bandSecondaryColor = bandSecondaryColor
-  }
+/// Lid, body silhouette and lighting shared by every tin; `print` is the
+/// label artwork, laid out in the body's own coordinate space.
+private struct Tin<Print: View>: View {
+  var bodyColor: Color
+  var lidColor: Color
+  @ViewBuilder var print: (CGRect, CGFloat) -> Print
 
   var body: some View {
-    GeometryReader { geo in
-      // Use all available height from the parent, compute width from aspect.
-      let availableHeight = geo.size.height
-      let width = availableHeight * aspect
+    ContainerCanvas(aspect: TinGeometry.aspect, baseline: 0.945) { size in
+      let line = size.height * 0.004
+      let body = TinGeometry.bodyRect(in: size)
+      let isLightLid = lidColor.isLight
 
-      ZStack {
-        // Base body fill
-        WaxCanBody()
-          .fill(bodyFill)
+      ZStack(alignment: .topLeading) {
+        TinBody().fill(bodyColor)
 
-        // Optional band base (prefer secondary color; fallback to primary)
-        if showBand {
-          WaxCanDiagonalBand()
-            .fill(bandSecondaryColor ?? bandPrimaryColor)
-        }
+        print(body, size.height)
+          .frame(width: size.width, height: size.height, alignment: .topLeading)
+          .mask(TinBody())
 
-        // Body illumination overlay (soft light)
-        WaxCanBody()
-          .fill(bodyIllumination)
-          .blendMode(.overlay)
-          .opacity(0.75)
+        // Shading over the print, so the label curves with the tin.
+        TinBody().cylinderLit()
 
-        // If band is present, illuminate it too
-        if showBand {
-          WaxCanDiagonalBand()
-            .fill(bodyIllumination)
-            .blendMode(.overlay)
-            .opacity(0.75)
+        // The lid overhangs and drops a shadow that follows its rim.
+        TinGeometry.lidShadow
+          .fill(LinearGradient(colors: [.black.opacity(0.32), .clear], startPoint: .top, endPoint: .bottom))
+          .blendMode(.multiply)
+          .mask(TinBody())
 
-          // Specular on band: reuse the same horizontal strip idea
-          WaxCanDiagonalBand()
-            .fill(
-              LinearGradient(
-                gradient: Gradient(stops: [
-                  .init(color: .clear, location: 0.0),
-                  .init(color: .clear, location: 0.20),
-                  .init(color: .white.opacity(0.55), location: 0.33),
-                  .init(color: .white.opacity(0.15), location: 0.43),
-                  .init(color: .clear, location: 0.55),
-                  .init(color: .clear, location: 1.0),
-                ]),
-                startPoint: .leading,
-                endPoint: .trailing
-              )
-            )
-            .opacity(0.8)
-            .blendMode(.screen)
-        }
+        TinBody().stroke(.black.opacity(0.20), lineWidth: line)
 
-        // Specular highlight strip on the body (narrow band near left third)
-        WaxCanBody()
+        // Lid skirt, then the face you look down on.
+        TinGeometry.lidSide.fill(lidColor)
+        TinGeometry.lidSide.lidLit()
+        TinGeometry.lidSide.stroke(.black.opacity(0.18), lineWidth: line)
+
+        TinGeometry.lidFace
           .fill(
             LinearGradient(
-              gradient: Gradient(stops: [
-                .init(color: .clear, location: 0.0),
-                .init(color: .clear, location: 0.20),
-                .init(color: .white.opacity(0.55), location: 0.33),
-                .init(color: .white.opacity(0.15), location: 0.43),
-                .init(color: .clear, location: 0.55),
-                .init(color: .clear, location: 1.0),
-              ]),
-              startPoint: .leading,
-              endPoint: .trailing
-            )
-          )
-          .opacity(0.8)
-          .blendMode(.screen)
-
-        // Middle band with stronger gradient for lid edge definition
-        WaxCanMiddleBand()
-          .fill(middleFill)
-
-        // Lid top ellipse with clearer illumination
-        WaxCanTopEllipse()
-          .fill(topFill)
+              colors: isLightLid
+                ? [.white, Color(white: 0.93)]
+                : [lidColor.opacity(0.75), lidColor],
+              startPoint: .topLeading, endPoint: .bottomTrailing))
+        TinGeometry.lidFace
+          .stroke(isLightLid ? Color.black.opacity(0.10) : Color.white.opacity(0.18), lineWidth: line)
       }
-      // Constrain content to computed width and full available height,
-      // and center it horizontally within the GeometryReader width.
-      .frame(width: width, height: availableHeight, alignment: .center)
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-      .drawingGroup()  // nicer gradients/antialiasing
+      .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
-    // Remove the fixed size; allow parent to dictate height.
-    // You can still cap it from the outside using .frame(height: ...) where used.
   }
 }
 
-#Preview {
+// MARK: - Swix V tin
 
-  VStack(spacing: 24) {
-    // Parent controls height; width follows
-    WaxCanGraphic(
-      bodyFill: LinearGradient(
-        colors: [.blue, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
-      showBand: true,
-      bandPrimaryColor: .red,
-      bandSecondaryColor: .yellow
-    )
-    .frame(height: 300)
+struct WaxCanGraphic: View {
+  var bodyColor: Color
+  var bandColor: Color?
+  var code: String = ""
 
-    WaxCanGraphic(
-      bodyFill: LinearGradient(
-        colors: [.blue, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
-      showBand: true,
-      bandPrimaryColor: .red
-    )
-    .frame(height: 220)
+  // The band climbs from low on the left to high on the right.
+  private let bandLeft: CGFloat = 0.74
+  private let bandRight: CGFloat = 0.30
+  private let bandThickness: CGFloat = 0.20
+
+  var body: some View {
+    Tin(bodyColor: bodyColor, lidColor: .white) { body, height in
+      let band = bandColor ?? bodyColor.opacity(0.6)
+      let stripe = bodyColor.isLight ? Color.black.opacity(0.18) : Color.white.opacity(0.85)
+
+      ZStack(alignment: .topLeading) {
+        // Thin keylines either side of the band, then the band itself.
+        DiagonalBand(left: bandLeft - 0.025, right: bandRight - 0.025, thickness: bandThickness + 0.05)
+          .fill(stripe)
+        DiagonalBand(left: bandLeft, right: bandRight, thickness: bandThickness)
+          .fill(band)
+
+        if PrintDetail.showsText(height: height) {
+          let angle = DiagonalBand.angle(left: bandLeft, right: bandRight, in: body.size)
+          let parts = PrintedCode.split(code)
+          PrintedCode(
+            letters: parts.letters, digits: parts.digits,
+            size: body.height * 0.16,
+            letterColor: band.isLight ? .black.opacity(0.8) : .white,
+            italic: true
+          )
+          .rotationEffect(angle)
+          .position(x: body.width * 0.50, y: body.height * ((bandLeft + bandRight) / 2 + bandThickness / 2))
+
+          Image(systemName: "figure.skiing.crosscountry")
+            .font(.system(size: body.height * 0.20, weight: .semibold))
+            .foregroundStyle(bodyColor.isLight ? Color.black.opacity(0.55) : .white)
+            .position(x: body.width * 0.72, y: body.height * 0.80)
+        }
+      }
+      .frame(width: body.width, height: body.height, alignment: .topLeading)
+      .offset(x: body.minX, y: body.minY)
+    }
   }
+}
+
+// MARK: - Swix VP tin
+
+struct WaxCanVPGraphic: View {
+  var gradeColor: Color
+  var code: String = ""
+
+  private let black = Color(white: 0.10)
+
+  var body: some View {
+    Tin(bodyColor: black, lidColor: Color(white: 0.13)) { body, height in
+      ZStack(alignment: .topLeading) {
+        SwixRidge(top: 0.70, depth: 0.12, isBackdrop: true)
+          .fill(Color(white: 0.30))
+        SwixRidge(top: 0.76, depth: 0.12)
+          .fill(gradeColor)
+
+        if PrintDetail.showsText(height: height) {
+          let parts = PrintedCode.split(code)
+          PrintedCode(
+            letters: parts.letters, digits: parts.digits,
+            size: body.width * 0.40,
+            letterColor: Color(white: 0.55), digitColor: gradeColor
+          )
+          .position(x: body.width * 0.50, y: body.height * 0.40)
+        }
+      }
+      .frame(width: body.width, height: body.height, alignment: .topLeading)
+      .offset(x: body.minX, y: body.minY)
+    }
+  }
+}
+
+// MARK: - Rode tin
+
+struct RodeCanGraphic: View {
+  var gradeColor: Color
+  var code: String = ""
+
+  static let snowflakeBlue = Color(red: 0.10, green: 0.36, blue: 0.72)
+  static let rodeRed = Color(red: 0.84, green: 0.13, blue: 0.16)
+
+  var body: some View {
+    Tin(bodyColor: Color(white: 0.97), lidColor: Color(white: 0.97)) { body, height in
+      ZStack(alignment: .topLeading) {
+        // Grade colour frames the white panel: a strip under the lid and a
+        // deep band round the foot that carries the colour name.
+        Rectangle().fill(gradeColor)
+          .frame(width: body.width, height: body.height * 0.075)
+        Rectangle().fill(gradeColor)
+          .frame(width: body.width, height: body.height * 0.27)
+          .offset(y: body.height * 0.73)
+
+        Image(systemName: "snowflake")
+          .font(.system(size: body.height * 0.44, weight: .bold))
+          .foregroundStyle(Self.snowflakeBlue)
+          .position(x: body.width * 0.50, y: body.height * 0.42)
+
+        if PrintDetail.showsFineDetail(height: height) {
+          // The red wordmark plate across the snowflake, without the word.
+          Capsule()
+            .fill(Self.rodeRed)
+            .overlay(Capsule().stroke(.white, lineWidth: body.height * 0.012))
+            .frame(width: body.width * 0.70, height: body.height * 0.13)
+            .position(x: body.width * 0.50, y: body.height * 0.42)
+        }
+
+        if PrintDetail.showsText(height: height) {
+          Text(verbatim: code)
+            .font(.system(size: body.height * 0.085, weight: .bold).width(.condensed))
+            .foregroundStyle(gradeColor.isLight ? Color.black.opacity(0.75) : .white)
+            .position(x: body.width * 0.50, y: body.height * 0.85)
+        }
+      }
+      .frame(width: body.width, height: body.height, alignment: .topLeading)
+      .offset(x: body.minX, y: body.minY)
+    }
+  }
+}
+
+// MARK: - Previews
+
+#Preview("Swix tins") {
+  HStack(alignment: .bottom, spacing: 16) {
+    WaxCanGraphic(bodyColor: Color(hex: "#3D78E5")!, bandColor: Color(hex: "#A9C8F6")!, code: "V40")
+    WaxCanGraphic(bodyColor: Color(hex: "#5A8F3C")!, bandColor: Color(hex: "#B7D49B")!, code: "V20")
+    WaxCanVPGraphic(gradeColor: Color(hex: "#9B8FDD")!, code: "VP45")
+  }
+  .frame(height: 200)
+  .padding()
+}
+
+#Preview("Rode tins") {
+  HStack(alignment: .bottom, spacing: 16) {
+    RodeCanGraphic(gradeColor: Color(hex: "#7B4C9E")!, code: "P40")
+    RodeCanGraphic(gradeColor: Color(hex: "#C9342B")!, code: "P50")
+    RodeCanGraphic(gradeColor: Color(hex: "#7B4C9E")!).frame(width: 20, height: 30)
+  }
+  .frame(height: 200)
   .padding()
 }

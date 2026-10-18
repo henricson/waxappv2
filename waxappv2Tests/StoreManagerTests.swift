@@ -14,6 +14,7 @@ struct AccessStateTests {
     #expect(AccessState.trialActive(daysLeft: 14).hasAccess == true)
     #expect(AccessState.trialActive(daysLeft: 0).hasAccess == true)
     #expect(AccessState.subscribed.hasAccess == true)
+    #expect(AccessState.lifetime.hasAccess == true)
     #expect(AccessState.gracePeriod.hasAccess == true)
     #expect(AccessState.billingRetry.hasAccess == true)
   }
@@ -38,6 +39,7 @@ struct AccessStateTests {
   func equatable() {
     #expect(AccessState.loading == AccessState.loading)
     #expect(AccessState.subscribed == AccessState.subscribed)
+    #expect(AccessState.lifetime != AccessState.subscribed)
     #expect(AccessState.notSubscribed == AccessState.notSubscribed)
     #expect(AccessState.expired == AccessState.expired)
     #expect(AccessState.revoked == AccessState.revoked)
@@ -218,8 +220,14 @@ struct TrialDaysCalculationTests {
   /// Helper matching the production logic in accessStateFromEntitlement
   private func daysLeft(from now: Date, to expiration: Date) -> Int {
     guard expiration > now else { return 0 }
-    let secondsLeft = expiration.timeIntervalSince(now)
-    return max(1, Int(ceil(secondsLeft / 86_400)))
+    let calendar = Calendar.current
+    let days =
+      calendar.dateComponents(
+        [.day],
+        from: calendar.startOfDay(for: now),
+        to: calendar.startOfDay(for: expiration)
+      ).day ?? 0
+    return max(1, days)
   }
 
   @Test("Exactly 10 days gives 10")
@@ -322,7 +330,6 @@ struct StoreManagerInitialStateTests {
   @MainActor
   func noProduct() {
     let store = StoreManager()
-    #expect(store.product == nil)
     #expect(store.primaryProduct == nil)
   }
 

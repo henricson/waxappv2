@@ -2,8 +2,7 @@
 //  FloatingPurchaseButton.swift
 //  waxappv2
 //
-//  Created by Herman Henriksen on 25/01/2026.
-//
+
 import SwiftUI
 
 struct FloatingPurchaseButton: View {
@@ -12,37 +11,43 @@ struct FloatingPurchaseButton: View {
   var onPurchase: () -> Void
 
   var body: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "info.circle")
-        .foregroundStyle(.secondary)
-      Text(subtitle)
-        .foregroundStyle(.secondary)
-      Button {
-        onPurchase()
-      } label: {
-        Text(actionTitle)
-          .fontWeight(.semibold)
+    GlassEffectContainer(spacing: 14) {
+      HStack(spacing: 12) {
+        Image(systemName: "sparkles")
+          .font(.footnote)
+          .foregroundStyle(.tint)
+
+        Text(subtitle)
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+          .minimumScaleFactor(0.85)
+
+        Spacer(minLength: 4)
+
+        Button(action: onPurchase) {
+          Text(actionTitle)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .glassEffect(.regular.tint(.accentColor).interactive(), in: .capsule)
       }
-      .buttonStyle(.borderedProminent)
-      .buttonBorderShape(.capsule)
+      .padding(.leading, 16)
+      .padding(.trailing, 8)
+      .padding(.vertical, 8)
+      .glassEffect(.regular, in: .capsule)
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
-    .background(
-      Capsule()
-        .fill(.regularMaterial)
-    )
-    .clipShape(Capsule())
-    .overlay(
-      Capsule()
-        .strokeBorder(.separator, lineWidth: 0.5)
-    )
-    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
   }
 }
 
 #Preview {
-  FloatingPurchaseButton(subtitle: "Start your 14-day free trial", actionTitle: "Start trial") {
-    print("Purchase button tapped!")
-  }
+  FloatingPurchaseButton(
+    subtitle: "Start your 14-day free trial",
+    actionTitle: "Start trial"
+  ) {}
+    .padding()
+    .background(.blue.opacity(0.3))
 }

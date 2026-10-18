@@ -33,8 +33,8 @@ enum TemperaturePreference {
     {
       return unit
     }
-    // Default based on device measurement system (metric -> Celsius, otherwise Fahrenheit)
-    return Locale.current.usesMetricSystem ? .celsius : .fahrenheit
+    // Default from the device's measurement system.
+    return Locale.current.measurementSystem == .us ? .fahrenheit : .celsius
   }
 
   static func setUnit(_ unit: TemperatureUnit) {

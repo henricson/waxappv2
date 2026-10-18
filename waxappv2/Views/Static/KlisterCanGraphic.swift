@@ -1,277 +1,308 @@
+//
+//  KlisterCanGraphic.swift
+//  waxappv2
+//
+//  Klister tubes, drawn from the manufacturers' packshots. Both brands
+//  photograph the tube standing on its cap, crimped seam up, so that is how
+//  they are drawn here.
+//
+//  Swix KX:  aluminium tube printed in the grade colour, with the classic
+//            diagonal "X" in the second colour, a black strip near the foot
+//            and a black knurled cap about half the tube's width.
+//  Swix KN:  "Nero" — a black tube with a big crossed X of two colours.
+//  Swix K:   universal klister in a silver tube with a red diagonal.
+//  Rode:     glossy tube in the grade colour, white crimp band, white cap,
+//            and a white label band with the blue snowflake badge.
+//
+//  A 55–60 g tube is roughly three times as tall as it is wide.
+//
+
 import SwiftUI
 
-struct KlisterCanView: View {
-  // Default colors based on the SVG, but customizable
-  var tipColor: Color = .black
-  var bodyColor: Color = Color(red: 0.85, green: 0.85, blue: 0.85)  // #D8D8D8
-  var eraserColor: Color = .black
-  var stripeColor: Color = Color(red: 0.5, green: 0.5, blue: 0.5)  // #1C1C1C
-  var middleSectionGradient: LinearGradient = LinearGradient(
-    gradient: Gradient(colors: [
-      Color(red: 0.13, green: 0.13, blue: 0.13), Color(red: 0.05, green: 0.05, blue: 0.05),
-    ]),
-    startPoint: .leading,
-    endPoint: .trailing
-  )
+// MARK: - Geometry
 
-  var body: some View {
-    GeometryReader { geometry in
-      let width = geometry.size.width
-      let height = geometry.size.height
-      // Scale factors to normalize the 200x321 SVG coordinates to the view size
-      let xScale = width / 200
-      let yScale = height / 321
+/// Body outline: full width at the crimp, tapering gently towards the
+/// shoulder, then one continuous sweep in to the neck.
+nonisolated struct KlisterTubeBody: Shape {
+  var neckWidth: CGFloat = 0.54
 
-      ZStack {
-
-        // 1. Pencil Tip (Black top part)
-        Path { path in
-          path.move(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 103.47 * xScale, y: 0 * yScale),
-            control1: CGPoint(x: 46.68 * xScale, y: 3.67 * yScale),
-            control2: CGPoint(x: 69.56 * xScale, y: 0 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 168.42 * xScale, y: 11 * yScale),
-            control1: CGPoint(x: 137.37 * xScale, y: 0 * yScale),
-            control2: CGPoint(x: 159.02 * xScale, y: 3.67 * yScale))
-          path.addLine(to: CGPoint(x: 170.25 * xScale, y: 42.5 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 103.47 * xScale, y: 30.5 * yScale),
-            control1: CGPoint(x: 164.13 * xScale, y: 34.5 * yScale),
-            control2: CGPoint(x: 141.86 * xScale, y: 30.5 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 33 * xScale, y: 43.5 * yScale),
-            control1: CGPoint(x: 65.07 * xScale, y: 30.5 * yScale),
-            control2: CGPoint(x: 41.58 * xScale, y: 34.83 * yScale))
-          path.addLine(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
-          path.closeSubpath()
-        }
-        .fill(tipColor)
-
-        // 2. Main Body (Lower Shaft)
-        // Base fill + cylindrical shading overlays (vignette + specular highlight)
-        let bodyPath = Path { path in
-          path.move(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.43 * xScale, y: 91 * yScale),
-            control1: CGPoint(x: 48.10 * xScale, y: 94 * yScale),
-            control2: CGPoint(x: 74.76 * xScale, y: 91 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 181.43 * xScale, y: 100 * yScale),
-            control1: CGPoint(x: 128.10 * xScale, y: 91 * yScale),
-            control2: CGPoint(x: 154.76 * xScale, y: 94 * yScale))
-          path.addLine(to: CGPoint(x: 201.43 * xScale, y: 320.60 * yScale))
-          path.addLine(to: CGPoint(x: 1.43 * xScale, y: 320.60 * yScale))
-          path.addLine(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
-          path.closeSubpath()
-        }
-
-        bodyPath
-          .fill(bodyColor)
-
-        // Edge darkening to imply roundness
-        bodyPath
-          .fill(
-            LinearGradient(
-              gradient: Gradient(stops: [
-                .init(color: .black.opacity(0.18), location: 0.00),
-                .init(color: .black.opacity(0.00), location: 0.22),
-                .init(color: .black.opacity(0.00), location: 0.78),
-                .init(color: .black.opacity(0.16), location: 1.00),
-              ]),
-              startPoint: .leading,
-              endPoint: .trailing
-            )
-          )
-          .blendMode(.multiply)
-
-        // Specular highlight strip (slightly left-of-center)
-        bodyPath
-          .fill(
-            LinearGradient(
-              gradient: Gradient(stops: [
-                .init(color: .white.opacity(0.00), location: 0.00),
-                .init(color: .white.opacity(0.18), location: 0.28),
-                .init(color: .white.opacity(0.32), location: 0.38),
-                .init(color: .white.opacity(0.10), location: 0.48),
-                .init(color: .white.opacity(0.00), location: 0.62),
-                .init(color: .white.opacity(0.00), location: 1.00),
-              ]),
-              startPoint: .leading,
-              endPoint: .trailing
-            )
-          )
-          .blendMode(.screen)
-
-        // Very subtle bottom darkening to add depth
-        bodyPath
-          .fill(
-            LinearGradient(
-              gradient: Gradient(stops: [
-                .init(color: .black.opacity(0.00), location: 0.00),
-                .init(color: .black.opacity(0.05), location: 0.65),
-                .init(color: .black.opacity(0.10), location: 1.00),
-              ]),
-              startPoint: .top,
-              endPoint: .bottom
-            )
-          )
-          .blendMode(.multiply)
-
-        // Soft shadow to lift the body slightly from the background
-        bodyPath
-          .fill(Color.clear)
-          .shadow(color: .black.opacity(0.10), radius: 5 * xScale, x: 0, y: 2 * yScale)
-
-        // 3. Upper Body Connection
-        Path { path in
-          path.move(to: CGPoint(x: 21.43 * xScale, y: 100 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.43 * xScale, y: 74 * yScale),
-            control1: CGPoint(x: 46.60 * xScale, y: 82.67 * yScale),
-            control2: CGPoint(x: 73.27 * xScale, y: 74 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 181.43 * xScale, y: 100 * yScale),
-            control1: CGPoint(x: 129.59 * xScale, y: 74 * yScale),
-            control2: CGPoint(x: 156.26 * xScale, y: 82.67 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.43 * xScale, y: 91 * yScale),
-            control1: CGPoint(x: 154.76 * xScale, y: 94 * yScale),
-            control2: CGPoint(x: 128.10 * xScale, y: 91 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 21.43 * xScale, y: 100 * yScale),
-            control1: CGPoint(x: 74.76 * xScale, y: 91 * yScale),
-            control2: CGPoint(x: 48.10 * xScale, y: 94 * yScale))
-          path.closeSubpath()
-        }
-        .fill(Color(hex: "#D8D8D8")!)
-
-        // 5. Stripes (The texture on top of the tip)
-        // Note: I have simplified the repeated lines into a loop for efficiency
-        // The original SVG used a mask, here we just overlay them clipped to the tip shape
-        PencilStripesShape()
-          .stroke(stripeColor, lineWidth: 1 * xScale)  // Scale line width
-          .mask(
-            Path { path in
-              // Reusing the tip path for masking
-              path.move(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
-              path.addCurve(
-                to: CGPoint(x: 103.47 * xScale, y: 0 * yScale),
-                control1: CGPoint(x: 46.68 * xScale, y: 3.67 * yScale),
-                control2: CGPoint(x: 69.56 * xScale, y: 0 * yScale))
-              path.addCurve(
-                to: CGPoint(x: 168.42 * xScale, y: 11 * yScale),
-                control1: CGPoint(x: 137.37 * xScale, y: 0 * yScale),
-                control2: CGPoint(x: 159.02 * xScale, y: 3.67 * yScale))
-              path.addLine(to: CGPoint(x: 170.25 * xScale, y: 42.5 * yScale))
-              path.addCurve(
-                to: CGPoint(x: 103.47 * xScale, y: 30.5 * yScale),
-                control1: CGPoint(x: 164.13 * xScale, y: 34.5 * yScale),
-                control2: CGPoint(x: 141.86 * xScale, y: 30.5 * yScale))
-              path.addCurve(
-                to: CGPoint(x: 33 * xScale, y: 43.5 * yScale),
-                control1: CGPoint(x: 65.07 * xScale, y: 30.5 * yScale),
-                control2: CGPoint(x: 41.58 * xScale, y: 34.83 * yScale))
-              path.addLine(to: CGPoint(x: 34.84 * xScale, y: 11 * yScale))
-              path.closeSubpath()
-            }
-          )
-
-        // 6. Black Collar (Thin strip)
-        Path { path in
-          path.move(to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.62 * xScale, y: 30.46 * yScale),
-            control1: CGPoint(x: 170.23 * xScale, y: 39.31 * yScale),
-            control2: CGPoint(x: 158.64 * xScale, y: 30.03 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 33.01 * xScale, y: 43.5 * yScale),
-            control1: CGPoint(x: 44.60 * xScale, y: 30.90 * yScale),
-            control2: CGPoint(x: 33.01 * xScale, y: 40.20 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.68 * xScale, y: 52.42 * yScale),
-            control1: CGPoint(x: 33.01 * xScale, y: 46.80 * yScale),
-            control2: CGPoint(x: 68.35 * xScale, y: 52.42 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 170.23 * xScale, y: 42.61 * yScale),
-            control1: CGPoint(x: 135.00 * xScale, y: 52.42 * yScale),
-            control2: CGPoint(x: 170.23 * xScale, y: 45.91 * yScale))
-          path.closeSubpath()
-        }
-        .fill(eraserColor)
-        // 4. Dark Middle Section (Gradient part)
-        Path { path in
-          path.move(to: CGPoint(x: 49.44 * xScale, y: 42.07 * yScale))
-          path.addLine(to: CGPoint(x: 49.44 * xScale, y: 84.54 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 103.98 * xScale, y: 76.19 * yScale),
-            control1: CGPoint(x: 69.91 * xScale, y: 78.97 * yScale),
-            control2: CGPoint(x: 88.09 * xScale, y: 76.19 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 154.45 * xScale, y: 84.95 * yScale),
-            control1: CGPoint(x: 119.86 * xScale, y: 76.19 * yScale),
-            control2: CGPoint(x: 136.69 * xScale, y: 79.11 * yScale))
-          path.addLine(to: CGPoint(x: 154.45 * xScale, y: 41.96 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 101.55 * xScale, y: 37.95 * yScale),
-            control1: CGPoint(x: 141.10 * xScale, y: 39.29 * yScale),
-            control2: CGPoint(x: 123.47 * xScale, y: 37.95 * yScale))
-          path.addCurve(
-            to: CGPoint(x: 49.44 * xScale, y: 42.07 * yScale),
-            control1: CGPoint(x: 79.63 * xScale, y: 37.95 * yScale),
-            control2: CGPoint(x: 62.26 * xScale, y: 39.33 * yScale))
-          path.closeSubpath()
-        }
-        .fill(middleSectionGradient)
-      }
-      // Helps gradients/blend modes look smoother on some devices
-      .drawingGroup()
-    }
-    .aspectRatio(200 / 321, contentMode: .fit)
-  }
-}
-
-// Helper shape for the repeating lines pattern
-struct PencilStripesShape: Shape {
   func path(in rect: CGRect) -> Path {
+    let neckL = 0.5 - neckWidth / 2
+    let neckR = 0.5 + neckWidth / 2
+
     var path = Path()
-    let width = rect.width
-    let height = rect.height
-    let xScale = width / 200
-    let yScale = height / 321
-
-    // This generates lines across the width similar to the SVG pattern
-    // The original lines were rotated slightly, represented here by start/end offsets
-    let numberOfLines = 40
-    let spacing: CGFloat = 5.0 * xScale
-
-    for i in 0..<numberOfLines {
-      let xOffset = CGFloat(i) * spacing
-      let startX = xOffset
-      let startY: CGFloat = 0
-
-      // Slight angle simulation
-      let endX = startX - (2.0 * xScale)
-      let endY = 62.0 * yScale
-
-      path.move(to: CGPoint(x: startX, y: startY))
-      path.addLine(to: CGPoint(x: endX, y: endY))
-    }
-
+    path.move(to: rect.unit(0.015, 0.045))
+    path.addLine(to: rect.unit(0.985, 0.045))
+    path.addLine(to: rect.unit(0.925, 0.780))
+    path.addCurve(
+      to: rect.unit(neckR, 0.862),
+      control1: rect.unit(0.915, 0.830),
+      control2: rect.unit(neckR + 0.10, 0.850))
+    path.addLine(to: rect.unit(neckL, 0.862))
+    path.addCurve(
+      to: rect.unit(0.075, 0.780),
+      control1: rect.unit(neckL - 0.10, 0.850),
+      control2: rect.unit(0.085, 0.830))
+    path.closeSubpath()
     return path
   }
 }
 
-// Preview
-struct GraphicDesignIcon_Previews: PreviewProvider {
-  static var previews: some View {
-    VStack {
-      // Standard
-      KlisterCanView(bodyColor: .blue)
-        .frame(width: 200)
-
-    }
-    .padding()
+/// The flattened, folded seam at the top of the tube.
+nonisolated struct KlisterTubeCrimp: Shape {
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    path.addRoundedRect(
+      in: CGRect(origin: rect.unit(0.0, 0.0), size: CGSize(width: rect.width, height: 0.062 * rect.height)),
+      cornerSize: CGSize(width: 0.05 * rect.width, height: 0.05 * rect.width)
+    )
+    return path
   }
+}
+
+/// A single crease pressed across the seam.
+nonisolated struct KlisterCrimpCrease: Shape {
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    path.move(to: rect.unit(0.04, 0.040))
+    path.addLine(to: rect.unit(0.96, 0.040))
+    return path
+  }
+}
+
+nonisolated struct KlisterTubeCap: Shape {
+  var width: CGFloat = 0.56
+
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    path.addRoundedRect(
+      in: CGRect(
+        origin: rect.unit(0.5 - width / 2, 0.850),
+        size: CGSize(width: width * rect.width, height: 0.148 * rect.height)),
+      cornerSize: CGSize(width: 0.06 * rect.width, height: 0.06 * rect.width),
+      style: .continuous
+    )
+    return path
+  }
+}
+
+/// Knurling on the cap, only drawn once the cap is big enough to show it.
+nonisolated struct KlisterCapKnurl: Shape {
+  var width: CGFloat = 0.56
+
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    let count = 9
+    let left = 0.5 - width / 2 + 0.05
+    let right = 0.5 + width / 2 - 0.05
+    for index in 0..<count {
+      let x = left + (right - left) * CGFloat(index) / CGFloat(count - 1)
+      path.move(to: rect.unit(x, 0.868))
+      path.addLine(to: rect.unit(x, 0.982))
+    }
+    return path
+  }
+}
+
+// MARK: - Shared tube
+
+private struct KlisterTube<Print: View>: View {
+  var tubeColor: Color
+  var crimpColor: Color
+  var capColor: Color
+  var aspect: CGFloat = 0.33
+  var glossy = false
+  @ViewBuilder var print: (CGSize) -> Print
+
+  var body: some View {
+    ContainerCanvas(aspect: aspect, baseline: 0.965) { size in
+      let line = size.height * 0.0035
+
+      ZStack(alignment: .topLeading) {
+        KlisterTubeBody().fill(tubeColor)
+        print(size)
+          .frame(width: size.width, height: size.height, alignment: .topLeading)
+          .mask(KlisterTubeBody())
+        KlisterTubeBody().cylinderLit()
+        if glossy {
+          // Gloss lacquer catches a second, sharper streak.
+          KlisterTubeBody().fill(ContainerLight.plasticSheen).blendMode(.screen).opacity(0.7)
+        }
+        KlisterTubeBody().stroke(.black.opacity(0.20), lineWidth: line)
+
+        KlisterTubeCrimp().fill(crimpColor)
+        KlisterTubeCrimp().flatLit()
+        KlisterCrimpCrease().stroke(.black.opacity(0.18), lineWidth: line)
+        KlisterTubeCrimp().stroke(.black.opacity(0.20), lineWidth: line)
+
+        KlisterTubeCap().fill(capColor)
+        KlisterTubeCap().cylinderLit()
+        if PrintDetail.showsFineDetail(height: size.height) {
+          KlisterCapKnurl()
+            .stroke(capColor.isLight ? .black.opacity(0.10) : .white.opacity(0.10), lineWidth: line)
+        }
+        KlisterTubeCap().stroke(.black.opacity(0.30), lineWidth: line)
+      }
+      .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+  }
+}
+
+/// Code set up the tube the way Swix prints it, reading bottom to top.
+private struct TubeCode: View {
+  var code: String
+  var size: CGSize
+  var color: Color
+  var digitColor: Color? = nil
+
+  var body: some View {
+    let parts = PrintedCode.split(code)
+    PrintedCode(
+      letters: parts.letters, digits: parts.digits,
+      size: size.width * 0.40, letterColor: color, digitColor: digitColor, italic: true
+    )
+    .rotationEffect(.degrees(-90))
+    .position(x: size.width * 0.50, y: size.height * 0.30)
+  }
+}
+
+// MARK: - Swix KX
+
+struct KlisterCanView: View {
+  /// Grade colour: the tube itself.
+  var bodyColor: Color
+  var labelColor: Color?
+  var code: String = ""
+
+  var body: some View {
+    KlisterTube(tubeColor: bodyColor, crimpColor: bodyColor, capColor: Color(white: 0.10)) { size in
+      let accent = labelColor ?? .white.opacity(0.7)
+      ZStack(alignment: .topLeading) {
+        // The big X: a broad stroke rising to the right, crossed low down
+        // by a narrower one falling to the right.
+        DiagonalBand(left: 0.64, right: 0.30, thickness: 0.085).fill(accent)
+        DiagonalBand(left: 0.42, right: 0.66, thickness: 0.050).fill(accent)
+
+        // Black strip near the foot.
+        Rectangle().fill(Color(white: 0.08))
+          .frame(width: size.width, height: size.height * 0.030)
+          .offset(y: size.height * 0.735)
+
+        if PrintDetail.showsText(height: size.height) {
+          TubeCode(code: code, size: size, color: bodyColor.isLight ? .black.opacity(0.8) : .white, digitColor: accent)
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Swix KN Nero
+
+struct KlisterNeroView: View {
+  var accentColor: Color
+  var code: String = ""
+
+  static let crossBlue = Color(red: 0.24, green: 0.45, blue: 0.88)
+
+  var body: some View {
+    KlisterTube(tubeColor: Color(white: 0.09), crimpColor: Color(white: 0.12), capColor: Color(white: 0.09)) { size in
+      ZStack(alignment: .topLeading) {
+        DiagonalBand(left: 0.68, right: 0.40, thickness: 0.045).fill(Self.crossBlue)
+        DiagonalBand(left: 0.40, right: 0.68, thickness: 0.045).fill(accentColor)
+
+        if PrintDetail.showsText(height: size.height) {
+          TubeCode(code: code, size: size, color: .white, digitColor: accentColor)
+            .offset(y: -size.height * 0.04)
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Swix K universal
+
+struct KlisterUniversalView: View {
+  var stripeColor: Color?
+  var code: String = ""
+
+  static let swixRed = Color(red: 0.84, green: 0.15, blue: 0.17)
+  private let silver = Color(red: 0.80, green: 0.82, blue: 0.85)
+
+  var body: some View {
+    KlisterTube(tubeColor: silver, crimpColor: silver, capColor: Color(white: 0.10)) { size in
+      ZStack(alignment: .topLeading) {
+        // Brushed aluminium.
+        LinearGradient(
+          colors: [.white.opacity(0.0), .white.opacity(0.45), .white.opacity(0.0)],
+          startPoint: .top, endPoint: .bottom)
+        DiagonalBand(left: 0.60, right: 0.28, thickness: 0.070).fill(Self.swixRed)
+        if let stripeColor {
+          DiagonalBand(left: 0.70, right: 0.38, thickness: 0.022).fill(stripeColor)
+        }
+
+        if PrintDetail.showsText(height: size.height) {
+          TubeCode(code: code, size: size, color: Self.swixRed)
+            .offset(y: size.height * 0.06)
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Rode klister
+
+struct RodeKlisterView: View {
+  var gradeColor: Color
+  var accentColor: Color?
+  var code: String = ""
+
+  var body: some View {
+    KlisterTube(
+      tubeColor: gradeColor, crimpColor: Color(white: 0.96), capColor: Color(white: 0.96),
+      aspect: 0.29, glossy: true
+    ) { size in
+      ZStack(alignment: .topLeading) {
+        // White crimp band runs a little way down the tube.
+        Rectangle().fill(Color(white: 0.96))
+          .frame(width: size.width, height: size.height * 0.090)
+
+        // Label band: "klister" and the colour name.
+        Rectangle().fill(Color(white: 0.97))
+          .frame(width: size.width, height: size.height * 0.120)
+          .offset(y: size.height * 0.380)
+        if let accentColor {
+          Rectangle().fill(accentColor)
+            .frame(width: size.width, height: size.height * 0.014)
+            .offset(y: size.height * 0.486)
+        }
+
+        // The big Rode snowflake, printed straight onto the tube.
+        Image(systemName: "snowflake")
+          .font(.system(size: size.width * 0.78, weight: .bold))
+          .foregroundStyle(gradeColor.isLight ? RodeCanGraphic.snowflakeBlue : .white.opacity(0.9))
+          .position(x: size.width * 0.5, y: size.height * 0.655)
+
+        if PrintDetail.showsText(height: size.height) {
+          Text(verbatim: code)
+            .font(.system(size: size.width * 0.26, weight: .bold).width(.condensed))
+            .foregroundStyle(RodeCanGraphic.rodeRed)
+            .position(x: size.width * 0.5, y: size.height * 0.440)
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Preview
+
+#Preview("Klister") {
+  HStack(alignment: .bottom, spacing: 18) {
+    KlisterCanView(bodyColor: Color(hex: "#D5452F")!, labelColor: Color(hex: "#EDCE86")!, code: "KX75")
+    KlisterCanView(bodyColor: Color(hex: "#773C89")!, labelColor: Color(hex: "#8FBDE4")!, code: "KX45N")
+    KlisterNeroView(accentColor: Color(hex: "#C27C76")!, code: "KN44")
+    KlisterUniversalView(stripeColor: Color(hex: "#8FA6CF")!, code: "K21S")
+    RodeKlisterView(gradeColor: Color(hex: "#C9342B")!, code: "K40")
+  }
+  .frame(height: 240)
+  .padding()
 }

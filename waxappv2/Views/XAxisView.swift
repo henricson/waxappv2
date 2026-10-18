@@ -2,8 +2,6 @@
 //  XAxisView.swift
 //  waxappv2
 //
-//  Created by Herman Henriksen on 13/01/2026.
-//
 
 import SwiftUI
 
@@ -16,31 +14,43 @@ struct XAxisView: View {
   var axisHeight: Double
   var centerX: CGFloat
 
+  private var display: TemperatureDisplay { TemperatureDisplay() }
+
+  /// Label every degree in Celsius, every other one in Fahrenheit — 1 °C is
+  /// 1.8 °F, so labelling them all would collide.
+  private var labelStep: Int { display.unit.axisTickStep }
+
   var body: some View {
     GeometryReader { geometry in
       ForEach(Int(minTemp)...Int(maxTemp), id: \.self) { degree in
         let x = (Double(degree) - minTemp) * pxPerDegree + tickXOffset
+        let isMajor = degree % labelStep == 0
+
         VStack(spacing: 2) {
-          Text("\(degree)°")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+          if isMajor {
+            Text(display.degreesOnlyString(fromCelsius: degree))
+              .font(.caption2)
+              .monospacedDigit()
+              .foregroundStyle(degree == 0 ? .primary : .secondary)
+          }
+
           Rectangle()
-            .fill(.secondary.opacity(0.6))
-            .frame(width: tickLineWidth, height: 8)
+            .fill(.secondary.opacity(isMajor ? 0.65 : 0.3))
+            .frame(width: tickLineWidth, height: isMajor ? 8 : 4)
         }
         .position(x: x, y: geometry.size.height - 15)
       }
     }
+    .accessibilityHidden(true)
   }
 }
 
 #Preview {
   ScrollView(.horizontal) {
     XAxisView(
-      minTemp: -30, maxTemp: 30, pxPerDegree: 50, tickXOffset: 50, tickLineWidth: 1, axisHeight: 10,
-      centerX: 3050 / 2
+      minTemp: -30, maxTemp: 30, pxPerDegree: 50, tickXOffset: 25, tickLineWidth: 1,
+      axisHeight: 50, centerX: 3050 / 2
     )
-    .background(.blue)
-    .frame(width: 3050, height: 50)
+    .frame(width: 3050, height: 60)
   }
 }

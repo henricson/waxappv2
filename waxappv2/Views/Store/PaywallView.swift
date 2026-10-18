@@ -5,7 +5,7 @@ struct PaywallView: View {
   @Environment(StoreManager.self) private var storeManager: StoreManager
   @Environment(\.dismiss) private var dismiss
 
-  private enum Plan: String, CaseIterable { case yearly, monthly }
+  private enum Plan: String, CaseIterable { case yearly, monthly, lifetime }
   @State private var selectedPlan: Plan = .yearly
 
   private let privacyPolicyURL = URL(string: "https://www.squarewave.no/apps/getgrip/privacy")
@@ -14,12 +14,21 @@ struct PaywallView: View {
 
   private var yearlyProduct: Product? { storeManager.yearlyProduct }
   private var monthlyProduct: Product? { storeManager.monthlyProduct }
-  private var selectedProduct: Product? { selectedPlan == .yearly ? yearlyProduct : monthlyProduct }
+  private var lifetimeProduct: Product? { storeManager.lifetimeProduct }
+  private var selectedProduct: Product? {
+    switch selectedPlan {
+    case .yearly: return yearlyProduct
+    case .monthly: return monthlyProduct
+    case .lifetime: return lifetimeProduct
+    }
+  }
+  private var isLifetimeSelected: Bool { selectedPlan == .lifetime }
 
   private var isSelectedPlanTrialEligible: Bool { selectedPlan == .yearly && storeManager.isEligibleForIntroOffer }
 
   private var pricePerSelectedPeriod: String {
     guard let product = selectedProduct else { return "—" }
+    if isLifetimeSelected { return product.displayPrice }
     let period = storeManager.subscriptionPeriodText(for: product) ?? String(localized: selectedPlan == .yearly ? "year" : "month")
     return "\(product.displayPrice) / \(period)"
   }
@@ -67,10 +76,18 @@ struct PaywallView: View {
       Text("Unlock GetGrip")
         .font(.largeTitle.bold())
 
-      if storeManager.hasAccess {
+      if storeManager.accessState == .lifetime {
+        Text("Lifetime access unlocked.")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      } else if storeManager.hasAccess {
         Text("Your subscription is active.")
           .font(.subheadline)
           .foregroundStyle(.secondary)
+      } else if isLifetimeSelected {
+        Text("Pay once \(pricePerSelectedPeriod) · No subscription")
+          .font(.subheadline)
+          .foregroundStyle(.primary.opacity(0.7))
       } else if isSelectedPlanTrialEligible {
         Text("Start your 14-day free trial")
           .font(.subheadline)
@@ -88,12 +105,24 @@ struct PaywallView: View {
     .frame(maxWidth: .infinity)
   }
 
+  @ViewBuilder
   private var planSelector: some View {
     HStack(spacing: 12) {
       planButton(title: String(localized: "Yearly"), subtitle: (yearlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending(String(localized: "/yr")) ?? (yearlyProduct?.displayPrice as? String).map { "\($0)" + String(localized: "/yr") } ?? "—", isSelected: selectedPlan == .yearly) { selectedPlan = .yearly }
       planButton(title: String(localized: "Monthly"), subtitle: (monthlyProduct?.displayPrice as? [String])?.joined(separator: " ").appending(String(localized: "/mo")) ?? (monthlyProduct?.displayPrice as? String).map { "\($0)" + String(localized: "/mo") } ?? "—", isSelected: selectedPlan == .monthly) { selectedPlan = .monthly }
     }
-    .padding(.vertical, 4)
+    .padding(.top, 4)
+
+    // Shown only once StoreKit knows the product, so a missing one never
+    // leaves a dead option on the paywall.
+    if let lifetimeProduct {
+      planButton(
+        title: String(localized: "Lifetime"),
+        subtitle: String(localized: "\(lifetimeProduct.displayPrice) once · yours to keep"),
+        isSelected: isLifetimeSelected
+      ) { selectedPlan = .lifetime }
+      .accessibilityIdentifier("lifetimePlanButton")
+    }
   }
 
   private func planButton(title: String, subtitle: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -159,7 +188,11 @@ struct PaywallView: View {
               ProgressView()
               Text("Processing...")
             } else {
-              Text(storeManager.hasAccess ? "Continue" : isSelectedPlanTrialEligible ? "Start Free Trial" : "Subscribe")
+              Text(
+                storeManager.hasAccess
+                  ? "Continue"
+                  : isLifetimeSelected
+                    ? "Buy Lifetime" : isSelectedPlanTrialEligible ? "Start Free Trial" : "Subscribe")
               if !isSelectedPlanTrialEligible {
                 Spacer(minLength: 8)
                 Text(pricePerSelectedPeriod)
@@ -212,7 +245,10 @@ struct PaywallView: View {
       }
       .font(.caption)
 
-      Text("Auto-renews until canceled. Cancel anytime in Settings.")
+      Text(
+        isLifetimeSelected
+          ? "One-time purchase. Restore it on all your devices with the same Apple Account."
+          : "Auto-renews until canceled. Cancel anytime in Settings.")
         .font(.caption2)
         .foregroundStyle(.tertiary)
         .multilineTextAlignment(.center)

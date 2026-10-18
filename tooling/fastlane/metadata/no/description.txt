@@ -1,0 +1,34 @@
+Finn riktig smøring på sekunder.
+
+GetGrip leser ti dager med vær for akkurat der du går, finner ut hva snøen faktisk har blitt, og matcher den mot voksen du har. Ingen gjetning ut fra lufttemperatur alene.
+
+FESTE OG GLID
+Bytt mellom festevoks og glidvoks med ett trykk. Begge får samme behandling: ett tydelig førstevalg, alternativene som også fungerer, og grunnvoksen du bør legge først.
+
+SMØREBOKSEN DIN, IKKE EN KATALOG
+Fortell GetGrip hvilke serier du faktisk har — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode festevoks og klister — så foreslår appen bare noe du kan ta frem. Fornuftige standardvalg fra start, resten ett bryter unna.
+
+DEN VET HVA SNØEN HAR GJORT
+Nysnø, mildvær, regn på snø, hard gjenfrysing over natten: hver tilstand gir ulik snø og krever ulik voks. GetGrip følger snøfall, regn, mildværssykluser, luftfuktighet og snødybde for å skille nysnø fra finkornet fra gjenfrossen skare.
+
+ENKELT ELLER DETALJERT
+De fleste dager vil du bare ha svaret. Slå på forklaringer, så får du begrunnelsen også: hvor godt temperaturen passer, hva snøtypen betyr, og hvordan regn, nysnø eller fuktighet påvirket resultatet.
+
+DRA I TEMPERATUREN
+Dra i diagrammet for å se hvordan anbefalingen endrer seg grad for grad, så du kan smøre for ettermiddagen i stedet for morgenen.
+
+PÅ HJEM-SKJERMEN
+Widgets i alle størrelser viser dagens smøring med et blikk – feste, glid eller begge – der du er, eller for en løype du velger. Også på låseskjermen.
+
+ABONNER ELLER KJØP ÉN GANG
+Prøv alt gratis i 14 dager, og velg deretter abonnement eller ett livstidskjøp.
+
+OVERALT DER DU GÅR
+Bruk posisjonen din, eller sett en markør i kartet for å sjekke forholdene ved løypestarten før du drar hjemmefra.
+
+PÅ DITT SPRÅK
+Norsk, svensk, finsk, islandsk og engelsk.
+
+Temperaturområdene følger produsentenes publiserte tabeller. Test alltid i snøen — lokale forhold varierer.
+
+GetGrip er ikke tilknyttet Swix eller Rode.

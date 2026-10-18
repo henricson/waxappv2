@@ -1,0 +1,151 @@
+# GetGrip release and App Store tooling.
+#
+#   bundle exec fastlane ios build_number      # next free build for this version
+#   bundle exec fastlane ios release           # archive + upload, no submission
+#   bundle exec fastlane ios metadata          # push text only, no binary
+#   bundle exec fastlane ios screenshots       # push framed screenshots only
+#
+# Auth: an App Store Connect API key. Point ASC_API_KEY_JSON at a JSON file
+# holding key_id / issuer_id / key, or drop an AuthKey_<id>.p8 in this folder
+# and set ASC_ISSUER_ID.
+
+require "json"
+
+ROOT = File.expand_path("../..", __dir__)
+PROJECT = File.join(ROOT, "waxappv2.xcodeproj")
+SCHEME = "waxappv2"
+BUNDLE_ID = "com.squarewave.waxappv2"
+TEAM_ID = "L8WRYPHPY7"
+
+def asc_key
+  if (path = ENV["ASC_API_KEY_JSON"]) && File.file?(path)
+    payload = JSON.parse(File.read(path))
+    return app_store_connect_api_key(
+      key_id: payload.fetch("key_id"),
+      issuer_id: payload.fetch("issuer_id"),
+      key_content: payload.fetch("key"),
+      is_key_content_base64: payload["is_key_content_base64"] || false,
+      in_house: false,
+    )
+  end
+
+  p8 = ENV["ASC_KEY_PATH"] || Dir[File.expand_path("AuthKey_*.p8", __dir__)].first
+  UI.user_error!(
+    "No App Store Connect key. Set ASC_API_KEY_JSON to a key JSON file, or " \
+    "put AuthKey_<id>.p8 here and set ASC_ISSUER_ID."
+  ) unless p8
+
+  app_store_connect_api_key(
+    key_id: File.basename(p8, ".p8").sub("AuthKey_", ""),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_filepath: p8,
+    in_house: false,
+  )
+end
+
+def marketing_version
+  ENV["ASC_APP_VERSION"] ||
+    File.read(File.join(PROJECT, "project.pbxproj"))[/MARKETING_VERSION = ([0-9.]+);/, 1]
+end
+
+def output_dir
+  ENV["RELEASE_OUTPUT_DIR"] || File.join(ROOT, "build", "store")
+end
+
+platform :ios do
+  desc "Print the next free build number for the current marketing version"
+  lane :build_number do
+    key = asc_key
+    version = marketing_version
+    latest =
+      begin
+        latest_testflight_build_number(
+          api_key: key, app_identifier: BUNDLE_ID, version: version, initial_build_number: 0
+        )
+      rescue StandardError => e
+        UI.important("Could not read TestFlight builds (#{e.class}); starting at 0")
+        0
+      end
+    UI.success("#{version}: latest build #{latest}, next #{latest + 1}")
+    latest + 1
+  end
+
+  desc "Archive and upload to App Store Connect. Does NOT submit for review."
+  lane :release do |options|
+    key = asc_key
+    version = marketing_version
+    build = options[:build] || build_number
+
+    UI.message("Building GetGrip #{version} (#{build})")
+
+    increment_build_number(build_number: build, xcodeproj: PROJECT)
+
+    # Xcode's IPA export shells out to rsync; the Homebrew one rejects the
+    # extended-attribute flags it passes, so put the system tools first.
+    ENV["PATH"] = (%w[/usr/bin /bin /usr/sbin /sbin] + ENV["PATH"].split(":")).uniq.join(":")
+
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      configuration: "Release",
+      destination: "generic/platform=iOS",
+      archive_path: File.join(output_dir, "GetGrip-#{version}-#{build}.xcarchive"),
+      output_directory: output_dir,
+      output_name: "GetGrip-#{version}-#{build}.ipa",
+      export_method: "app-store",
+      export_options: {
+        method: "app-store-connect",
+        signingStyle: "automatic",
+        teamID: TEAM_ID,
+        manageAppVersionAndBuildNumber: false,
+      },
+      xcargs: "-allowProvisioningUpdates",
+    )
+
+    # pilot uploads the binary and stops there: no App Store submission, and
+    # no TestFlight review request either.
+    upload_to_testflight(
+      api_key: key,
+      app_identifier: BUNDLE_ID,
+      skip_submission: true,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      notify_external_testers: false,
+    )
+
+    UI.success("Uploaded #{version} (#{build}). Nothing has been submitted for review.")
+  end
+
+  desc "Upload App Store text only — no binary, no screenshots, no submission"
+  lane :metadata do
+    upload_to_app_store(
+      api_key: asc_key,
+      app_identifier: BUNDLE_ID,
+      metadata_path: File.join(__dir__, "metadata"),
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_app_version_update: false,
+      submit_for_review: false,
+      precheck_include_in_app_purchases: false,
+      run_precheck_before_submit: false,
+      force: true,
+    )
+  end
+
+  desc "Upload framed screenshots only — no binary, no text, no submission"
+  lane :screenshots do
+    upload_to_app_store(
+      api_key: asc_key,
+      app_identifier: BUNDLE_ID,
+      screenshots_path: File.join(__dir__, "screenshots"),
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_app_version_update: true,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      precheck_include_in_app_purchases: false,
+      run_precheck_before_submit: false,
+      force: true,
+    )
+  end
+end

@@ -7,18 +7,6 @@
 import Foundation
 import SwiftUI
 
-extension SwixWax {
-  /// Returns a single combined range for the given snow type, if any.
-  func combinedRange(for snowType: SnowType) -> TempRangeC? {
-    let rs = ranges(for: snowType)
-    guard !rs.isEmpty else { return nil }
-
-    let minTemp = rs.map(\.min).min()!
-    let maxTemp = rs.map(\.max).max()!
-    return TempRangeC(minTemp, maxTemp)
-  }
-}
-
 // MARK: - Models
 
 struct GanttTask<ID: Hashable, T> {
@@ -176,7 +164,7 @@ struct Gantt: View {
   @Environment(RecommendationStore.self) private var recStore
   @Environment(\.displayScale) private var displayScale
 
-  let selectedWaxes: [SwixWax]
+  let selectedWaxes: [WaxProduct]
 
   @State private var scrollPosition: Int?
   @State private var isProgrammaticScroll = false
@@ -189,8 +177,8 @@ struct Gantt: View {
   private var temperature: Int { recStore.effectiveTemperature }
   private var snowType: SnowType { recStore.effectiveSnowType }
 
-  private var placedTasks: (placements: [PlacedGanttTask<String, SwixWax>], rowsCount: Int) {
-    let ganttTasks: [GanttTask<String, SwixWax>] = selectedWaxes.compactMap { wax in
+  private var placedTasks: (placements: [PlacedGanttTask<String, WaxProduct>], rowsCount: Int) {
+    let ganttTasks: [GanttTask<String, WaxProduct>] = selectedWaxes.compactMap { wax in
       guard let r = wax.combinedRange(for: snowType) else { return nil }
       return GanttTask(
         id: wax.id,
@@ -285,39 +273,52 @@ struct Gantt: View {
   }
 
   @ViewBuilder
-  private func barView(for task: PlacedGanttTask<String, SwixWax>) -> some View {
+  private func barView(for task: PlacedGanttTask<String, WaxProduct>) -> some View {
     let start = clamp(Double(task.start), Layout.minTemp, Layout.maxTemp)
     let end = clamp(Double(task.end), Layout.minTemp, Layout.maxTemp)
     let wax = task.renderItem
 
-    if end > start {
-      let xPos = (start - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
-      let width = max(1.0, (end - start) * Layout.pxPerDegree)
-      let yPos = Double(task.row) * Layout.rowHeight + Layout.axisHeight
+    // A manufacturer may publish a single-point range (Swix V50 is "0 °C"
+    // exactly). Those still get a bar, one degree wide and centred on the
+    // point, so the chart never silently drops a wax the header recommends.
+    let spanDegrees = max(end - start, 1.0)
+    let barStart = end > start ? start : start - 0.5
 
-      let baseColor = Color(hex: wax.primaryColor) ?? .blue
-      let secondaryColor = wax.secondaryColor.flatMap { Color(hex: $0) }
+    let xPos = (barStart - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
+    let width = max(Layout.pxPerDegree, spanDegrees * Layout.pxPerDegree)
+    let yPos = Double(task.row) * Layout.rowHeight + Layout.axisHeight
 
-      GanttBarView(
-        wax: wax,
-        baseColor: baseColor,
-        secondaryColor: secondaryColor,
-        barHeight: Layout.barHeight
-      )
-      .frame(width: width, height: Layout.barHeight)
-      .offset(x: xPos, y: yPos)
-      .transition(
-        .asymmetric(
-          insertion: .opacity
-            .combined(with: .scale(scale: 0.9, anchor: .leading))
-            .combined(with: .offset(x: -20)),
-          removal: .opacity
-            .combined(with: .scale(scale: 0.9, anchor: .trailing))
-        ))
-    }
+    let baseColor = Color(hex: wax.primaryColor) ?? .blue
+    let secondaryColor = wax.secondaryColor.flatMap { Color(hex: $0) }
+
+    GanttBarView(
+      wax: wax,
+      baseColor: baseColor,
+      secondaryColor: secondaryColor,
+      barHeight: Layout.barHeight,
+      isPinpoint: end <= start,
+      emphasis: emphasis(for: wax)
+    )
+    .frame(width: width, height: Layout.barHeight)
+    .offset(x: xPos, y: yPos)
+    .transition(
+      .asymmetric(
+        insertion: .opacity
+          .combined(with: .scale(scale: 0.9, anchor: .leading))
+          .combined(with: .offset(x: -20)),
+        removal: .opacity
+          .combined(with: .scale(scale: 0.9, anchor: .trailing))
+      ))
   }
 
   // MARK: - Helpers
+
+  /// Ties the chart to the hero and "Also works": the pick is outlined, the
+  /// other waxes under the temperature line stay bright, the rest recede.
+  private func emphasis(for wax: WaxProduct) -> GanttBarView.Emphasis {
+    if wax.id == recStore.topPick?.id { return .topPick }
+    return recStore.coversCurrentTemperature(wax) ? .match : .other
+  }
 
   private func centerX(for temperature: Int) -> Double {
     (Double(clampedTemperature(temperature)) - Layout.minTemp + 0.5) * Layout.pxPerDegree
@@ -419,28 +420,49 @@ struct SnapToClosestDegree: ScrollTargetBehavior {
 // MARK: - Bar View
 
 struct GanttBarView: View {
-  let wax: SwixWax
+  let wax: WaxProduct
   let baseColor: Color
   let secondaryColor: Color?
   let barHeight: Double
+  /// True when the manufacturer publishes a single temperature, not a range.
+  var isPinpoint: Bool = false
+  var emphasis: Emphasis = .match
+
+  enum Emphasis {
+    /// The wax shown in the hero.
+    case topPick
+    /// Covers the current temperature, as listed under "Also works".
+    case match
+    /// Out of range here; shown for context only.
+    case other
+  }
+
+  private var fillColor: Color {
+    Color(hex: wax.backgroundColor) ?? baseColor
+  }
 
   private var gradientColors: [Color] {
-    [baseColor.opacity(0.93), baseColor.opacity(0.72)]
+    [fillColor.opacity(0.95), fillColor.opacity(0.74)]
   }
 
   private var textColor: Color {
-    baseColor.isLight ? .black.opacity(0.85) : .white
+    fillColor.isLight ? .black.opacity(0.85) : .white
   }
 
   var body: some View {
     HStack(spacing: 6) {
-      waxIcon
+      WaxIcon(product: wax)
         .frame(width: barHeight * 0.5, height: barHeight * 0.85)
 
-      Text(wax.name)
-        .font(.caption)
-        .fontWeight(.medium)
+      Text(isPinpoint ? "\(wax.code) ·" : wax.code)
+        .font(.caption.weight(.semibold))
         .foregroundStyle(textColor)
+        .lineLimit(1)
+        .layoutPriority(1)
+
+      Text(wax.name)
+        .font(.caption2)
+        .foregroundStyle(textColor.opacity(0.75))
         .lineLimit(1)
 
       Spacer(minLength: 0)
@@ -452,25 +474,22 @@ struct GanttBarView: View {
         .fill(LinearGradient(colors: gradientColors, startPoint: .top, endPoint: .bottom))
         .overlay {
           Capsule()
-            .strokeBorder(baseColor.opacity(0.18), lineWidth: 1)
+            .strokeBorder(.white.opacity(0.22), lineWidth: 0.75)
         }
     }
-    .shadow(color: .black.opacity(0.10), radius: 1.5, x: 0, y: 1)
-  }
-
-  @ViewBuilder
-  private var waxIcon: some View {
-    if wax.kind == .klister {
-      KlisterCanView(bodyColor: baseColor)
-    } else {
-      WaxCanGraphic(
-        bodyFill: LinearGradient(
-          colors: [baseColor, baseColor], startPoint: .top, endPoint: .bottom),
-        showBand: secondaryColor != nil,
-        bandPrimaryColor: secondaryColor ?? baseColor,
-        bandSecondaryColor: secondaryColor
-      )
+    .overlay {
+      if emphasis == .topPick {
+        Capsule()
+          .strokeBorder(Color.primary.opacity(0.85), lineWidth: 2)
+          .padding(-3)
+      }
     }
+    .saturation(emphasis == .other ? 0.35 : 1)
+    .opacity(emphasis == .other ? 0.45 : 1)
+    .shadow(color: .black.opacity(emphasis == .other ? 0 : 0.12), radius: 2, y: 1)
+    .animation(.smooth(duration: 0.25), value: emphasis)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(wax.code), \(wax.name), \(wax.brand.displayName)")
   }
 }
 
@@ -481,7 +500,7 @@ struct GanttBarView: View {
   VStack {
     Text("Temperature: \(appState.recommendation.effectiveTemperature)°C")
     Text("Snow Type: \(appState.recommendation.effectiveSnowType.rawValue)")
-    Gantt(selectedWaxes: swixWaxes)
+    Gantt(selectedWaxes: WaxCatalog.all)
       .environment(appState.recommendation)
   }
 }

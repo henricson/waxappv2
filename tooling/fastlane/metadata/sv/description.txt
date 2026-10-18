@@ -1,0 +1,34 @@
+Hitta rätt valla på sekunder.
+
+GetGrip läser tio dagars väder för precis där du åker, räknar ut vad snön faktiskt har blivit och matchar den mot vallan du har. Ingen gissning utifrån bara lufttemperaturen.
+
+FÄSTE OCH GLID
+Växla mellan fästvalla och glidvalla med ett tryck. Båda får samma behandling: ett tydligt förstaval, alternativen som också fungerar, och grundvallan du bör lägga först.
+
+DIN VALLALÅDA, INTE EN KATALOG
+Berätta vilka serier du faktiskt har — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode hårdvalla och klister — så föreslår appen bara något du kan ta fram. Vettiga förval från start, resten en knapptryckning bort.
+
+DEN VET VAD SNÖN HAR GJORT
+Nysnö, töväder, regn på snö, hård återfrysning över natten: varje tillstånd ger olika snö och kräver olika valla. GetGrip följer snöfall, regn, tövädercykler, luftfuktighet och snödjup för att skilja nysnö från finkornig från återfrusen skare.
+
+ENKELT ELLER DETALJERAT
+De flesta dagar vill du bara ha svaret. Slå på förklaringar så får du resonemanget också: hur väl temperaturen passar, vad snötypen betyder, och hur regn, nysnö eller fukt påverkade resultatet.
+
+DRA I TEMPERATUREN
+Dra i diagrammet för att se hur rekommendationen ändras grad för grad, så att du kan valla för eftermiddagen i stället för morgonen.
+
+PÅ HEMSKÄRMEN
+Widgetar i alla storlekar visar dagens valla direkt – fäste, glid eller båda – där du är, eller för ett spår du väljer. Även på låsskärmen.
+
+PRENUMERERA ELLER KÖP EN GÅNG
+Prova allt gratis i 14 dagar och välj sedan prenumeration eller ett enda livstidsköp.
+
+VAR DU ÄN ÅKER
+Använd din plats, eller sätt en nål på kartan för att kolla förhållandena vid spårstarten innan du åker hemifrån.
+
+PÅ DITT SPRÅK
+Svenska, norska, finska, isländska och engelska.
+
+Temperaturområdena följer tillverkarnas publicerade tabeller. Testa alltid i snön — lokala förhållanden varierar.
+
+GetGrip är inte knutet till Swix eller Rode.

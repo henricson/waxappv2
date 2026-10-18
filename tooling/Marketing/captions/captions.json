@@ -1,0 +1,186 @@
+{
+  "_comment": [
+    "Marketing copy for the App Store screenshot set.",
+    "One entry per slide; `scene` matches the launch configuration in",
+    "tooling/scripts/store-shots.sh, and `headline`/`subhead` are burned into",
+    "the frame by tooling/scripts/frame-screenshots.py.",
+    "Slide 01 also carries the app logo — see `showsLogo`."
+  ],
+
+  "slides": [
+    {
+      "scene": "01-grip",
+      "showsLogo": true,
+      "launch": {
+        "GGDemoDomain": "grip",
+        "GGDemoTemperature": "-6",
+        "GGDemoSnowType": "2",
+        "GGDemoPlace": "Holmenkollen, Oslo"
+      },
+      "en-US": {
+        "headline": "The right wax, first time",
+        "subhead": "Ten days of local weather, read for you"
+      },
+      "no": {
+        "headline": "Riktig smøring med én gang",
+        "subhead": "Ti dager med lokalt vær, lest for deg"
+      },
+      "sv": {
+        "headline": "Rätt valla direkt",
+        "subhead": "Tio dagars lokalt väder, läst åt dig"
+      },
+      "fi": {
+        "headline": "Oikea voide heti",
+        "subhead": "Kymmenen päivän paikallinen sää luettuna"
+      },
+      "is": {
+        "headline": "Réttur áburður strax",
+        "subhead": "Tíu daga veður á staðnum, lesið fyrir þig"
+      }
+    },
+    {
+      "scene": "02-glide",
+      "showsLogo": false,
+      "launch": {
+        "GGDemoDomain": "glide",
+        "GGDemoTemperature": "-8",
+        "GGDemoSnowType": "2",
+        "GGDemoSeries": "swix.PS,swix.HSL,swix.TS"
+      },
+      "en-US": {
+        "headline": "Glide as well as grip",
+        "subhead": "One tap between the two"
+      },
+      "no": {
+        "headline": "Glid i tillegg til feste",
+        "subhead": "Ett trykk mellom de to"
+      },
+      "sv": {
+        "headline": "Glid lika väl som fäste",
+        "subhead": "Ett tryck mellan de två"
+      },
+      "fi": {
+        "headline": "Luisto pidon rinnalla",
+        "subhead": "Yksi napautus näiden välillä"
+      },
+      "is": {
+        "headline": "Rennsli jafnt sem festi",
+        "subhead": "Eitt bank á milli þeirra"
+      }
+    },
+    {
+      "scene": "03-klister",
+      "showsLogo": false,
+      "launch": {
+        "GGDemoDomain": "grip",
+        "GGDemoTemperature": "0",
+        "GGDemoSnowType": "6",
+        "GGDemoSeries": "swix.KX,swix.KN"
+      },
+      "en-US": {
+        "headline": "It knows it rained",
+        "subhead": "Thaw, refreeze and rain on snow all change the answer"
+      },
+      "no": {
+        "headline": "Den vet at det regnet",
+        "subhead": "Mildvær, gjenfrysing og regn endrer svaret"
+      },
+      "sv": {
+        "headline": "Den vet att det regnade",
+        "subhead": "Töväder, återfrysning och regn ändrar svaret"
+      },
+      "fi": {
+        "headline": "Se tietää että satoi",
+        "subhead": "Suojasää, jäätyminen ja vesisade muuttavat vastauksen"
+      },
+      "is": {
+        "headline": "Hún veit að það rigndi",
+        "subhead": "Hláka, frost og rigning breyta svarinu"
+      }
+    },
+    {
+      "scene": "04-explain",
+      "showsLogo": false,
+      "launch": {
+        "GGDemoDomain": "grip",
+        "GGDemoTemperature": "-2",
+        "GGDemoSnowType": "5",
+        "GGDemoAdvanced": "YES"
+      },
+      "en-US": {
+        "headline": "See why, when you want to",
+        "subhead": "Every factor behind the pick, on demand"
+      },
+      "no": {
+        "headline": "Se hvorfor, når du vil",
+        "subhead": "Alle faktorene bak valget, når du ber om det"
+      },
+      "sv": {
+        "headline": "Se varför, när du vill",
+        "subhead": "Alla faktorer bakom valet, på begäran"
+      },
+      "fi": {
+        "headline": "Näe miksi, kun haluat",
+        "subhead": "Kaikki valinnan taustatekijät pyydettäessä"
+      },
+      "is": {
+        "headline": "Sjáðu af hverju, þegar þú vilt",
+        "subhead": "Allir þættir á bak við valið, eftir óskum"
+      }
+    },
+    {
+      "scene": "05-library",
+      "showsLogo": false,
+      "launch": {
+        "GGDemoScreen": "library"
+      },
+      "en-US": {
+        "headline": "Only the wax you own",
+        "subhead": "Swix and Rode, grip and glide — you choose the lines"
+      },
+      "no": {
+        "headline": "Bare voksen du har",
+        "subhead": "Swix og Rode, feste og glid — du velger seriene"
+      },
+      "sv": {
+        "headline": "Bara vallan du har",
+        "subhead": "Swix och Rode, fäste och glid — du väljer serierna"
+      },
+      "fi": {
+        "headline": "Vain omistamasi voiteet",
+        "subhead": "Swix ja Rode, pito ja luisto — valitse sarjat"
+      },
+      "is": {
+        "headline": "Aðeins áburðurinn sem þú átt",
+        "subhead": "Swix og Rode, festi og rennsli — þú velur línurnar"
+      }
+    },
+    {
+      "scene": "06-map",
+      "showsLogo": false,
+      "launch": {
+        "GGDemoScreen": "map"
+      },
+      "en-US": {
+        "headline": "Check the trail before you go",
+        "subhead": "Conditions anywhere, from the sofa"
+      },
+      "no": {
+        "headline": "Sjekk løypa før du drar",
+        "subhead": "Forholdene hvor som helst, fra sofaen"
+      },
+      "sv": {
+        "headline": "Kolla spåret innan du åker",
+        "subhead": "Förhållanden var som helst, från soffan"
+      },
+      "fi": {
+        "headline": "Tarkista latu ennen lähtöä",
+        "subhead": "Olosuhteet missä tahansa, sohvalta"
+      },
+      "is": {
+        "headline": "Athugaðu brautina áður en þú ferð",
+        "subhead": "Aðstæður hvar sem er, úr sófanum"
+      }
+    }
+  ]
+}

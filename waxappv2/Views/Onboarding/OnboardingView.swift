@@ -1,232 +1,642 @@
+//
+//  OnboardingView.swift
+//  waxappv2
+//
+//  Introduces the app, explains how a recommendation is made, and lets the
+//  skier pick the wax lines they actually own. Shown to new installs and to
+//  anyone upgrading from a version that predates gliders and Rode.
+//
+
+import StoreKit
 import SwiftUI
 
 struct OnboardingView: View {
-  @Binding var showOnboarding: Bool
-  @Environment(StoreManager.self) var storeManager: StoreManager
+  @Binding var isPresented: Bool
 
-  private enum Page: Hashable {
+  @Environment(WaxSelectionStore.self) private var waxStore
+  @Environment(StoreManager.self) private var storeManager
+
+  enum Page: Int, CaseIterable, Identifiable {
     case welcome
-    case analytics
+    case howItWorks
+    case library
     case access
+
+    var id: Int { rawValue }
   }
 
-  @State private var selection: Page = .welcome
+  @State private var page: Page = DemoMode.isEnabled
+    ? (Page(rawValue: DemoMode.onboardingPage) ?? .welcome)
+    : .welcome
+  @Namespace private var glassNamespace
 
   var body: some View {
-    TabView(selection: $selection) {
-      OnboardingPage(
-        image: .asset("introduction"),
-        title: String(localized: "Welcome to GetGrip", comment: "Onboarding welcome page title"),
-        description: String(
-          localized:
-            "Get perfect cross-country grip recommendations based on your local weather conditions.",
-          comment: "Onboarding welcome page description"),
-        imageMaxSize: 420,
-        primaryButtonTitle: String(
-          localized: "Next", comment: "Onboarding button to proceed to next page"),
-        primaryAction: {
-          goToNextPage(from: .welcome)
-        }
-      )
-      .tag(Page.welcome)
+    ZStack {
+      backdrop
 
-      OnboardingPage(
-        title: String(
-          localized: "Always the best grip", comment: "Onboarding analytics page title"),
-        description: String(
-          localized:
-            "We analyze snow type, temperature, and humidity to recommend the perfect wax or klister from Swix's full range.",
-          comment: "Onboarding analytics page description"),
-        primaryButtonTitle: String(
-          localized: "Next", comment: "Onboarding button to proceed to next page"),
-        primaryAction: {
-          goToNextPage(from: .analytics)
+      VStack(spacing: 0) {
+        // Skip sits in its own row so it never covers a page title.
+        HStack {
+          Spacer()
+          if page != .access {
+            skipButton.transition(.blurReplace)
+          }
         }
-      ) {
-        OnboardingWaxCanGrid()
-          .frame(maxWidth: 420)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
-      }
-      .tag(Page.analytics)
+        .frame(height: 44)
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
 
-      if storeManager.hasAccess {
-        OnboardingPage(
-          image: .system("checkmark.seal.fill"),
-          title: String(
-            localized: "You're All Set", comment: "Onboarding title when user already has purchase"),
-          description: String(
-            localized: "You already have an active subscription. Enjoy full access to GetGrip!",
-            comment: "Onboarding description when user already has purchase"),
-          primaryButtonTitle: String(
-            localized: "Start Using App",
-            comment: "Onboarding button to dismiss and start using app"),
-          primaryAction: {
-            showOnboarding = false
-          }
-        )
-        .tag(Page.access)
-      } else {
-        OnboardingPage(
-          image: .asset("post-introduction-background"),
-          title: String(localized: "Get started for free", comment: "Onboarding trial page title"),
-          description: String(
-            localized:
-              "We offer new customers a 14-day, risk-free trial. After the trial, a subscription keeps full access.",
-            comment: "Onboarding trial page description"),
-          imageMaxSize: 420,
-          primaryButtonTitle: String(
-            localized: "Start trial", comment: "Onboarding button to start free trial"),
-          primaryAction: {
-            Task {
-              await startTrialAndContinue()
-            }
-          }
-        )
-        .tag(Page.access)
+        TabView(selection: $page) {
+          WelcomePage().tag(Page.welcome)
+          HowItWorksPage().tag(Page.howItWorks)
+          LibraryPage().tag(Page.library)
+          AccessPage(hasAccess: storeManager.hasAccess).tag(Page.access)
+        }
+        #if os(iOS)
+          .tabViewStyle(.page(indexDisplayMode: .never))
+        #endif
+
+        footer
       }
     }
-    #if os(iOS)
-      .tabViewStyle(PageTabViewStyle())
-      .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
-    #endif
+    .animation(.smooth(duration: 0.3), value: page)
+    .interactiveDismissDisabled()
   }
 
-  private func goToNextPage(from page: Page) {
-    let next: Page
+  // MARK: - Skip
+
+  /// Leaves with the regional kit already selected; nothing is lost by
+  /// skipping, and the paywall still appears afterwards if it is needed.
+  private var skipButton: some View {
+    Button("Skip") {
+      waxStore.markOnboardingComplete()
+      isPresented = false
+    }
+    .font(.subheadline.weight(.semibold))
+    .padding(.horizontal, 16)
+    .padding(.vertical, 9)
+    .glassEffect(.regular.interactive(), in: .capsule)
+    .accessibilityIdentifier("onboardingSkipButton")
+    .accessibilityHint(Text("Onboarding_Skip_Hint"))
+  }
+
+  // MARK: - Backdrop
+
+  private var backdrop: some View {
+    LinearGradient(
+      colors: [
+        Color(hex: "#2C68BD")?.opacity(0.35) ?? .blue.opacity(0.3),
+        Color(hex: "#3FC1D3")?.opacity(0.18) ?? .teal.opacity(0.2),
+        .clear,
+      ],
+      startPoint: .topLeading,
+      endPoint: .bottom
+    )
+    .ignoresSafeArea()
+  }
+
+  // MARK: - Footer
+
+  private var footer: some View {
+    VStack(spacing: 16) {
+      pageDots
+
+      GlassEffectContainer(spacing: 12) {
+        HStack(spacing: 12) {
+          if page != .welcome {
+            Button {
+              withAnimation(.smooth(duration: 0.3)) { goBack() }
+            } label: {
+              Image(systemName: "chevron.left")
+                .font(.body.weight(.semibold))
+                .frame(width: 24, height: 24)
+                .padding(14)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .glassEffectID("back", in: glassNamespace)
+            .accessibilityLabel("Back")
+            .transition(.blurReplace)
+          }
+
+          Button {
+            advance()
+          } label: {
+            Text(primaryTitle)
+              .font(.headline)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 16)
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(.white)
+          .glassEffect(.regular.tint(.accentColor).interactive(), in: .capsule)
+          .glassEffectID("primary", in: glassNamespace)
+          .accessibilityIdentifier("onboardingPrimaryButton")
+        }
+      }
+      .animation(.smooth(duration: 0.3), value: page)
+    }
+    .padding(.horizontal, 24)
+    .padding(.bottom, 20)
+  }
+
+  private var pageDots: some View {
+    HStack(spacing: 7) {
+      ForEach(Page.allCases) { p in
+        Capsule()
+          .fill(p == page ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+          .frame(width: p == page ? 22 : 7, height: 7)
+      }
+    }
+    .animation(.smooth(duration: 0.3), value: page)
+    .accessibilityHidden(true)
+  }
+
+  private var primaryTitle: String {
+    switch page {
+    case .welcome, .howItWorks:
+      return String(localized: "Continue")
+    case .library:
+      return String(localized: "Looks good")
+    case .access:
+      return storeManager.hasAccess
+        ? String(localized: "Start using GetGrip")
+        : String(localized: "Start free trial")
+    }
+  }
+
+  // MARK: - Navigation
+
+  private func advance() {
     switch page {
     case .welcome:
-      next = .analytics
-    case .analytics:
-      next = .access
+      withAnimation(.smooth(duration: 0.35)) { page = .howItWorks }
+    case .howItWorks:
+      withAnimation(.smooth(duration: 0.35)) { page = .library }
+    case .library:
+      withAnimation(.smooth(duration: 0.35)) { page = .access }
     case .access:
-      next = .access
+      Task { await finish() }
     }
+  }
 
-    withAnimation {
-      selection = next
-    }
+  private func goBack() {
+    guard let previous = Page(rawValue: page.rawValue - 1) else { return }
+    page = previous
   }
 
   @MainActor
-  private func startTrialAndContinue() async {
-    if let product = storeManager.primaryProduct {
+  private func finish() async {
+    if !storeManager.hasAccess, let product = storeManager.primaryProduct {
       await storeManager.purchase(product)
     }
-
-    showOnboarding = false
+    waxStore.markOnboardingComplete()
+    isPresented = false
   }
 }
 
-private enum OnboardingImage {
-  case system(String)
-  case asset(String)
+// MARK: - Page 1: Welcome
+
+private struct WelcomePage: View {
+  var body: some View {
+    OnboardingScaffold(
+      title: String(localized: "Welcome to GetGrip"),
+      subtitle: String(
+        localized:
+          "Grip and glide recommendations for cross-country skis, built from the weather where you ski."
+      )
+    ) {
+      WaxShelf(products: heroProducts, height: 250)
+        .frame(maxWidth: .infinity)
+    }
+  }
+
+  /// A tin, a klister tube and a glide pack from each brand's everyday
+  /// range — what a skier's wax box actually looks like.
+  private var heroProducts: [WaxProduct] {
+    [
+      "swix.KX65", "swix.V40", "swix.PS7", "rode.P40", "swix.HS8L",
+    ].compactMap(WaxCatalog.product(withID:))
+  }
 }
 
-struct OnboardingPage<Content: View>: View {
-  fileprivate let image: OnboardingImage?
-  let title: String
-  let description: String
+/// Products standing side by side at their real proportions, settling into
+/// place one after another. Scales down as a whole to fit the width, so no
+/// container is ever cropped at the screen edge.
+struct WaxShelf: View {
+  let products: [WaxProduct]
+  var height: CGFloat
 
-  /// Max size for the image area. Defaults keep the current look; can be overridden per page.
-  var imageMaxSize: CGFloat = 280
+  @State private var appeared = false
 
-  /// Primary button shown at the bottom (e.g. Next / Start Using App)
-  var primaryButtonTitle: String = "Next"
-  var primaryAction: (() -> Void)?
+  private let spacingRatio: CGFloat = 0.05
 
-  @ViewBuilder var content: Content
-
-  /// Reserve a consistent height for the title/description block across pages.
-  /// This leaves room for at least 4 lines of subtitle even if a page has shorter text.
-  private let reservedTextBlockHeight: CGFloat = 170
-
-  fileprivate init(
-    image: OnboardingImage? = nil,
-    title: String,
-    description: String,
-    imageMaxSize: CGFloat = 280,
-    primaryButtonTitle: String = "Next",
-    primaryAction: (() -> Void)? = nil,
-    @ViewBuilder content: () -> Content = { EmptyView() }
-  ) {
-    self.image = image
-    self.title = title
-    self.description = description
-    self.imageMaxSize = imageMaxSize
-    self.primaryButtonTitle = primaryButtonTitle
-    self.primaryAction = primaryAction
-    self.content = content()
+  /// Width the row needs at a given height.
+  private func width(at height: CGFloat) -> CGFloat {
+    let items = products.reduce(CGFloat(0)) {
+      $0 + height * WaxIcon.shelfHeight(for: $1) * WaxIcon.aspect(for: $1)
+    }
+    return items + height * spacingRatio * CGFloat(max(products.count - 1, 0))
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      // Top hero area
-      VStack {
-        if let image {
-          Group {
-            switch image {
-            case .system(let name):
-              Image(systemName: name)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 120, height: 120)
-                .foregroundStyle(.blue)
+    GeometryReader { geo in
+      let fitted = min(height, height * geo.size.width / max(width(at: height), 1))
 
-            case .asset(let name):
-              Image(name)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: imageMaxSize, maxHeight: imageMaxSize)
-                .accessibilityLabel(Text(title))
-            }
-          }
-        } else {
-          content
+      HStack(alignment: .bottom, spacing: fitted * spacingRatio) {
+        ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
+          let itemHeight = fitted * WaxIcon.shelfHeight(for: product)
+          WaxIcon(product: product)
+            .frame(width: itemHeight * WaxIcon.aspect(for: product), height: itemHeight)
+            .shadow(color: .black.opacity(0.14), radius: 12, y: 8)
+            .offset(y: appeared ? 0 : 24)
+            .opacity(appeared ? 1 : 0)
+            .animation(
+              .spring(response: 0.6, dampingFraction: 0.78).delay(Double(index) * 0.07),
+              value: appeared)
         }
       }
-      .frame(maxWidth: .infinity)
-      .frame(maxHeight: .infinity)
-
-      // Bottom text + button area (consistent placement)
-      VStack(spacing: 12) {
-        VStack(spacing: 10) {
-          Text(title)
-            .font(.largeTitle)
-            .bold()
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-
-          Text(description)
-            .font(.body)
-            .multilineTextAlignment(.center)
-            .foregroundStyle(.secondary)
-            .lineLimit(4)
-            .minimumScaleFactor(0.9)
-        }
-        .frame(maxWidth: .infinity)
-        // Reserve room for title + 4 lines of subtitle so other pages don't shift.
-        .frame(height: reservedTextBlockHeight, alignment: .top)
-        .padding(.horizontal)
-
-        OnboardingPrimaryButton(title: primaryButtonTitle) {
-          primaryAction?()
-        }
-      }
+      .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
     }
-    .padding(.top, 20)
-    .padding(.bottom, 24)
-    .padding(.horizontal)
+    .frame(height: height)
+    .onAppear { appeared = true }
+    .accessibilityHidden(true)
   }
 }
 
+// MARK: - Page 2: How it works
+
+private struct HowItWorksPage: View {
+  var body: some View {
+    OnboardingScaffold(
+      title: String(localized: "How it works"),
+      subtitle: String(
+        localized:
+          "We read ten days of weather for your location, work out what the snow has become, and match it to the wax you own."
+      )
+    ) {
+      VStack(spacing: 14) {
+        StepRow(
+          number: 1,
+          icon: "location.fill",
+          title: String(localized: "Step_Location_Title"),
+          detail: String(localized: "Step_Location_Detail")
+        )
+        StepRow(
+          number: 2,
+          icon: "snowflake",
+          title: String(localized: "Step_Snow_Title"),
+          detail: String(localized: "Step_Snow_Detail")
+        )
+        StepRow(
+          number: 3,
+          icon: "checkmark.seal.fill",
+          title: String(localized: "Step_Match_Title"),
+          detail: String(localized: "Step_Match_Detail")
+        )
+      }
+      .padding(.horizontal, 4)
+    }
+  }
+}
+
+private struct StepRow: View {
+  let number: Int
+  let icon: String
+  let title: String
+  let detail: String
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 14) {
+      ZStack {
+        Circle()
+          .fill(.tint.opacity(0.15))
+          .frame(width: 38, height: 38)
+        Image(systemName: icon)
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundStyle(.tint)
+      }
+
+      VStack(alignment: .leading, spacing: 3) {
+        Text(title)
+          .font(.subheadline.weight(.semibold))
+        Text(detail)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
+      Spacer(minLength: 0)
+    }
+    .padding(14)
+    .glassEffect(.regular, in: .rect(cornerRadius: 18))
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Step \(number). \(title). \(detail)")
+  }
+}
+
+// MARK: - Page 3: Library multi-select
+
+private struct LibraryPage: View {
+  @Environment(WaxSelectionStore.self) private var store
+  @State private var showsRaceLines = false
+
+  private let region = RegionalWaxKit.Region.current
+
+  var body: some View {
+    OnboardingScaffold(
+      title: String(localized: "Pick your wax"),
+      subtitle: String(localized: "Onboarding_Library_Subtitle"),
+      scrollsContent: true
+    ) {
+      VStack(alignment: .leading, spacing: 20) {
+        RegionKitBanner(region: region)
+
+        ForEach(WaxDomain.allCases) { domain in
+          VStack(alignment: .leading, spacing: 8) {
+            Label { Text(domain.title) } icon: { DomainGlyph(domain: domain) }
+              .font(.footnote.weight(.semibold))
+              .textCase(.uppercase)
+              .foregroundStyle(.secondary)
+
+            ForEach(series(in: domain, advanced: false)) { series in
+              SeriesToggleRow(series: series)
+            }
+          }
+        }
+
+        // Race lines are folded away: an everyday skier never needs them,
+        // and a racer knows to look.
+        DisclosureGroup(isExpanded: $showsRaceLines.animation(.smooth(duration: 0.3))) {
+          VStack(spacing: 8) {
+            ForEach(WaxCatalog.series.filter(\.isAdvanced)) { series in
+              SeriesToggleRow(series: series)
+            }
+          }
+          .padding(.top, 8)
+        } label: {
+          Label("Race lines", systemImage: "flag.checkered")
+            .font(.subheadline.weight(.semibold))
+        }
+        .tint(.primary)
+      }
+      .padding(.bottom, 8)
+    }
+  }
+
+  private func series(in domain: WaxDomain, advanced: Bool) -> [WaxSeries] {
+    WaxCatalog.series.filter { $0.domain == domain && $0.isAdvanced == advanced }
+  }
+}
+
+/// Says plainly that the ticked lines were chosen for the user's country,
+/// and offers a way back to them after edits.
+private struct RegionKitBanner: View {
+  @Environment(WaxSelectionStore.self) private var store
+  let region: RegionalWaxKit.Region
+
+  private var kit: Set<String> { RegionalWaxKit.seriesIDs(for: region) }
+  private var isUsingKit: Bool { store.selectedSeriesIDs == kit }
+
+  private var title: String {
+    if let country = RegionalWaxKit.countryName(for: region) {
+      return String(localized: "Picked for skiers in \(country)")
+    }
+    return String(localized: "A sensible everyday kit")
+  }
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 12) {
+      Image(systemName: "sparkles")
+        .font(.title3)
+        .foregroundStyle(.tint)
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text(title)
+          .font(.subheadline.weight(.semibold))
+        Text("Onboarding_Kit_Detail")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        if !isUsingKit {
+          Button("Use the recommended kit") {
+            withAnimation(.smooth(duration: 0.3)) { store.resetToDefaults() }
+          }
+          .font(.caption.weight(.semibold))
+          .padding(.top, 2)
+        }
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(14)
+    .background(.tint.opacity(0.10), in: .rect(cornerRadius: 18))
+    .accessibilityElement(children: .combine)
+  }
+}
+
+/// A few products from a series, fanned like a hand of cards.
+private struct SeriesArt: View {
+  let series: WaxSeries
+
+  private var products: [WaxProduct] {
+    let all = WaxCatalog.products(inSeries: series.id).filter { !$0.kind.isPreparation }
+    guard all.count > 3 else { return all }
+    // First, middle and last grade: the spread of colours in the range.
+    return [all[0], all[all.count / 2], all[all.count - 1]]
+  }
+
+  var body: some View {
+    let height: CGFloat = 54
+    ZStack(alignment: .bottom) {
+      ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
+        let offset = CGFloat(index) - CGFloat(products.count - 1) / 2
+        WaxIcon(product: product)
+          .frame(width: height * WaxIcon.aspect(for: product), height: height)
+          .offset(x: offset * 15)
+          .zIndex(Double(products.count - index))
+      }
+    }
+    .frame(width: 72, height: height + 4, alignment: .bottom)
+    .accessibilityHidden(true)
+  }
+}
+
+private struct SeriesToggleRow: View {
+  @Environment(WaxSelectionStore.self) private var store
+  let series: WaxSeries
+
+  private var isOn: Bool { store.isSelected(series: series) }
+
+  var body: some View {
+    Button {
+      withAnimation(.smooth(duration: 0.25)) {
+        store.toggle(series: series)
+      }
+    } label: {
+      HStack(spacing: 12) {
+        SeriesArt(series: series)
+          .saturation(isOn ? 1 : 0.2)
+          .opacity(isOn ? 1 : 0.55)
+
+        VStack(alignment: .leading, spacing: 3) {
+          HStack(spacing: 6) {
+            Text(series.name)
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(.primary)
+            BrandTag(brand: series.brand)
+          }
+
+          Text(series.blurb)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
+        Spacer(minLength: 0)
+
+        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+          .font(.title2)
+          .foregroundStyle(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+          .contentTransition(.symbolEffect(.replace))
+      }
+      .padding(12)
+      .background(
+        isOn ? AnyShapeStyle(.tint.opacity(0.10)) : AnyShapeStyle(.background.secondary),
+        in: .rect(cornerRadius: 18)
+      )
+      .overlay {
+        RoundedRectangle(cornerRadius: 18)
+          .strokeBorder(isOn ? AnyShapeStyle(.tint.opacity(0.5)) : AnyShapeStyle(.clear), lineWidth: 1.5)
+      }
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .accessibilityAddTraits(isOn ? [.isSelected] : [])
+    .accessibilityIdentifier("series_\(series.id)")
+  }
+}
+
+private struct BrandTag: View {
+  let brand: WaxBrand
+
+  var body: some View {
+    Text(brand.displayName)
+      .font(.caption2.weight(.semibold))
+      .padding(.horizontal, 6)
+      .padding(.vertical, 1)
+      .background(
+        (Color(hex: brand.tintHex) ?? .accentColor).opacity(0.15),
+        in: Capsule()
+      )
+      .foregroundStyle(Color(hex: brand.tintHex) ?? .accentColor)
+  }
+}
+
+// MARK: - Page 4: Access
+
+private struct AccessPage: View {
+  let hasAccess: Bool
+  @Environment(StoreManager.self) private var storeManager
+  @Environment(WaxSelectionStore.self) private var waxStore
+
+  private var subtitle: String {
+    if hasAccess {
+      return String(localized: "Your subscription is active. Enjoy full access to GetGrip.")
+    }
+    if let lifetime = storeManager.lifetimeProduct {
+      return String(localized: "Onboarding_Access_WithLifetime \(lifetime.displayPrice)")
+    }
+    return String(
+      localized:
+        "Try everything free for 14 days. After that, a subscription keeps full access — cancel any time."
+    )
+  }
+
+  var body: some View {
+    OnboardingScaffold(
+      title: hasAccess
+        ? String(localized: "You're all set")
+        : String(localized: "Get started for free"),
+      subtitle: subtitle
+    ) {
+      WaxShelf(products: shelf, height: 230)
+        .frame(maxWidth: .infinity)
+    }
+  }
+
+  /// The user's own kit, so the last thing they see is what they picked.
+  private var shelf: [WaxProduct] {
+    waxStore.selectedSeries.prefix(5).compactMap { series in
+      let products = WaxCatalog.products(inSeries: series.id).filter { !$0.kind.isPreparation }
+      return products.isEmpty ? nil : products[products.count / 2]
+    }
+  }
+}
+
+// MARK: - Shared page scaffold
+
+private struct OnboardingScaffold<Content: View>: View {
+  let title: String
+  let subtitle: String
+  var scrollsContent: Bool = false
+  @ViewBuilder var content: Content
+
+  var body: some View {
+    VStack(spacing: 0) {
+      if scrollsContent {
+        // Selection pages lead with the copy, then scroll the list.
+        titleBlock
+          .padding(.top, 8)
+          .padding(.bottom, 18)
+
+        ScrollView {
+          content
+            .padding(.horizontal, 22)
+            .padding(.bottom, 12)
+        }
+        .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+      } else {
+        // Story pages lead with the artwork, as Apple's own onboarding does.
+        Spacer(minLength: 12)
+
+        content
+          .padding(.horizontal, 22)
+          .frame(maxHeight: .infinity)
+
+        Spacer(minLength: 12)
+
+        titleBlock
+          .padding(.bottom, 8)
+      }
+    }
+  }
+
+  private var titleBlock: some View {
+    VStack(spacing: 10) {
+      Text(title)
+        .font(.largeTitle.bold())
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.8)
+        .fixedSize(horizontal: false, vertical: true)
+
+      Text(subtitle)
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(.horizontal, 28)
+  }
+}
+
+// MARK: - Preview
+
 #Preview {
   let app = AppState()
-
-  OnboardingView(showOnboarding: .constant(true))
-    .environment(app.location)
-    .environment(app.weather)
+  return OnboardingView(isPresented: .constant(true))
     .environment(app.waxSelection)
-    .environment(app.recommendation)
     .environment(app.storeManager)
 }

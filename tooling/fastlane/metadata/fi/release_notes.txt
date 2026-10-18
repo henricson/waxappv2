@@ -1,0 +1,13 @@
+Luistovoiteet, widgetit ja elinikäinen osto.
+
+• Koti- ja lukitusnäytön widgetit kaikissa koissa – sijainnissasi tai valitsemallasi ladulla – pito, luisto tai molemmat
+• Avaa GetGrip pysyvästi yhdellä kertaostolla tai jatka tilauksella
+• Luistosuositukset pidon rinnalla, vaihto yhdellä napautuksella
+• Roden pitovoiteet ja klisterit Swixin seuraksi
+• Uudistettu lumiluokittelu, joka tunnistaa vesisateen ja yön jäätymisen
+• Aidonnäköiset kuvitukset jokaisesta purkista, klisteriputkesta, luistopakkauksesta, suihkeesta ja jauheesta
+• Asuinpaikallesi valittu voidevalikoima – napauta Ohita tai valitse omat sarjasi
+• ”Toimii myös” vastaa nyt kaaviota täsmälleen
+• Valinnaiset selitykset siitä, miksi voide valittiin
+• Nyt myös ruotsiksi ja islanniksi
+• Uudistettu ulkoasu iOS 27:lle

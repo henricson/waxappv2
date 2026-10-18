@@ -260,28 +260,141 @@ struct SnowTypeClassifierTests {
 
     // MARK: - Edge Cases
 
-    @Test("Near-freezing old snow with melt conditions returns transformed moist fine")
-    func nearFreezing_withMelt_transformedMoistFine() {
-        let now = Date()
-        // 72 hours of data, some warm periods but currently near freezing
-        var points = makeDataPoints(hours: 72, endingAt: now, temperature: -1.0)
-        // Add some warm hours in the middle (enough for melt conditions: >= 4 hours above 1°C)
-        for i in 20..<30 {
-            let idx = points.count - 1 - i
-            guard idx >= 0 else { continue }
+    /// Builds 72 h of history at `baseTemp` with a warm spell `warmWindow`
+    /// hours ago (inclusive range, counted back from now).
+    private func makeThawThenFreeze(
+        baseTemp: Double,
+        warmWindow: Range<Int>,
+        warmTemp: Double = 2.0,
+        endingAt now: Date
+    ) -> [WeatherDataPointModel] {
+        var points = makeDataPoints(hours: 72, endingAt: now, temperature: baseTemp)
+        for hoursAgo in warmWindow {
+            let idx = points.count - 1 - hoursAgo
+            guard points.indices.contains(idx) else { continue }
             points[idx] = WeatherDataPointModel(
                 start: points[idx].start,
                 end: points[idx].end,
                 averageAmountOfSnow: 0,
                 averageAmountOfRain: 0,
-                averageTemperature: 2.0
+                averageTemperature: warmTemp
             )
         }
+        return points
+    }
+
+    @Test("A long refreeze after a thaw returns frozen crust, even at -1°C")
+    func sustainedRefreeze_atMinusOne_frozenCorn() {
+        // Regression: the classifier used to require the current temperature
+        // to be below -1 °C before it would admit a melt-freeze crust, so a
+        // crust sitting at exactly -1 °C — prime klister weather — was
+        // reported as fine-grained snow and got a hard wax recommendation.
+        let now = Date()
+        let points = makeThawThenFreeze(baseTemp: -1.0, warmWindow: 20..<30, endingAt: now)
+        let result = SnowTypeClassifier.classify(
+            currentTemperature: -1.0,
+            weatherDataPoints: points,
+            now: now
+        )
+        #expect(result == .frozenCorn)
+    }
+
+    @Test("A brief dip below zero after a thaw is still transformed moist snow")
+    func briefRefreeze_nearZero_transformedMoistFine() {
+        // Two hours below zero is a melt-freeze cycle by the letter of the
+        // rule, but not long enough to set a crust.
+        let now = Date()
+        let points = makeThawThenFreeze(baseTemp: -1.0, warmWindow: 3..<30, endingAt: now)
         let result = SnowTypeClassifier.classify(
             currentTemperature: -1.0,
             weatherDataPoints: points,
             now: now
         )
         #expect(result == .transformedMoistFine)
+    }
+
+    @Test("Near-freezing snow after a thaw with no refreeze is transformed moist fine")
+    func nearFreezing_withMelt_transformedMoistFine() {
+        let now = Date()
+        // Warm spell well in the past, currently sitting right at zero so the
+        // pack never refroze.
+        let points = makeThawThenFreeze(baseTemp: 0.0, warmWindow: 40..<50, endingAt: now)
+        let result = SnowTypeClassifier.classify(
+            currentTemperature: 0.0,
+            weatherDataPoints: points,
+            now: now
+        )
+        #expect(result == .transformedMoistFine)
+    }
+
+    // MARK: - Rain
+
+    @Test("Rain on snow at sub-zero gives a frozen crust")
+    func rainThenFreeze_frozenCorn() {
+        let now = Date()
+        let points = makeDataPoints(
+            hours: 24, endingAt: now, temperature: -2.0, rainPerHour: 0.5)
+        let result = SnowTypeClassifier.classify(
+            currentTemperature: -2.0,
+            weatherDataPoints: points,
+            now: now
+        )
+        #expect(result == .frozenCorn)
+    }
+
+    @Test("Rain on snow above zero gives wet snow")
+    func rainWhileWarm_wetCorn() {
+        let now = Date()
+        let points = makeDataPoints(
+            hours: 24, endingAt: now, temperature: 2.0, rainPerHour: 0.5)
+        let result = SnowTypeClassifier.classify(
+            currentTemperature: 2.0,
+            weatherDataPoints: points,
+            now: now
+        )
+        #expect(result == .wetCorn)
+    }
+
+    // MARK: - Granularity
+
+    @Test("Hourly and daily histories of the same weather classify the same")
+    func dailyPointsAgeCorrectly() {
+        // Effective aging weights each data point by its own duration. The
+        // old implementation added a fixed one hour per point, which
+        // under-aged daily data 24-fold — ten-day-old snow came back as
+        // moist fine-grained instead of old snow.
+        let now = Date()
+        let days = 10
+        let temperature = -1.0
+
+        var hourly = makeDataPoints(
+            hours: days * 24, endingAt: now, temperature: temperature)
+        hourly[0] = WeatherDataPointModel(
+            start: hourly[0].start,
+            end: hourly[0].end,
+            averageAmountOfSnow: 5.0,
+            averageAmountOfRain: 0,
+            averageTemperature: temperature
+        )
+
+        let firstDay = now.addingTimeInterval(-Double(days) * 24 * 3600)
+        let daily = (0..<days).map { day -> WeatherDataPointModel in
+            let start = firstDay.addingTimeInterval(Double(day) * 24 * 3600)
+            return WeatherDataPointModel(
+                start: start,
+                end: start.addingTimeInterval(24 * 3600),
+                averageAmountOfSnow: day == 0 ? 5.0 : 0,
+                averageAmountOfRain: 0,
+                averageTemperature: temperature
+            )
+        }
+
+        let fromHourly = SnowTypeClassifier.classify(
+            currentTemperature: temperature, weatherDataPoints: hourly, now: now)
+        let fromDaily = SnowTypeClassifier.classify(
+            currentTemperature: temperature, weatherDataPoints: daily, now: now)
+
+        #expect(fromHourly == .oldGrained)
+        #expect(fromDaily == fromHourly)
     }
 }

@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import Observation
 
@@ -12,9 +13,20 @@ final class AppState {
 
   init() {
     let location = LocationStore()
-    let weather = WeatherStore(locationStore: location)
     let waxSelection = WaxSelectionStore()
-    let recommendation = RecommendationStore(weatherStore: weather, waxSelectionStore: waxSelection)
+    let weather: WeatherStore
+
+    if DemoMode.isEnabled {
+      weather = WeatherStore(
+        locationStore: location,
+        weatherProviderFactory: DemoWeatherProviderFactory()
+      )
+    } else {
+      weather = WeatherStore(locationStore: location)
+    }
+
+    let recommendation = RecommendationStore(
+      weatherStore: weather, waxSelectionStore: waxSelection)
     let storeManager = StoreManager()
 
     self.location = location
@@ -22,5 +34,38 @@ final class AppState {
     self.waxSelection = waxSelection
     self.recommendation = recommendation
     self.storeManager = storeManager
+
+    if DemoMode.isEnabled {
+      applyDemoMode()
+    }
+  }
+
+  /// Puts the app into the fixed state the App Store screenshots expect.
+  private func applyDemoMode() {
+    if !DemoMode.seriesIDs.isEmpty {
+      for id in DemoMode.seriesIDs {
+        if let series = WaxCatalog.series(withID: id) {
+          waxSelection.setSelected(true, series: series)
+        }
+      }
+    }
+
+    if DemoMode.skipsOnboarding {
+      waxSelection.markOnboardingComplete()
+    } else {
+      waxSelection.resetOnboarding()
+    }
+    storeManager.applyDemoAccess()
+
+    recommendation.activeDomain = DemoMode.domain
+    recommendation.effectiveTemperature = DemoMode.temperature
+    recommendation.effectiveSnowType = DemoMode.snowType
+
+    location.setManualLocation(
+      AppLocation(
+        lat: DemoMode.coordinate.latitude,
+        lon: DemoMode.coordinate.longitude,
+        placeName: DemoMode.placeName
+      ))
   }
 }

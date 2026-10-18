@@ -1,6 +1,5 @@
 import CoreLocation
 import Foundation
-import Playgrounds
 import WeatherKit
 
 public struct WeatherKitWeatherProviderFactory: WeatherProviderFactory {
@@ -10,6 +9,8 @@ public struct WeatherKitWeatherProviderFactory: WeatherProviderFactory {
 
 public struct WeatherKitWeatherProvider: WeatherProvider {
   public init() {}
+
+  public var sourceName: String { "Apple Weather" }
 
   public func data(
     for location: CLLocation,
@@ -39,7 +40,9 @@ public struct WeatherKitWeatherProvider: WeatherProvider {
           end: dayEnd,
           averageAmountOfSnow: snowMM,
           averageAmountOfRain: rainMM + sleetMM + mixedMM + hailMM,
-          averageTemperature: day.highTemperature.converted(to: .celsius).value
+          averageTemperature: day.highTemperature.converted(to: .celsius).value,
+          relativeHumidity: nil,
+          windSpeed: day.wind.speed.converted(to: .metersPerSecond).value
         )
       }
 
@@ -49,39 +52,27 @@ public struct WeatherKitWeatherProvider: WeatherProvider {
         including: .hourly(startDate: interval.start, endDate: interval.end)
       )
       return forecast.forecast.map { hour in
-        let rainMM = hour.precipitationAmount.converted(to: .millimeters).value
-        let snowMM = hour.snowfallAmount.converted(to: .millimeters).value
+        // `precipitationAmount` is total liquid-equivalent precipitation and
+        // already accounts for anything that fell as snow, so deriving rain as
+        // (total − snow liquid-equivalent) avoids double-counting.
+        let totalLiquidMM = hour.precipitationAmount.converted(to: .millimeters).value
+        let snowDepthMM = hour.snowfallAmount.converted(to: .millimeters).value
+
+        // Fresh snow is roughly a tenth the density of water; this is the
+        // standard 10:1 approximation used for snow-water equivalent.
+        let snowLiquidEquivalentMM = snowDepthMM / 10.0
+        let rainMM = max(0, totalLiquidMM - snowLiquidEquivalentMM)
 
         return WeatherDataPointModel(
           start: hour.date,
           end: hour.date.addingTimeInterval(3600),
-          averageAmountOfSnow: snowMM,
+          averageAmountOfSnow: snowDepthMM,
           averageAmountOfRain: rainMM,
-          averageTemperature: hour.temperature.value
+          averageTemperature: hour.temperature.converted(to: .celsius).value,
+          relativeHumidity: hour.humidity,
+          windSpeed: hour.wind.speed.converted(to: .metersPerSecond).value
         )
       }
-    }
-  }
-}
-
-#Playground {
-  var weatherFactory = WeatherKitWeatherProviderFactory().makeProvider()
-  let kirkenes = CLLocation(latitude: 69.725, longitude: 30.051)
-  let now = Date()
-  let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -4, to: now)!
-  let interval = DateInterval(start: tenDaysAgo, end: now)
-
-  Task {
-    do {
-      let dataPoints = try await weatherFactory.data(
-        for: kirkenes, in: interval, granularity: .hourly)
-      for point in dataPoints {
-        print(
-          "\(point.start) - snow: \(point.averageAmountOfSnow) mm, rain: \(point.averageAmountOfRain) mm, precip: \(point.averageAmountOfPrecipitation) mm"
-        )
-      }
-    } catch {
-      print("Failed to fetch weather data:", error)
     }
   }
 }

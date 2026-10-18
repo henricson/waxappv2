@@ -1,0 +1,18 @@
+GetGrip recommends cross-country ski wax from local weather.
+
+To review without a subscription, launch with the argument
+  -GGDemoMode YES
+which pins a demo location, weather history and full access.
+
+Wax temperature ranges are taken from the manufacturers' own published
+charts (swixsport.com and Rode distributor data). The app is not
+affiliated with either brand and says so in the description.
+
+In-app purchases: an annual and a monthly subscription (14-day free trial
+on annual), and a non-consumable lifetime unlock
+(com.squarewave.getgrip.lifetime). The paywall offers all three; Restore
+Purchases restores either.
+
+Widgets: add "Wax of the Day" from the Home Screen widget gallery. Long-press
+it and choose Edit Widget to switch between current location and a fixed
+place, and between grip, glide or both.

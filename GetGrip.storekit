@@ -14,7 +14,21 @@
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : true,
+      "internalID" : "4C1F7E2A",
+      "localizations" : [
+        {
+          "description" : "Unlock GetGrip for good with a single payment.",
+          "displayName" : "GetGrip Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.squarewave.getgrip.lifetime",
+      "referenceName" : "GetGrip Lifetime",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_applicationInternalID" : "6754203402",

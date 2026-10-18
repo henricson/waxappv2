@@ -1,0 +1,6 @@
+# Shared defaults: never touch the binary or auto-submit from the text lanes.
+skip_binary_upload(true)
+submit_for_review(false)
+precheck_include_in_app_purchases(false)
+run_precheck_before_submit(false)
+force(true)

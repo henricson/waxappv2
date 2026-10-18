@@ -2,8 +2,6 @@
 //  MainView.swift
 //  waxappv2
 //
-//  Created by Herman Henriksen on 18/10/2025.
-//
 
 import CoreLocation
 import SwiftUI
@@ -32,14 +30,11 @@ struct GanttScrollTip: Tip {
   }
 }
 
-// MARK: - Layout Constants
+// MARK: - Layout
 
 private enum LayoutConstants {
-  static let headerHeight: CGFloat = 200
-  static let snowTypeSectionHeight: CGFloat = 68
-  static let attributionHeight: CGFloat = 100
-  static let floatingButtonHeight: CGFloat = 74
-  static let minimumGanttHeight: CGFloat = 200
+  static let heroHeight: CGFloat = 270
+  static let minimumGanttHeight: CGFloat = 260
 }
 
 // MARK: - MainView
@@ -52,54 +47,63 @@ struct MainView: View {
   @Environment(StoreManager.self) private var storeManager
   @Environment(\.colorScheme) private var colorScheme
 
-  @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
-
   // MARK: UI State
 
   @State private var showMapSelection = false
   @State private var showLocationPermissionAlert = false
-
   @State private var showWeatherErrorAlert = false
   @State private var showPaywall = false
-  @State private var weatherErrorMessage = ""
+  @State private var showWaxLibrary = false
   @State private var isUserInitiatedLocationRequest = false
+
+  @Namespace private var glassNamespace
 
   private let scrollTip = GanttScrollTip()
 
-  // MARK: Computed Properties
+  // MARK: Derived
 
   private var shouldShowPurchaseButton: Bool {
     storeManager.isInitialized && !storeManager.hasAccess
   }
 
   private var showAttribution: Bool {
-    recStore.isSameAsWeatherKit
+    recStore.isSameAsWeatherKit && weatherStore.hasLoadedWeather
   }
 
-  private var selectedWaxes: [SwixWax] {
-    swixWaxes.filter { waxStore.selectedWaxIDs.contains($0.id) }
+  private var tintColor: Color {
+    guard let top = recStore.topPick else { return .accentColor }
+    return Color(hex: top.product.backgroundColor) ?? .accentColor
   }
 
   // MARK: Body
 
   var body: some View {
     NavigationStack {
-      mainContent
-        .navigationTitle(locStore.location?.placeName ?? "")
+      content
+        .navigationTitle(locStore.location?.placeName ?? String(localized: "GetGrip"))
         #if os(iOS)
           .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { toolbarContent }
-        .sheet(isPresented: $showMapSelection) {
-          MapSelectView()
+        .navigationDestination(isPresented: $showWaxLibrary) {
+          WaxSelectionView()
         }
-        .sheet(isPresented: $showPaywall) {
-          PaywallView()
-        }
+        .sheet(isPresented: $showMapSelection) { MapSelectView() }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
         .task(id: locStore.location) {
           guard locStore.location != nil else { return }
-          await weatherStore.fetchWeather()
-          recStore.syncFromWeather()
+          weatherStore.reset()
+          let didLoad = await weatherStore.fetchWeather()
+          if didLoad {
+            // Demo mode pins temperature and snow type for reproducible
+            // screenshots, so the weather must not overwrite them.
+            if !DemoMode.isEnabled { recStore.syncFromWeather() }
+          } else if weatherStore.fetchError != nil {
+            showWeatherErrorAlert = true
+          }
+        }
+        .onChange(of: waxStore.selectedSeriesIDs) { _, _ in
+          recStore.reconcileSnowType()
         }
         .onChange(of: locStore.authorizationStatus, handleAuthorizationChange)
         .onChange(of: locStore.locationStatus, handleLocationStatusChange)
@@ -110,162 +114,311 @@ struct MainView: View {
             "Please enable location services in settings, or select your position manually using the top left map button."
           )
         }
-
         .alert("Weather Data Unavailable", isPresented: $showWeatherErrorAlert) {
           weatherErrorAlertActions
         } message: {
           Text(
-            "Unable to fetch weather data. \(weatherErrorMessage)\n\nYou can set the temperature and snow type manually using the controls below."
+            "We couldn't reach a weather service. You can still set the temperature and snow type by hand below."
           )
         }
     }
   }
 }
 
-// MARK: - Main Content
+// MARK: - Content
 
 extension MainView {
-  fileprivate var mainContent: some View {
+
+  fileprivate var content: some View {
     ZStack {
       backgroundGradient
+
       ScrollView(.vertical) {
-        VStack(spacing: 0) {
-          headerSection
-          snowTypeSection
-          ganttSection.frame(minHeight: 150)
+        VStack(spacing: 16) {
+          domainPicker
+            .padding(.top, 4)
+
+          heroSection
+            .frame(height: LayoutConstants.heroHeight)
+
+          if recStore.isAdvancedMode, let top = recStore.topPick {
+            RecommendationFactorsView(recommendation: top)
+              .padding(.horizontal)
+              .transition(.blurReplace)
+          }
+
+          alternativesSection
+
+          preparationSection
+
+          conditionsSection
+
+          ganttSection
+            .frame(minHeight: LayoutConstants.minimumGanttHeight)
+
           attributionSection
         }
+        // Clear the floating tab bar so the lowest rows stay readable.
+        .padding(.bottom, 110)
       }
-
+      .scrollEdgeEffectStyle(.soft, for: .top)
     }
     .safeAreaInset(edge: .bottom) {
-      // Keep the floating button pinned above the Tab Bar / home indicator
       floatingPurchaseButton
         .padding(.horizontal)
         .padding(.bottom, 10)
-        .zIndex(1)
     }
-    .overlay(alignment: .top) {
-      // Show the tip above all content (and above the floating button)
-      TipView(scrollTip, arrowEdge: .top)
-        .padding(.horizontal)
-        .padding(
-          .top,
-          LayoutConstants.headerHeight + LayoutConstants.snowTypeSectionHeight + 24 + 70)
-    }
-    .animation(.easeInOut(duration: 0.35), value: showAttribution)
-    .animation(.easeInOut(duration: 0.35), value: shouldShowPurchaseButton)
+    .animation(.smooth(duration: 0.35), value: recStore.activeDomain)
+    .animation(.smooth(duration: 0.35), value: recStore.topPick?.id)
+    .animation(.smooth(duration: 0.3), value: shouldShowPurchaseButton)
   }
 
-}
+  // MARK: Background
 
-// MARK: - View Components
-
-extension MainView {
+  /// A neutral page with a restrained wash of the wax colour behind the hero.
+  /// An earlier version tinted the whole screen, which drowned the content
+  /// and fought with the product artwork.
   fileprivate var backgroundGradient: some View {
-    Group {
-      if let recommended = recStore.recommended.first {
-        LinearGradient(
-          colors: [
-            Color(hex: recommended.wax.backgroundColor) ?? .blue,
-            colorScheme == .dark ? .black : .white,
-          ],
-          startPoint: .top,
-          endPoint: .bottom
-        )
-        .ignoresSafeArea(edges: .top)
-        .transition(.opacity)
-        .id(recommended.wax.primaryColor)
-      } else {
-        Color.clear.ignoresSafeArea(edges: .top)
-      }
+    ZStack(alignment: .top) {
+      Color(.systemGroupedBackground)
+
+      LinearGradient(
+        stops: [
+          .init(color: tintColor.opacity(colorScheme == .dark ? 0.30 : 0.22), location: 0.0),
+          .init(color: tintColor.opacity(colorScheme == .dark ? 0.12 : 0.08), location: 0.35),
+          .init(color: .clear, location: 0.62),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
     }
-    .animation(.easeIn, value: recStore.recommended.first?.wax.primaryColor)
+    .ignoresSafeArea()
+    .animation(.smooth(duration: 0.6), value: tintColor)
   }
 
-  fileprivate var headerSection: some View {
-    Group {
-      if let recommended = recStore.recommended.first {
-        HeaderCanView(recommendedWax: recommended.wax)
-          .id(recommended.wax.id)
-      } else {
-        outOfRangeHeader
+  // MARK: Grip / glide picker
+
+  fileprivate var domainPicker: some View {
+    // Two adjacent glass capsules fuse into one blob through
+    // GlassEffectContainer's proximity merging, which reads as a single
+    // malformed shape. One capsule with a sliding selection is both calmer
+    // and the standard idiom for a two-way switch.
+    HStack(spacing: 0) {
+      ForEach(WaxDomain.allCases) { domain in
+        let isActive = recStore.activeDomain == domain
+
+        Button {
+          withAnimation(.smooth(duration: 0.3)) {
+            recStore.activeDomain = domain
+            recStore.reconcileSnowType()
+          }
+        } label: {
+          Label {
+            Text(domain.title)
+          } icon: {
+            // A concrete colour: on glass, dynamic `.primary` turns vibrant
+            // and a custom shape renders washed-out grey next to the text.
+            DomainGlyph(
+              domain: domain,
+              color: isActive || colorScheme == .dark ? .white : .black)
+          }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isActive ? Color.white : Color.primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .background {
+          if isActive {
+            Capsule()
+              .fill(tintColor.gradient)
+              .matchedGeometryEffect(id: "domainSelection", in: glassNamespace)
+          }
+        }
+        .accessibilityIdentifier("domain_\(domain.rawValue)")
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
       }
     }
-    .frame(height: LayoutConstants.headerHeight)
+    .padding(4)
+    .frame(maxWidth: 300)
+    .glassEffect(.regular, in: .capsule)
   }
 
-  fileprivate var outOfRangeHeader: some View {
-    VStack(spacing: 20) {
-      HStack {
-        Image(systemName: "info.triangle")
-        Text("Outside of range")
-          .font(.headline)
-          .multilineTextAlignment(.center)
-      }
+  // MARK: Hero
+
+  @ViewBuilder
+  fileprivate var heroSection: some View {
+    if recStore.hasNoVisibleSeries {
+      emptyLibraryHero
+    } else if let top = recStore.topPick {
+      HeaderCanView(recommendation: top)
+        .id(top.id)
+        .transition(.blurReplace.combined(with: .scale(0.94)))
+    } else {
+      outOfRangeHero
+    }
+  }
+
+  fileprivate var emptyLibraryHero: some View {
+    ContentUnavailableView {
+      Label("No waxes selected", systemImage: "square.stack.3d.up.slash")
+    } description: {
+      Text("Turn on at least one series to see recommendations.")
+    } actions: {
+      Button("Open wax library") { showWaxLibrary = true }
+        .buttonStyle(.glassProminent)
+    }
+  }
+
+  fileprivate var outOfRangeHero: some View {
+    VStack(spacing: 18) {
+      Image(systemName: "thermometer.medium.slash")
+        .font(.system(size: 34, weight: .light))
+        .foregroundStyle(.secondary)
+
+      Text("Nothing in your library covers \(recStore.effectiveTemperature)°C")
+        .font(.headline)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 32)
 
       if let target = recStore.nearestRecommendedTemperature(
         from: recStore.effectiveTemperature)
       {
         Button {
-          withAnimation(.easeInOut(duration: 0.35)) {
+          withAnimation(.smooth(duration: 0.35)) {
             recStore.effectiveTemperature = target
           }
         } label: {
           Label(
-            "Move back",
+            "Jump to \(target)°C",
             systemImage: target > recStore.effectiveTemperature
               ? "arrow.right" : "arrow.left"
           )
         }
-        .buttonStyle(.bordered)
-        .controlSize(.regular)
+        .buttonStyle(.glass)
         .accessibilityHint(
-          "Scrolls the temperature scale to the nearest range with recommendations")
+          "Moves the temperature scale to the nearest range with recommendations")
       }
     }
   }
 
-  fileprivate var snowTypeSection: some View {
-    VStack(spacing: 12) {
-      SnowTypeButtons(store: recStore)
-        .frame(height: 44)
+  // MARK: Alternatives
 
-      LocationSourceIndicator(
-        isManualOverride: locStore.locationStatus == .manual_override,
-        isUsingWeatherData: recStore.isSameAsWeatherKit
-      )
+  @ViewBuilder
+  fileprivate var alternativesSection: some View {
+    let alternatives = recStore.alternatives
+
+    if !alternatives.isEmpty {
+      VStack(alignment: .leading, spacing: 8) {
+        SectionHeader("Also works")
+
+        // Alternatives are content, not controls, so they sit on solid
+        // cards. Glass is kept for the things you touch.
+        ScrollView(.horizontal) {
+          HStack(spacing: 10) {
+            ForEach(alternatives) { alternative in
+              AlternativeChip(recommendation: alternative)
+            }
+          }
+          .padding(.horizontal)
+        }
+        .scrollIndicators(.hidden)
+      }
+      .transition(.blurReplace)
     }
-    .padding(.vertical, 12)
-    .animation(.easeInOut(duration: 0.3), value: recStore.isSameAsWeatherKit)
   }
+
+  // MARK: Preparation layer
+
+  @ViewBuilder
+  fileprivate var preparationSection: some View {
+    if let prep = recStore.preparation {
+      HStack(spacing: 12) {
+        WaxIcon(product: prep.product)
+          .frame(width: 22, height: 32)
+
+        VStack(alignment: .leading, spacing: 1) {
+          Text("Lay down \(prep.product.code) first")
+            .font(.footnote.weight(.semibold))
+          Text(prep.product.name)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer(minLength: 0)
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 10)
+      .background(.background.secondary, in: .rect(cornerRadius: 18))
+      .padding(.horizontal)
+      .transition(.blurReplace)
+    }
+  }
+
+  // MARK: Conditions
+
+  fileprivate var conditionsSection: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline) {
+        SectionHeader("Snow")
+        Spacer(minLength: 8)
+        LocationSourceIndicator(
+          isManualOverride: locStore.locationStatus == .manual_override,
+          isUsingWeatherData: recStore.isSameAsWeatherKit
+        )
+        .padding(.trailing)
+      }
+
+      SnowTypeButtons(store: recStore)
+        .frame(height: 46)
+    }
+    .padding(.top, 8)
+    .animation(.smooth(duration: 0.3), value: recStore.isSameAsWeatherKit)
+  }
+
+  // MARK: Gantt
 
   fileprivate var ganttSection: some View {
-    Gantt(selectedWaxes: selectedWaxes)
+    VStack(alignment: .leading, spacing: 8) {
+      SectionHeader("Temperature")
+
+      // The tip used to sit on top of the chart it was describing.
+      TipView(scrollTip, arrowEdge: .bottom)
+        .padding(.horizontal)
+
+      Gantt(selectedWaxes: recStore.candidates)
+    }
+    .padding(.top, 8)
   }
+
+  // MARK: Attribution
 
   @ViewBuilder
   fileprivate var attributionSection: some View {
     if showAttribution {
       WeatherAttributionView()
-        .padding(.top, 20)
         .frame(maxWidth: .infinity)
-        .frame(height: LayoutConstants.attributionHeight)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .padding(.top, 8)
+        .transition(.opacity)
     }
   }
+
+  // MARK: Purchase
 
   @ViewBuilder
   fileprivate var floatingPurchaseButton: some View {
     if shouldShowPurchaseButton {
       FloatingPurchaseButton(
         subtitle: storeManager.isEligibleForIntroOffer
-          ? "Start your 14-day free trial" : "Unlock full access",
-        actionTitle: storeManager.isEligibleForIntroOffer ? "Start trial" : "Subscribe"
+          ? String(localized: "Start your 14-day free trial")
+          : String(localized: "Unlock full access"),
+        actionTitle: storeManager.isEligibleForIntroOffer
+          ? String(localized: "Start trial")
+          : String(localized: "Subscribe")
       ) {
         showPaywall = true
       }
-      .padding(.bottom, 10)
     }
   }
 }
@@ -273,52 +426,63 @@ extension MainView {
 // MARK: - Toolbar
 
 extension MainView {
-  // Cross-platform toolbar placements
-  fileprivate var leadingToolbarPlacement: ToolbarItemPlacement {
-    #if os(macOS)
-      return .automatic
-    #else
-      return .topBarLeading
-    #endif
-  }
-
-  fileprivate var trailingToolbarPlacement: ToolbarItemPlacement {
-    #if os(macOS)
-      return .automatic
-    #else
-      return .topBarTrailing
-    #endif
-  }
-
   @ToolbarContentBuilder
   fileprivate var toolbarContent: some ToolbarContent {
-    ToolbarItem(placement: leadingToolbarPlacement) {
+    ToolbarItem(placement: .topBarLeading) {
       Button {
         showMapSelection = true
       } label: {
         Image(systemName: "map")
       }
       .accessibilityIdentifier("mapButton")
-      .toolbarButtonStyle(
-        tint: locStore.locationStatus == .manual_override && recStore.isSameAsWeatherKit
+      .accessibilityLabel("Choose location on map")
+      .tint(
+        locStore.locationStatus == .manual_override && recStore.isSameAsWeatherKit
           ? .accentColor : .primary
       )
     }
 
-    ToolbarItem(placement: trailingToolbarPlacement) {
+    ToolbarItem(placement: .topBarTrailing) {
       Button(action: handleLocationButtonTap) {
         Image(systemName: "location.fill")
       }
       .accessibilityIdentifier("locationButton")
-      .toolbarButtonStyle(
-        tint: recStore.isSameAsWeatherKit && locStore.locationStatus != .manual_override
+      .accessibilityLabel("Use my location")
+      .tint(
+        recStore.isSameAsWeatherKit && locStore.locationStatus != .manual_override
           ? .accentColor : .primary
       )
     }
+
+    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+    ToolbarItem(placement: .topBarTrailing) {
+      Menu {
+        Toggle(isOn: advancedModeBinding) {
+          Label("Explain recommendations", systemImage: "text.magnifyingglass")
+        }
+
+        Button("Wax library", systemImage: "square.stack.3d.up") {
+          showWaxLibrary = true
+        }
+      } label: {
+        Image(systemName: "slider.horizontal.3")
+      }
+      .accessibilityLabel("Options")
+    }
+  }
+
+  fileprivate var advancedModeBinding: Binding<Bool> {
+    Binding(
+      get: { recStore.isAdvancedMode },
+      set: { newValue in
+        withAnimation(.smooth(duration: 0.3)) { recStore.isAdvancedMode = newValue }
+      }
+    )
   }
 }
 
-// MARK: - Actions & Handlers
+// MARK: - Actions
 
 extension MainView {
   fileprivate func handleLocationButtonTap() {
@@ -382,17 +546,62 @@ extension MainView {
 
   @ViewBuilder
   fileprivate var weatherErrorAlertActions: some View {
-    Button("Set Manually") {
-      showWeatherErrorAlert = false
-    }
+    Button("Set manually") { showWeatherErrorAlert = false }
     Button("Retry") {
-      if locStore.location != nil {
-        Task {
-          await weatherStore.fetchWeather()
+      Task {
+        if await weatherStore.fetchWeather() {
+          recStore.syncFromWeather()
         }
       }
     }
     Button("Cancel", role: .cancel) {}
+  }
+}
+
+// MARK: - Section header
+
+/// One style for every section label on the page, so the order reads as
+/// hero → alternatives → snow → temperature at a glance.
+private struct SectionHeader: View {
+  let title: LocalizedStringKey
+
+  init(_ title: LocalizedStringKey) { self.title = title }
+
+  var body: some View {
+    Text(title)
+      .font(.footnote.weight(.semibold))
+      .textCase(.uppercase)
+      .foregroundStyle(.secondary)
+      .padding(.horizontal)
+      .accessibilityAddTraits(.isHeader)
+  }
+}
+
+// MARK: - Alternative chip
+
+private struct AlternativeChip: View {
+  let recommendation: WaxRecommendation
+
+  private var product: WaxProduct { recommendation.product }
+
+  var body: some View {
+    HStack(spacing: 8) {
+      WaxIcon(product: product)
+        .frame(width: 18, height: 26)
+
+      VStack(alignment: .leading, spacing: 0) {
+        Text(product.code)
+          .font(.caption.weight(.semibold))
+        Text(product.brand.displayName)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 8)
+    .background(.background.secondary, in: .capsule)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(product.name), \(product.brand.displayName)")
   }
 }
 
@@ -401,7 +610,6 @@ extension MainView {
 struct WeatherAttributionView: View {
   @Environment(\.colorScheme) private var colorScheme
   @State private var attribution: WeatherAttribution?
-  @State private var isLoaded = false
 
   private var logoURL: URL? {
     guard let attribution else { return nil }
@@ -410,36 +618,10 @@ struct WeatherAttributionView: View {
   }
 
   var body: some View {
-    Group {
-      if isLoaded, let attribution {
-        attributionContent(attribution)
-          .transition(.opacity.combined(with: .move(edge: .bottom)))
-      } else {
-        ProgressView()
-          .controlSize(.small)
-          .transition(.opacity)
-      }
-    }
-    .frame(minHeight: 44)
-    .task {
-      guard !isLoaded else { return }
-      if let fetched = try? await WeatherService.shared.attribution {
-        withAnimation(.easeInOut(duration: 0.35)) {
-          attribution = fetched
-          isLoaded = true
-        }
-      }
-    }
-  }
-
-  private func attributionContent(_ attribution: WeatherAttribution) -> some View {
     VStack(spacing: 6) {
       if let logoURL {
         AsyncImage(url: logoURL) { image in
-          image
-            .resizable()
-            .scaledToFit()
-            .frame(height: 16)
+          image.resizable().scaledToFit().frame(height: 14)
         } placeholder: {
           appleWeatherFallback
         }
@@ -447,66 +629,35 @@ struct WeatherAttributionView: View {
         appleWeatherFallback
       }
 
-      Text("Data has been modified")
-        .font(.caption)
+      Text("Weather data is adjusted for snow conditions")
+        .font(.caption2)
         .foregroundStyle(.secondary)
 
-      Link(destination: attribution.legalPageURL) {
-        HStack(spacing: 4) {
-          Text("Other Data Sources")
-            .font(.caption)
-          Image(systemName: "arrow.up.right.square")
-            .font(.caption2)
+      if let attribution {
+        Link(destination: attribution.legalPageURL) {
+          HStack(spacing: 4) {
+            Text("Other data sources")
+            Image(systemName: "arrow.up.right")
+          }
+          .font(.caption2)
+          .foregroundStyle(.secondary)
         }
-        .foregroundStyle(.secondary)
       }
+    }
+    .frame(minHeight: 44)
+    .task {
+      guard attribution == nil else { return }
+      attribution = try? await WeatherService.shared.attribution
     }
   }
 
   private var appleWeatherFallback: some View {
     HStack(spacing: 4) {
       Image(systemName: "apple.logo")
-        .font(.caption)
-      Text("Weather")
-        .font(.caption)
-        .fontWeight(.medium)
+      Text("Weather").fontWeight(.medium)
     }
+    .font(.caption2)
     .foregroundStyle(.secondary)
-  }
-}
-
-// MARK: - ToolbarButtonStyle
-
-struct ToolbarButtonStyle: ButtonStyle {
-  var tint: Color?
-
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .foregroundStyle(tint ?? .primary)
-      .frame(width: 20, height: 20)
-      .padding(10)
-      .background(Circle().fill(.white))
-      .clipShape(Circle())
-      .contentShape(Circle())
-      .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-      .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-  }
-}
-
-extension View {
-  @ViewBuilder
-  func toolbarButtonStyle(tint: Color? = nil) -> some View {
-    if #available(iOS 26.0, *) {
-      if let tint {
-        self.tint(tint)
-      } else {
-        self
-      }
-    } else if #available(iOS 18.0, *) {
-      self.buttonStyle(ToolbarButtonStyle(tint: tint))
-    } else {
-      self
-    }
   }
 }
 

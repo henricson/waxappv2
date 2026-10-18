@@ -22,5 +22,16 @@
 	<string></string>
 	<key>CFBundleGetInfoString</key>
 	<string></string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.squarewave.waxappv2</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>getgrip</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

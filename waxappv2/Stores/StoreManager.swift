@@ -8,11 +8,13 @@
 import Foundation
 import StoreKit
 
-enum AccessState: Equatable {
+nonisolated enum AccessState: Equatable {
   case loading
   case notSubscribed
   case trialActive(daysLeft: Int)
   case subscribed
+  /// One-time purchase: access that never expires.
+  case lifetime
   case gracePeriod
   case billingRetry
   case expired
@@ -20,7 +22,7 @@ enum AccessState: Equatable {
 
   var hasAccess: Bool {
     switch self {
-    case .trialActive, .subscribed, .gracePeriod, .billingRetry:
+    case .trialActive, .subscribed, .lifetime, .gracePeriod, .billingRetry:
       return true
     case .loading, .notSubscribed, .expired, .revoked:
       return false
@@ -32,15 +34,21 @@ enum AccessState: Equatable {
 @Observable final class StoreManager {
   private static let yearlyProductId = "com.squarewave.getgrip.yearly"
   private static let monthlyProductId = "com.squarewave.getgrip.monthly"
+  /// Non-consumable that unlocks the app for good, sold beside the subscriptions.
+  private static let lifetimeProductId = "com.squarewave.getgrip.lifetime"
 
   var yearlyProduct: Product?
   var monthlyProduct: Product?
+  var lifetimeProduct: Product?
   var productsError: String?
   var isPurchasing = false
   var purchaseError: String?
   var accessState: AccessState = .loading
   var isInitialized = false
   var isEligibleForIntroOffer = false
+  /// True when someone owns the lifetime unlock but a subscription is still
+  /// renewing — they are paying twice and should be told.
+  var hasRedundantSubscription = false
 
   var primaryProduct: Product? { yearlyProduct ?? monthlyProduct }
   var hasAccess: Bool { accessState.hasAccess }
@@ -64,6 +72,11 @@ enum AccessState: Equatable {
   // MARK: - Public API
 
   func refreshAll(force: Bool = false) async {
+    // Screenshots and UI tests pin access so StoreKit never gets a say.
+    if DemoMode.isEnabled {
+      applyDemoAccess()
+      return
+    }
     if isInitialized && !force {
       await updateAccessState()
       return
@@ -124,7 +137,7 @@ enum AccessState: Equatable {
   func retryFetchProducts(maxAttempts: Int = 3) async {
     for attempt in 1...maxAttempts {
       await fetchProducts()
-      if yearlyProduct != nil || monthlyProduct != nil { return }
+      if yearlyProduct != nil || monthlyProduct != nil || lifetimeProduct != nil { return }
       if attempt < maxAttempts {
         try? await Task.sleep(for: .seconds(Double(attempt * attempt)))
       }
@@ -145,11 +158,23 @@ enum AccessState: Equatable {
   // MARK: - Private
 
   func updateAccessState() async {
-    if yearlyProduct == nil && monthlyProduct == nil { await fetchProducts() }
+    if yearlyProduct == nil && monthlyProduct == nil && lifetimeProduct == nil { await fetchProducts() }
 
     // Entitlement is the source of truth for access right now.
     let yearlyEntitlement = await currentEntitlement(productID: Self.yearlyProductId)
     let monthlyEntitlement = await currentEntitlement(productID: Self.monthlyProductId)
+    let lifetimeEntitlement = await currentEntitlement(productID: Self.lifetimeProductId)
+
+    // A lifetime unlock outranks any subscription state. A refunded one is
+    // ignored, so the subscription (if any) decides instead.
+    if let lifetime = lifetimeEntitlement, lifetime.revocationDate == nil {
+      accessState = .lifetime
+      isEligibleForIntroOffer = false
+      let renewing = [yearlyEntitlement, monthlyEntitlement].compactMap { $0 }
+      hasRedundantSubscription = renewing.contains { $0.revocationDate == nil }
+      return
+    }
+    hasRedundantSubscription = false
 
     if let entitlement = yearlyEntitlement ?? monthlyEntitlement {
       accessState = accessStateFromEntitlement(entitlement)
@@ -183,7 +208,8 @@ enum AccessState: Equatable {
 
   private func fetchProducts() async {
     do {
-      let products = try await Product.products(for: [Self.yearlyProductId, Self.monthlyProductId])
+      let products = try await Product.products(
+        for: [Self.yearlyProductId, Self.monthlyProductId, Self.lifetimeProductId])
       print("StoreKit: fetched \(products.count) products")
       for p in products {
         print("  - \(p.id): \(p.displayName)")
@@ -192,11 +218,15 @@ enum AccessState: Equatable {
           yearlyProduct = p
         case Self.monthlyProductId:
           monthlyProduct = p
+        case Self.lifetimeProductId:
+          lifetimeProduct = p
         default:
           break
         }
       }
-      productsError = (yearlyProduct == nil && monthlyProduct == nil) ? "No products found" : nil
+      productsError =
+        (yearlyProduct == nil && monthlyProduct == nil && lifetimeProduct == nil)
+        ? "No products found" : nil
     } catch {
       print("StoreKit fetch error: \(error)")
       productsError = error.localizedDescription
@@ -206,7 +236,8 @@ enum AccessState: Equatable {
   private func hasEntitlement() async -> Bool {
     let hasYearly = await currentEntitlement(productID: Self.yearlyProductId) != nil
     let hasMonthly = await currentEntitlement(productID: Self.monthlyProductId) != nil
-    return hasYearly || hasMonthly
+    let hasLifetime = await currentEntitlement(productID: Self.lifetimeProductId) != nil
+    return hasYearly || hasMonthly || hasLifetime
   }
 
   private func currentEntitlement(productID: String) async -> Transaction? {
@@ -231,10 +262,17 @@ enum AccessState: Equatable {
        let expiration = transaction.expirationDate {
       let now = Date()
       guard expiration > now else { return .subscribed }
-      // dateComponents([.day]) truncates — a trial expiring in 23 hours shows 0.
-      // Use seconds and round up so any remaining time counts as at least 1 day.
-      let secondsLeft = expiration.timeIntervalSince(now)
-      let daysLeft = Int(ceil(secondsLeft / 86_400))
+      // Count whole calendar days between the two dates rather than
+      // 86 400-second chunks: a span crossing a daylight-saving change is 23
+      // or 25 hours long, which made a 14-day trial report 15. Comparing
+      // start-of-day also keeps "expires in 23 hours" at 1 day rather than 0.
+      let calendar = Calendar.current
+      let daysLeft =
+        calendar.dateComponents(
+          [.day],
+          from: calendar.startOfDay(for: now),
+          to: calendar.startOfDay(for: expiration)
+        ).day ?? 0
       return .trialActive(daysLeft: max(1, daysLeft))
     }
 
@@ -264,3 +302,15 @@ enum AccessState: Equatable {
   }
 }
 
+
+// MARK: - Demo mode
+
+extension StoreManager {
+  /// Grants access without touching StoreKit, for App Store screenshots and
+  /// UI tests. Only ever called when `DemoMode.isEnabled`.
+  func applyDemoAccess() {
+    accessState = .subscribed
+    isInitialized = true
+    isEligibleForIntroOffer = false
+  }
+}
