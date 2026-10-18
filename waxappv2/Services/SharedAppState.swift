@@ -77,6 +77,27 @@ nonisolated struct SharedAppState: Codable, Sendable, Equatable {
   }
 }
 
+/// What the widget saw on its last refresh, written by the widget and read
+/// by Settings, so a failure on a tester's phone can be read without a cable.
+nonisolated struct WidgetDiagnostics: Codable, Sendable {
+  var date: Date
+  var placeSource: String
+  var placeName: String?
+  var weatherError: String?
+  var usedAppWeather: Bool
+  var result: String
+
+  private static let key = "shared.widgetDiagnostics.v1"
+
+  static func load(from defaults: UserDefaults = AppGroup.defaults) -> WidgetDiagnostics? {
+    defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(WidgetDiagnostics.self, from: $0) }
+  }
+
+  func save(to defaults: UserDefaults = AppGroup.defaults) {
+    if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.key) }
+  }
+}
+
 /// `WaxConditions` as stored for the widgets, with where and when.
 nonisolated struct SharedConditions: Codable, Sendable, Equatable {
   var place: SharedPlace

@@ -203,6 +203,20 @@ struct AboutView: View {
 
   private var developerSection: some View {
     Section("Developer") {
+      // Lets a tester read why a widget shows no weather, without a cable.
+      if let diagnostics = WidgetDiagnostics.load() {
+        DisclosureGroup("Widget status") {
+          LabeledContent("Last refresh", value: diagnostics.date.formatted(date: .abbreviated, time: .shortened))
+          LabeledContent("Place", value: [diagnostics.placeName, diagnostics.placeSource].compactMap { $0 }.joined(separator: " · "))
+          LabeledContent("Result", value: diagnostics.result)
+          if let error = diagnostics.weatherError {
+            Text(error)
+              .font(.caption.monospaced())
+              .foregroundStyle(.secondary)
+              .textSelection(.enabled)
+          }
+        }
+      }
       Link(destination: URL(string: "https://www.squarewave.no")!) {
         Text("Square Wave AS")
       }

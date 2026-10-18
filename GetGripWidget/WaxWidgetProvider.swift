@@ -105,25 +105,42 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
     guard shared.hasAccess else { return entry(.locked) }
 
     let place: SharedPlace
+    let placeSource: String
     switch configuration.locationMode {
     case .fixed:
       guard let chosen = configuration.place else { return entry(.needsPlace) }
       place = chosen.sharedPlace
+      placeSource = "fixed place"
     case .current:
+      let manager = CLLocationManager()
       guard let current = await currentPlace(fallback: shared.lastPlace) else {
+        WidgetDiagnostics(
+          date: Date(), placeSource: "current location (authorized: \(manager.isAuthorizedForWidgetUpdates))",
+          placeName: nil, weatherError: nil, usedAppWeather: false, result: "no location").save()
         return entry(.needsLocation)
       }
       place = current
+      placeSource = manager.isAuthorizedForWidgetUpdates ? "current location" : "app's last place (widget has no location access)"
     }
 
     let location = CLLocation(latitude: place.latitude, longitude: place.longitude)
     let now = Date()
     let interval = DateInterval(start: now.addingTimeInterval(-10 * 24 * 3600), end: now)
-    if let points = try? await WeatherKitWeatherProviderFactory().makeProvider()
-      .data(for: location, in: interval, granularity: .hourly),
-      let conditions = WeatherDigest(points: points, now: now).conditions
-    {
-      return entry(.ready, place: place.name, conditions: conditions)
+    var diagnostics = WidgetDiagnostics(
+      date: now, placeSource: placeSource, placeName: place.name,
+      weatherError: nil, usedAppWeather: false, result: "")
+    defer { diagnostics.save() }
+
+    do {
+      let points = try await WeatherKitWeatherProviderFactory().makeProvider()
+        .data(for: location, in: interval, granularity: .hourly)
+      if let conditions = WeatherDigest(points: points, now: now).conditions {
+        diagnostics.result = "ok (\(points.count) hours)"
+        return entry(.ready, place: place.name, conditions: conditions)
+      }
+      diagnostics.weatherError = "WeatherKit returned no usable hours (\(points.count))"
+    } catch {
+      diagnostics.weatherError = String(describing: error)
     }
 
     // The widget couldn't reach the weather; use what the app worked out,
@@ -132,8 +149,13 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
       now.timeIntervalSince(cached.date) < 6 * 3600,
       location.distance(from: CLLocation(latitude: cached.place.latitude, longitude: cached.place.longitude)) < 10_000
     {
+      diagnostics.usedAppWeather = true
+      diagnostics.result = "used the app's weather"
       return entry(.ready, place: cached.place.name, conditions: cached.conditions)
     }
+    diagnostics.result = shared.lastConditions == nil
+      ? "unavailable: the app has shared no weather yet"
+      : "unavailable: the app's weather is too old or for another place"
     return entry(.weatherUnavailable, place: place.name)
   }
 
