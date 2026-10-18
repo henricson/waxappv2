@@ -11,7 +11,10 @@
 
 require "json"
 
-ROOT = File.expand_path("../..", __dir__)
+# fastlane evaluates this file with instance_eval, where `__dir__` is not the
+# Fastfile's folder, so resolve everything from fastlane's own idea of it.
+FASTLANE_DIR = File.expand_path(FastlaneCore::FastlaneFolder.path || Dir.pwd)
+ROOT = File.expand_path("../..", FASTLANE_DIR)
 PROJECT = File.join(ROOT, "waxappv2.xcodeproj")
 SCHEME = "waxappv2"
 BUNDLE_ID = "com.squarewave.waxappv2"
@@ -29,7 +32,7 @@ def asc_key
     )
   end
 
-  p8 = ENV["ASC_KEY_PATH"] || Dir[File.expand_path("AuthKey_*.p8", __dir__)].first
+  p8 = ENV["ASC_KEY_PATH"] || Dir[File.join(FASTLANE_DIR, "AuthKey_*.p8")].first
   UI.user_error!(
     "No App Store Connect key. Set ASC_API_KEY_JSON to a key JSON file, or " \
     "put AuthKey_<id>.p8 here and set ASC_ISSUER_ID."
@@ -121,7 +124,7 @@ platform :ios do
     upload_to_app_store(
       api_key: asc_key,
       app_identifier: BUNDLE_ID,
-      metadata_path: File.join(__dir__, "metadata"),
+      metadata_path: File.join(FASTLANE_DIR, "metadata"),
       skip_binary_upload: true,
       skip_screenshots: true,
       skip_app_version_update: false,
@@ -137,7 +140,7 @@ platform :ios do
     upload_to_app_store(
       api_key: asc_key,
       app_identifier: BUNDLE_ID,
-      screenshots_path: File.join(__dir__, "screenshots"),
+      screenshots_path: File.join(FASTLANE_DIR, "screenshots"),
       skip_binary_upload: true,
       skip_metadata: true,
       skip_app_version_update: true,

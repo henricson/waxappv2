@@ -136,6 +136,14 @@ private enum GanttLayoutConstants {
   static let axisHeight: Double = 80
   static let barsTopPadding: Double = 5
   static let temperatureDebounceNanoseconds: UInt64 = 300_000_000
+  /// Clear space between bars sharing a row, in tenths of a degree.
+  static let rowGapTenths = 3
+
+  /// Narrowest a bar may be drawn and still show its icon and code.
+  static func minimumBarDegrees(forCode code: String) -> Double {
+    let points = 46 + 9 * Double(code.count)
+    return points / pxPerDegree
+  }
 
   static var degreesCount: Int {
     Int(maxTemp - minTemp) + 1
@@ -177,17 +185,35 @@ struct Gantt: View {
   private var temperature: Int { recStore.effectiveTemperature }
   private var snowType: SnowType { recStore.effectiveSnowType }
 
+  /// Bars are placed in tenths of a degree using the extent they are drawn
+  /// at, not just the published range. Single-point and one-degree waxes
+  /// are widened to fit their label, and rows are packed with a small gap,
+  /// so a cluster of 0 °C waxes no longer stacks bars on top of each other.
   private var placedTasks: (placements: [PlacedGanttTask<String, WaxProduct>], rowsCount: Int) {
     let ganttTasks: [GanttTask<String, WaxProduct>] = selectedWaxes.compactMap { wax in
       guard let r = wax.combinedRange(for: snowType) else { return nil }
+      let extent = drawnExtent(for: wax, range: r)
       return GanttTask(
         id: wax.id,
-        start: Int(Double(r.min)),
-        end: Int(Double(r.max)),
+        start: Int((extent.start * 10).rounded()),
+        end: Int((extent.end * 10).rounded()),
         renderItem: wax
       )
     }
-    return assignRows(tasks: ganttTasks)
+    return assignRows(tasks: ganttTasks, padding: Layout.rowGapTenths)
+  }
+
+  /// Start and end in degrees of the bar as drawn.
+  private func drawnExtent(for wax: WaxProduct, range r: TempRangeC) -> (start: Double, end: Double) {
+    let start = Double(r.min)
+    let span = Double(r.max - r.min)
+    let minimum = Layout.minimumBarDegrees(forCode: wax.code)
+
+    if span >= minimum { return (start, start + span) }
+    // Too short for its label: grow around the middle of the range, which
+    // keeps a single-point wax centred on its temperature.
+    let middle = start + span / 2
+    return (middle - minimum / 2, middle + minimum / 2)
   }
 
   private var requiredContentHeight: Double {
@@ -274,18 +300,13 @@ struct Gantt: View {
 
   @ViewBuilder
   private func barView(for task: PlacedGanttTask<String, WaxProduct>) -> some View {
-    let start = clamp(Double(task.start), Layout.minTemp, Layout.maxTemp)
-    let end = clamp(Double(task.end), Layout.minTemp, Layout.maxTemp)
+    let start = clamp(Double(task.start) / 10, Layout.minTemp, Layout.maxTemp)
+    let end = clamp(Double(task.end) / 10, Layout.minTemp, Layout.maxTemp)
     let wax = task.renderItem
+    let range = wax.combinedRange(for: snowType)
 
-    // A manufacturer may publish a single-point range (Swix V50 is "0 °C"
-    // exactly). Those still get a bar, one degree wide and centred on the
-    // point, so the chart never silently drops a wax the header recommends.
-    let spanDegrees = max(end - start, 1.0)
-    let barStart = end > start ? start : start - 0.5
-
-    let xPos = (barStart - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
-    let width = max(Layout.pxPerDegree, spanDegrees * Layout.pxPerDegree)
+    let xPos = (start - Layout.minTemp) * Layout.pxPerDegree + Layout.tickXOffset
+    let width = max(Layout.pxPerDegree, (end - start) * Layout.pxPerDegree)
     let yPos = Double(task.row) * Layout.rowHeight + Layout.axisHeight
 
     let baseColor = Color(hex: wax.primaryColor) ?? .blue
@@ -296,7 +317,9 @@ struct Gantt: View {
       baseColor: baseColor,
       secondaryColor: secondaryColor,
       barHeight: Layout.barHeight,
-      isPinpoint: end <= start,
+      // A manufacturer may publish a single-point range (Swix V50 is
+      // "0 °C" exactly); its bar is widened to fit, and marked as a point.
+      isPinpoint: range.map { $0.min == $0.max } ?? false,
       emphasis: emphasis(for: wax)
     )
     .frame(width: width, height: Layout.barHeight)
@@ -449,21 +472,32 @@ struct GanttBarView: View {
     fillColor.isLight ? .black.opacity(0.85) : .white
   }
 
+  private var code: some View {
+    Text(isPinpoint ? "\(wax.code) ·" : wax.code)
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(textColor)
+      .lineLimit(1)
+      .fixedSize()
+  }
+
   var body: some View {
     HStack(spacing: 6) {
       WaxIcon(product: wax)
         .frame(width: barHeight * 0.5, height: barHeight * 0.85)
 
-      Text(isPinpoint ? "\(wax.code) ·" : wax.code)
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(textColor)
-        .lineLimit(1)
-        .layoutPriority(1)
-
-      Text(wax.name)
-        .font(.caption2)
-        .foregroundStyle(textColor.opacity(0.75))
-        .lineLimit(1)
+      // The name only appears when the bar has room for all of it; a
+      // truncated "Ro…" reads as clutter.
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 6) {
+          code
+          Text(wax.name)
+            .font(.caption2)
+            .foregroundStyle(textColor.opacity(0.75))
+            .lineLimit(1)
+            .fixedSize()
+        }
+        code
+      }
 
       Spacer(minLength: 0)
     }
