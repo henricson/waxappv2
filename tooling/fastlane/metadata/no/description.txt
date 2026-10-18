@@ -9,7 +9,7 @@ SMØREBOKSEN DIN, IKKE EN KATALOG
 Fortell GetGrip hvilke serier du faktisk har — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode festevoks og klister — så foreslår appen bare noe du kan ta frem. Fornuftige standardvalg fra start, resten ett bryter unna.
 
 DEN VET HVA SNØEN HAR GJORT
-Nysnø, mildvær, regn på snø, hard gjenfrysing over natten: hver tilstand gir ulik snø og krever ulik voks. GetGrip følger snøfall, regn, mildværssykluser, luftfuktighet og snødybde for å skille nysnø fra finkornet fra gjenfrossen skare.
+Nysnø, mildvær, regn på snø, hard gjenfrysing over natten: hver tilstand gir ulik snø og krever ulik voks. GetGrip følger snøfall, regn, mildværssykluser, temperaturutvikling og luftfuktighet for å skille nysnø fra finkornet fra gjenfrossen skare.
 
 ENKELT ELLER DETALJERT
 De fleste dager vil du bare ha svaret. Slå på forklaringer, så får du begrunnelsen også: hvor godt temperaturen passer, hva snøtypen betyr, og hvordan regn, nysnø eller fuktighet påvirket resultatet.

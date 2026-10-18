@@ -6,11 +6,6 @@
 import CoreLocation
 import SwiftUI
 
-enum Tabs: Hashable {
-  case waxes
-  case about
-}
-
 struct ContentView: View {
 
   @Environment(StoreManager.self) private var storeManager
@@ -19,7 +14,6 @@ struct ContentView: View {
   @Environment(RecommendationStore.self) private var recStore
   @Environment(\.scenePhase) private var scenePhase
 
-  @State private var selectedTab: Tabs = .waxes
   @State private var showTrialWarning = false
 
   /// Onboarding ownership lives in `WaxSelectionStore`, because finishing it
@@ -44,15 +38,9 @@ struct ContentView: View {
   }
 
   var body: some View {
-    TabView(selection: $selectedTab) {
-      Tab("Predictions", systemImage: "figure.skiing.crosscountry", value: .waxes) {
-        MainView()
-      }
-      Tab("About", systemImage: "info.circle", value: .about) {
-        AboutView()
-      }
-    }
-    .tabBarMinimizeBehavior(.onScrollDown)
+    // One root screen. Settings opens from its toolbar; a second tab just
+    // for settings duplicated that button and covered the chart.
+    MainView()
     .onAppear {
       Task { await storeManager.refreshAll() }
       publishWidgetState()
@@ -67,7 +55,6 @@ struct ContentView: View {
     .onChange(of: widgetInputs) { _, _ in publishWidgetState() }
     .onOpenURL { url in
       guard let domain = WaxDomain(appURL: url) else { return }
-      selectedTab = .waxes
       recStore.activeDomain = domain
       recStore.reconcileSnowType()
     }

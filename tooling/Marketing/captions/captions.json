@@ -2,7 +2,7 @@
   "_comment": [
     "Marketing copy for the App Store screenshot set.",
     "One entry per slide; `scene` matches the launch configuration in",
-    "tooling/scripts/store-shots.sh, and `headline`/`subhead` are burned into",
+    "tooling/scripts/store-shots.py, and `headline`/`subhead` are burned into",
     "the frame by tooling/scripts/frame-screenshots.py.",
     "Slide 01 also carries the app logo — see `showsLogo`."
   ],

@@ -120,7 +120,7 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
     let now = Date()
     let interval = DateInterval(start: now.addingTimeInterval(-10 * 24 * 3600), end: now)
     guard
-      let points = try? await LayeredWeatherProviderFactory().makeProvider()
+      let points = try? await WeatherKitWeatherProviderFactory().makeProvider()
         .data(for: location, in: interval, granularity: .hourly),
       let conditions = WeatherDigest(points: points, now: now).conditions
     else { return entry(.weatherUnavailable, place: place.name) }

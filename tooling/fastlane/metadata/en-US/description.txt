@@ -9,7 +9,7 @@ YOUR WAX BOX, NOT A CATALOGUE
 Tell GetGrip which lines you actually own — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode hard wax and klister — and it will only ever suggest something you can reach for. Sensible defaults out of the box, everything else one switch away.
 
 IT KNOWS WHAT THE SNOW DID
-Fresh snow, a thaw, rain on snow, a hard refreeze overnight: each leaves the snowpack in a different state, and each wants a different wax. GetGrip tracks snowfall, rain, thaw-freeze cycles, humidity and snow depth to tell new snow from fine-grained from a refrozen crust.
+Fresh snow, a thaw, rain on snow, a hard refreeze overnight: each leaves the snowpack in a different state, and each wants a different wax. GetGrip tracks snowfall, rain, thaw-freeze cycles, temperature trends and humidity to tell new snow from fine-grained from a refrozen crust.
 
 SIMPLE OR DETAILED, YOUR CHOICE
 Most days you just want the answer. Turn on explanations and you get the reasoning too: how well the temperature fits, what the snow type does to the choice, and how rain, fresh snow or humidity moved the result.

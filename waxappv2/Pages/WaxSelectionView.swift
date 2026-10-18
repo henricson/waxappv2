@@ -30,25 +30,54 @@ struct WaxSelectionView: View {
     }
   }
 
-  var body: some View {
-    List {
-      ForEach(WaxBrand.allCases) { brand in
-        let series = WaxCatalog.series.filter {
-          $0.brand == brand && domainFilter.matches($0.domain)
-        }
+  private let region = RegionalWaxKit.Region.current
 
-        if !series.isEmpty {
-          Section {
-            ForEach(series) { s in
-              seriesRow(s)
+  /// The lines most skiers in the user's region carry come first; every
+  /// other line — specialist brands and race wax — follows.
+  private var groups: [(title: String, series: [WaxSeries])] {
+    let kit = RegionalWaxKit.seriesIDs(for: region)
+    let visible = WaxCatalog.series
+      .filter { domainFilter.matches($0.domain) }
+      .sorted { ($0.domain == .grip ? 0 : 1) < ($1.domain == .grip ? 0 : 1) }
+
+    let common = visible.filter { kit.contains($0.id) }
+    let more = visible.filter { !kit.contains($0.id) }
+      .sorted { !$0.isAdvanced && $1.isAdvanced }
+
+    let commonTitle =
+      RegionalWaxKit.countryName(for: region).map { String(localized: "Popular in \($0)") }
+      ?? String(localized: "Everyday lines")
+    return [
+      (commonTitle, common),
+      (String(localized: "More wax lines"), more),
+    ].filter { !$0.series.isEmpty }
+  }
+
+  var body: some View {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 10) {
+        ForEach(groups, id: \.title) { group in
+          Text(group.title)
+            .font(.footnote.weight(.semibold))
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.top, 14)
+            .padding(.leading, 4)
+            .accessibilityAddTraits(.isHeader)
+
+          ForEach(group.series) { series in
+            SeriesToggleCard(series: series) {
+              productList(for: series)
             }
-          } header: {
-            brandHeader(brand, series: series)
           }
         }
       }
+      .padding(.horizontal)
+      .padding(.bottom, 24)
+      .frame(maxWidth: 760)
+      .frame(maxWidth: .infinity)
     }
-    .listStyle(.insetGrouped)
+    .background(Color(.systemGroupedBackground))
     .navigationTitle("Wax library")
     .safeAreaInset(edge: .top) {
       filterBar
@@ -56,7 +85,7 @@ struct WaxSelectionView: View {
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
-          Button("Reset to defaults", systemImage: "arrow.counterclockwise") {
+          Button("Use the recommended kit", systemImage: "arrow.counterclockwise") {
             withAnimation { store.resetToDefaults() }
           }
         } label: {
@@ -80,100 +109,42 @@ struct WaxSelectionView: View {
     .background(.bar)
   }
 
-  // MARK: - Brand header
+  // MARK: - Products in a line
 
-  private func brandHeader(_ brand: WaxBrand, series: [WaxSeries]) -> some View {
-    HStack {
-      Circle()
-        .fill(Color(hex: brand.tintHex) ?? .accentColor)
-        .frame(width: 8, height: 8)
-
-      Text(brand.displayName)
-        .font(.headline)
-        .textCase(nil)
-        .foregroundStyle(.primary)
-
-      Spacer()
-
-      let onCount = series.count { store.isSelected(series: $0) }
-      Button(onCount == series.count ? "None" : "All") {
-        withAnimation(.snappy) {
-          store.setSelected(onCount != series.count, brand: brand)
-        }
-      }
-      .font(.caption.weight(.semibold))
-      .buttonStyle(.borderless)
-      .textCase(nil)
-    }
-    .padding(.vertical, 2)
-  }
-
-  // MARK: - Series row
-
+  /// "6 of 8 shown", expanding to every grade in the line, each with its own
+  /// container so it is recognisable at a glance.
   @ViewBuilder
-  private func seriesRow(_ series: WaxSeries) -> some View {
+  private func productList(for series: WaxSeries) -> some View {
     let products = WaxCatalog.products(inSeries: series.id)
-    let isOn = store.isSelected(series: series)
     let isExpanded = expandedSeries.contains(series.id)
 
-    VStack(spacing: 0) {
-      Toggle(
-        isOn: Binding(
-          get: { isOn },
-          set: { newValue in
-            withAnimation(.snappy) { store.setSelected(newValue, series: series) }
+    if store.isSelected(series: series) {
+      Button {
+        withAnimation(.snappy) {
+          if isExpanded {
+            expandedSeries.remove(series.id)
+          } else {
+            expandedSeries.insert(series.id)
           }
-        )
-      ) {
-        VStack(alignment: .leading, spacing: 2) {
-          HStack(spacing: 6) {
-            Text(series.name)
-              .font(.body.weight(.medium))
-
-            if series.isAdvanced {
-              Text("Pro")
-                .font(.caption2.weight(.bold))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(.tint.opacity(0.15), in: Capsule())
-                .foregroundStyle(.tint)
-            }
-          }
-
-          Text(series.blurb)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
         }
-      }
-      .toggleStyle(.switch)
-
-      if isOn {
-        Button {
-          withAnimation(.snappy) {
-            if isExpanded {
-              expandedSeries.remove(series.id)
-            } else {
-              expandedSeries.insert(series.id)
-            }
-          }
-        } label: {
-          HStack(spacing: 4) {
-            let shown = products.count { store.isSelected($0) }
-            Text("\(shown) of \(products.count) shown")
-            Image(systemName: "chevron.right")
-              .rotationEffect(.degrees(isExpanded ? 90 : 0))
-          }
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.top, 6)
+      } label: {
+        HStack(spacing: 4) {
+          let shown = products.count { store.isSelected($0) }
+          Text("\(shown) of \(products.count) shown")
+          Image(systemName: "chevron.right")
+            .rotationEffect(.degrees(isExpanded ? 90 : 0))
         }
-        .buttonStyle(.plain)
+        .font(.caption.weight(.medium))
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 10)
+        .padding(.leading, 84)
+        .contentShape(.rect)
       }
+      .buttonStyle(.plain)
 
-      if isOn && isExpanded {
-        VStack(spacing: 0) {
+      if isExpanded {
+        VStack(spacing: 2) {
           ForEach(products) { product in
             productRow(product)
           }
@@ -182,7 +153,6 @@ struct WaxSelectionView: View {
         .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
-    .padding(.vertical, 4)
   }
 
   // MARK: - Product row
@@ -202,7 +172,7 @@ struct WaxSelectionView: View {
           .contentTransition(.symbolEffect(.replace))
 
         WaxIcon(product: product)
-          .frame(width: 26, height: 38)
+          .frame(width: 34, height: 48)
 
         VStack(alignment: .leading, spacing: 1) {
           Text(product.code)

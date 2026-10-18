@@ -11,6 +11,7 @@ struct AboutView: View {
   @Environment(RecommendationStore.self) private var recStore
   @Environment(WaxSelectionStore.self) private var waxStore
   @Environment(\.requestReview) private var requestReview
+  @Environment(\.dismiss) private var dismiss
 
   @State private var showPaywall = false
   @State private var temperatureUnit = TemperaturePreference.currentUnit()
@@ -36,6 +37,11 @@ struct AboutView: View {
       #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
       #endif
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Done") { dismiss() }
+        }
+      }
       .sheet(isPresented: $showPaywall) { PaywallView() }
     }
   }
@@ -116,6 +122,19 @@ struct AboutView: View {
       } label: {
         Label("Reset to recommended kit", systemImage: "arrow.counterclockwise")
       }
+
+      Button {
+        // Close Settings first: the introduction is a full-screen cover on
+        // the root, and can't appear while this sheet is still up.
+        Task {
+          dismiss()
+          try? await Task.sleep(for: .milliseconds(450))
+          waxStore.resetOnboarding()
+        }
+      } label: {
+        Label("Show introduction again", systemImage: "sparkles")
+      }
+      .accessibilityIdentifier("showOnboardingAgain")
     } header: {
       Text("Your waxes")
     } footer: {
@@ -170,7 +189,6 @@ struct AboutView: View {
   private var dataSection: some View {
     Section {
       LabeledContent("Weather", value: "Apple Weather")
-      LabeledContent("Snow depth & humidity", value: "Open-Meteo")
       LabeledContent("Wax data", value: "Swix, Rode")
     } header: {
       Text("Data sources")

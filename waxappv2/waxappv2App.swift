@@ -18,6 +18,8 @@ struct waxappv2App: App {
     #if DEBUG
       try? Tips.resetDatastore()
     #endif
+    // Screenshots must not carry the scroll tip over the chart.
+    if DemoMode.isEnabled { Tips.hideAllTipsForTesting() }
     try? Tips.configure([
       .displayFrequency(.immediate),
       .datastoreLocation(.applicationDefault),

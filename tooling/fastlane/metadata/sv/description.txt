@@ -9,7 +9,7 @@ DIN VALLALÅDA, INTE EN KATALOG
 Berätta vilka serier du faktiskt har — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode hårdvalla och klister — så föreslår appen bara något du kan ta fram. Vettiga förval från start, resten en knapptryckning bort.
 
 DEN VET VAD SNÖN HAR GJORT
-Nysnö, töväder, regn på snö, hård återfrysning över natten: varje tillstånd ger olika snö och kräver olika valla. GetGrip följer snöfall, regn, tövädercykler, luftfuktighet och snödjup för att skilja nysnö från finkornig från återfrusen skare.
+Nysnö, töväder, regn på snö, hård återfrysning över natten: varje tillstånd ger olika snö och kräver olika valla. GetGrip följer snöfall, regn, tövädercykler, temperaturutveckling och luftfuktighet för att skilja nysnö från finkornig från återfrusen skare.
 
 ENKELT ELLER DETALJERAT
 De flesta dagar vill du bara ha svaret. Slå på förklaringar så får du resonemanget också: hur väl temperaturen passar, vad snötypen betyder, och hur regn, nysnö eller fukt påverkade resultatet.

@@ -34,6 +34,9 @@ struct GanttScrollTip: Tip {
 
 private enum LayoutConstants {
   static let heroHeight: CGFloat = 270
+  /// iPad: a taller hero, and a column that doesn't stretch edge to edge.
+  static let regularHeroHeight: CGFloat = 420
+  static let regularContentWidth: CGFloat = 760
   static let minimumGanttHeight: CGFloat = 260
 }
 
@@ -46,6 +49,7 @@ struct MainView: View {
   @Environment(WaxSelectionStore.self) private var waxStore
   @Environment(StoreManager.self) private var storeManager
   @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
   // MARK: UI State
 
@@ -54,6 +58,7 @@ struct MainView: View {
   @State private var showWeatherErrorAlert = false
   @State private var showPaywall = false
   @State private var showWaxLibrary = false
+  @State private var showSettings = false
   @State private var isUserInitiatedLocationRequest = false
 
   @Namespace private var glassNamespace
@@ -90,6 +95,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $showMapSelection) { MapSelectView() }
         .sheet(isPresented: $showPaywall) { PaywallView() }
+        .sheet(isPresented: $showSettings) { AboutView() }
         .task(id: locStore.location) {
           guard locStore.location != nil else { return }
           weatherStore.reset()
@@ -104,6 +110,17 @@ struct MainView: View {
         }
         .onChange(of: waxStore.selectedSeriesIDs) { _, _ in
           recStore.reconcileSnowType()
+        }
+        .task {
+          guard DemoMode.isEnabled, DemoMode.screen != nil else { return }
+          // Let the root view settle; a destination set during the first
+          // layout pass is dropped.
+          try? await Task.sleep(for: .milliseconds(1500))
+          switch DemoMode.screen {
+          case "library": showWaxLibrary = true
+          case "map": showMapSelection = true
+          default: break
+          }
         }
         .onChange(of: locStore.authorizationStatus, handleAuthorizationChange)
         .onChange(of: locStore.locationStatus, handleLocationStatusChange)
@@ -135,21 +152,29 @@ extension MainView {
 
       ScrollView(.vertical) {
         VStack(spacing: 16) {
-          domainPicker
-            .padding(.top, 4)
+          // On iPad the pick and its companions sit in a readable column;
+          // the snow picker and the chart use the full width, where the
+          // extra degrees on screen are genuinely useful.
+          VStack(spacing: 16) {
+            domainPicker
+              .padding(.top, 4)
 
-          heroSection
-            .frame(height: LayoutConstants.heroHeight)
+            heroSection
+              .frame(
+                height: horizontalSizeClass == .regular
+                  ? LayoutConstants.regularHeroHeight : LayoutConstants.heroHeight)
 
-          if recStore.isAdvancedMode, let top = recStore.topPick {
-            RecommendationFactorsView(recommendation: top)
-              .padding(.horizontal)
-              .transition(.blurReplace)
+            if recStore.isAdvancedMode, let top = recStore.topPick {
+              RecommendationFactorsView(recommendation: top)
+                .padding(.horizontal)
+                .transition(.blurReplace)
+            }
+
+            alternativesSection
+
+            preparationSection
           }
-
-          alternativesSection
-
-          preparationSection
+          .frame(maxWidth: horizontalSizeClass == .regular ? LayoutConstants.regularContentWidth : .infinity)
 
           conditionsSection
 
@@ -158,8 +183,7 @@ extension MainView {
 
           attributionSection
         }
-        // Clear the floating tab bar so the lowest rows stay readable.
-        .padding(.bottom, 110)
+        .padding(.bottom, 32)
       }
       .scrollEdgeEffectStyle(.soft, for: .top)
     }
@@ -384,8 +408,10 @@ extension MainView {
       SectionHeader("Temperature")
 
       // The tip used to sit on top of the chart it was describing.
-      TipView(scrollTip, arrowEdge: .bottom)
-        .padding(.horizontal)
+      if !DemoMode.isEnabled {
+        TipView(scrollTip, arrowEdge: .bottom)
+          .padding(.horizontal)
+      }
 
       Gantt(selectedWaxes: recStore.candidates)
     }
@@ -457,29 +483,16 @@ extension MainView {
     ToolbarSpacer(.fixed, placement: .topBarTrailing)
 
     ToolbarItem(placement: .topBarTrailing) {
-      Menu {
-        Toggle(isOn: advancedModeBinding) {
-          Label("Explain recommendations", systemImage: "text.magnifyingglass")
-        }
-
-        Button("Wax library", systemImage: "square.stack.3d.up") {
-          showWaxLibrary = true
-        }
+      Button {
+        showSettings = true
       } label: {
-        Image(systemName: "slider.horizontal.3")
+        Image(systemName: "gearshape")
       }
-      .accessibilityLabel("Options")
+      .accessibilityIdentifier("settingsButton")
+      .accessibilityLabel("Settings")
     }
   }
 
-  fileprivate var advancedModeBinding: Binding<Bool> {
-    Binding(
-      get: { recStore.isAdvancedMode },
-      set: { newValue in
-        withAnimation(.smooth(duration: 0.3)) { recStore.isAdvancedMode = newValue }
-      }
-    )
-  }
 }
 
 // MARK: - Actions

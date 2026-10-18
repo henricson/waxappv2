@@ -37,11 +37,14 @@ enum DemoMode {
   }
 
   /// Read as a string: NSUserDefaults' argument domain treats a value
-  /// beginning with "-" as the next key, so negative temperatures have to be
-  /// passed quoted (`-GGDemoTemperature "-8"`).
+  /// beginning with "-" as the next key, and shell quotes don't survive into
+  /// argv, so negative temperatures are passed with a leading space
+  /// (`-GGDemoTemperature " -8"`) and trimmed here.
   static var temperature: Int {
     let defaults = UserDefaults.standard
-    if let text = defaults.string(forKey: "GGDemoTemperature"), let value = Int(text) {
+    if let text = defaults.string(forKey: "GGDemoTemperature"),
+      let value = Int(text.trimmingCharacters(in: .whitespaces))
+    {
       return value
     }
     return defaults.object(forKey: "GGDemoTemperature") as? Int ?? -6
@@ -69,7 +72,17 @@ enum DemoMode {
     UserDefaults.standard.integer(forKey: "GGDemoOnboardingPage")
   }
 
-  /// Series to switch on, as `brand.code` ids. Empty means "leave defaults".
+  /// Turns on "Explain recommendations" for the capture.
+  static var showsAdvanced: Bool {
+    UserDefaults.standard.bool(forKey: "GGDemoAdvanced")
+  }
+
+  /// A screen to open over the main view: `library` or `map`.
+  static var screen: String? {
+    UserDefaults.standard.string(forKey: "GGDemoScreen")
+  }
+
+  /// Series to show, as `brand.code` ids. Empty means the regional kit.
   static var seriesIDs: [String] {
     UserDefaults.standard.string(forKey: "GGDemoSeries")?
       .split(separator: ",")

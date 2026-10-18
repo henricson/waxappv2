@@ -92,7 +92,6 @@
 				Data/WaxModel.swift,
 				Extensions/Color.swift,
 				Localizable.xcstrings,
-				Services/OpenMeteoWeatherProvider.swift,
 				Services/SharedAppState.swift,
 				Services/SnowTypeClassifier.swift,
 				Services/WaxRecommender.swift,

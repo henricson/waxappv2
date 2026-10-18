@@ -42,12 +42,12 @@ final class AppState {
 
   /// Puts the app into the fixed state the App Store screenshots expect.
   private func applyDemoMode() {
-    if !DemoMode.seriesIDs.isEmpty {
-      for id in DemoMode.seriesIDs {
-        if let series = WaxCatalog.series(withID: id) {
-          waxSelection.setSelected(true, series: series)
-        }
-      }
+    // Every capture starts from a known library: exactly the series asked
+    // for, or the kit a new install in that region would get.
+    if DemoMode.seriesIDs.isEmpty {
+      waxSelection.resetToDefaults()
+    } else {
+      waxSelection.replaceSelection(with: Set(DemoMode.seriesIDs))
     }
 
     if DemoMode.skipsOnboarding {
@@ -58,6 +58,7 @@ final class AppState {
     storeManager.applyDemoAccess()
 
     recommendation.activeDomain = DemoMode.domain
+    recommendation.isAdvancedMode = DemoMode.showsAdvanced
     recommendation.effectiveTemperature = DemoMode.temperature
     recommendation.effectiveSnowType = DemoMode.snowType
 

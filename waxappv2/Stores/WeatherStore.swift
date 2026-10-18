@@ -63,11 +63,13 @@ final class WeatherStore {
   private let locationStore: LocationStore
   private let weatherProviderFactory: WeatherProviderFactory
 
-  /// Convenience initializer using WeatherKit with an Open-Meteo fallback.
+  /// Convenience initializer using Apple's WeatherKit, the app's only
+  /// weather source: it covers the ten-day history and the hourly humidity
+  /// the classifier needs, and its licence allows commercial use.
   convenience init(locationStore: LocationStore) {
     self.init(
       locationStore: locationStore,
-      weatherProviderFactory: LayeredWeatherProviderFactory()
+      weatherProviderFactory: WeatherKitWeatherProviderFactory()
     )
   }
 

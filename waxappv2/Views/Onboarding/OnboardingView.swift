@@ -360,7 +360,7 @@ private struct LibraryPage: View {
               .foregroundStyle(.secondary)
 
             ForEach(series(in: domain, advanced: false)) { series in
-              SeriesToggleRow(series: series)
+              SeriesToggleCard(series: series)
             }
           }
         }
@@ -370,7 +370,7 @@ private struct LibraryPage: View {
         DisclosureGroup(isExpanded: $showsRaceLines.animation(.smooth(duration: 0.3))) {
           VStack(spacing: 8) {
             ForEach(WaxCatalog.series.filter(\.isAdvanced)) { series in
-              SeriesToggleRow(series: series)
+              SeriesToggleCard(series: series)
             }
           }
           .padding(.top, 8)
@@ -432,105 +432,6 @@ private struct RegionKitBanner: View {
     .padding(14)
     .background(.tint.opacity(0.10), in: .rect(cornerRadius: 18))
     .accessibilityElement(children: .combine)
-  }
-}
-
-/// A few products from a series, fanned like a hand of cards.
-private struct SeriesArt: View {
-  let series: WaxSeries
-
-  private var products: [WaxProduct] {
-    let all = WaxCatalog.products(inSeries: series.id).filter { !$0.kind.isPreparation }
-    guard all.count > 3 else { return all }
-    // First, middle and last grade: the spread of colours in the range.
-    return [all[0], all[all.count / 2], all[all.count - 1]]
-  }
-
-  var body: some View {
-    let height: CGFloat = 54
-    ZStack(alignment: .bottom) {
-      ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
-        let offset = CGFloat(index) - CGFloat(products.count - 1) / 2
-        WaxIcon(product: product)
-          .frame(width: height * WaxIcon.aspect(for: product), height: height)
-          .offset(x: offset * 15)
-          .zIndex(Double(products.count - index))
-      }
-    }
-    .frame(width: 72, height: height + 4, alignment: .bottom)
-    .accessibilityHidden(true)
-  }
-}
-
-private struct SeriesToggleRow: View {
-  @Environment(WaxSelectionStore.self) private var store
-  let series: WaxSeries
-
-  private var isOn: Bool { store.isSelected(series: series) }
-
-  var body: some View {
-    Button {
-      withAnimation(.smooth(duration: 0.25)) {
-        store.toggle(series: series)
-      }
-    } label: {
-      HStack(spacing: 12) {
-        SeriesArt(series: series)
-          .saturation(isOn ? 1 : 0.2)
-          .opacity(isOn ? 1 : 0.55)
-
-        VStack(alignment: .leading, spacing: 3) {
-          HStack(spacing: 6) {
-            Text(series.name)
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(.primary)
-            BrandTag(brand: series.brand)
-          }
-
-          Text(series.blurb)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-
-        Spacer(minLength: 0)
-
-        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-          .font(.title2)
-          .foregroundStyle(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
-          .contentTransition(.symbolEffect(.replace))
-      }
-      .padding(12)
-      .background(
-        isOn ? AnyShapeStyle(.tint.opacity(0.10)) : AnyShapeStyle(.background.secondary),
-        in: .rect(cornerRadius: 18)
-      )
-      .overlay {
-        RoundedRectangle(cornerRadius: 18)
-          .strokeBorder(isOn ? AnyShapeStyle(.tint.opacity(0.5)) : AnyShapeStyle(.clear), lineWidth: 1.5)
-      }
-      .contentShape(.rect)
-    }
-    .buttonStyle(.plain)
-    .accessibilityAddTraits(isOn ? [.isSelected] : [])
-    .accessibilityIdentifier("series_\(series.id)")
-  }
-}
-
-private struct BrandTag: View {
-  let brand: WaxBrand
-
-  var body: some View {
-    Text(brand.displayName)
-      .font(.caption2.weight(.semibold))
-      .padding(.horizontal, 6)
-      .padding(.vertical, 1)
-      .background(
-        (Color(hex: brand.tintHex) ?? .accentColor).opacity(0.15),
-        in: Capsule()
-      )
-      .foregroundStyle(Color(hex: brand.tintHex) ?? .accentColor)
   }
 }
 

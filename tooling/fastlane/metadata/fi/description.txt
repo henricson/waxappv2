@@ -9,7 +9,7 @@ OMA VOIDELAUKKUSI, EI TUOTELUETTELO
 Kerro mitkä sarjat todella omistat — Swix V, VP, klisteri, Performance Speed, High Speed, Top Speed, Roden pitovoiteet ja klisterit — niin sovellus ehdottaa vain sitä mihin voit tarttua. Järkevät oletukset heti, loput yhden kytkimen päässä.
 
 SE TIETÄÄ MITÄ LUMI ON TEHNYT
-Uusi lumi, suojasää, vesisade lumelle, kova yön yli jäätyminen: jokainen jättää lumen eri tilaan ja vaatii eri voiteen. GetGrip seuraa lumisadetta, vesisadetta, suojasääjaksoja, kosteutta ja lumensyvyyttä erottaakseen uuden lumen hienojakoisesta ja uudelleen jäätyneestä hangesta.
+Uusi lumi, suojasää, vesisade lumelle, kova yön yli jäätyminen: jokainen jättää lumen eri tilaan ja vaatii eri voiteen. GetGrip seuraa lumisadetta, vesisadetta, suojasääjaksoja, lämpötilan kehitystä ja kosteutta erottaakseen uuden lumen hienojakoisesta ja uudelleen jäätyneestä hangesta.
 
 YKSINKERTAINEN TAI YKSITYISKOHTAINEN
 Useimpina päivinä haluat vain vastauksen. Ota selitykset käyttöön, niin saat myös perustelut: kuinka hyvin lämpötila sopii, mitä lumityyppi merkitsee ja miten sade, uusi lumi tai kosteus vaikuttivat tulokseen.

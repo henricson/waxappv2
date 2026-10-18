@@ -201,6 +201,13 @@ final class WaxSelectionStore {
     persist()
   }
 
+  /// Shows exactly these series, with no per-product overrides.
+  func replaceSelection(with seriesIDs: Set<String>) {
+    selectedSeriesIDs = seriesIDs.intersection(WaxCatalog.series.map(\.id))
+    hiddenProductIDs = []
+    persist()
+  }
+
   func resetToDefaults() {
     selectedSeriesIDs = WaxCatalog.defaultSeriesIDs
     hiddenProductIDs = []
