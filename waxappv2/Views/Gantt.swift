@@ -197,7 +197,9 @@ struct Gantt: View {
   // MARK: Rows
 
   private func placements(for snowType: SnowType) -> (placements: [PlacedGanttTask<String, WaxProduct>], rowsCount: Int) {
-    let tasks: [GanttTask<String, WaxProduct>] = selectedWaxes.compactMap { wax in
+    // Base layers are shown as the "first" step with the pick, not as a
+    // wax you could choose for the day.
+    let tasks: [GanttTask<String, WaxProduct>] = selectedWaxes.filter { !$0.kind.isPreparation }.compactMap { wax in
       guard let range = wax.combinedRange(for: snowType) else { return nil }
       let extent = drawnExtent(for: wax, range: range)
       return GanttTask(
@@ -363,12 +365,14 @@ struct Gantt: View {
       .position(x: L.x(forTemperature: liveTemperature), y: L.axisHeight + 50)
   }
 
+  /// The scrub line, as Apple's own charts draw it: one hairline of the
+  /// text colour, not a coloured stroke competing with the wax colours.
   private func playhead(height: Double) -> some View {
     LinearGradient(
-      colors: [.accentColor.opacity(0.9), .accentColor.opacity(0.08)],
+      colors: [Color.primary.opacity(0.45), Color.primary.opacity(0.18), Color.primary.opacity(0)],
       startPoint: .top, endPoint: .bottom)
-      .frame(width: 2, height: height - TemperatureLens.diameter - 6)
-      .padding(.top, TemperatureLens.diameter + 6)
+      .frame(width: 1, height: height - TemperatureLens.diameter - 10)
+      .padding(.top, TemperatureLens.diameter + 10)
       .allowsHitTesting(false)
   }
 
@@ -378,12 +382,12 @@ struct Gantt: View {
       Label {
         Text("Covers \(TemperatureDisplay().string(fromCelsius: temperature))")
       } icon: {
-        Capsule().fill(Color.accentColor).frame(width: 14, height: 6)
+        Capsule().fill(Color.secondary).frame(width: 14, height: 6)
       }
       Label {
         Text("Other temperatures")
       } icon: {
-        Capsule().fill(Color.accentColor.opacity(0.3)).frame(width: 14, height: 6)
+        Capsule().fill(Color.secondary.opacity(0.3)).frame(width: 14, height: 6)
       }
     }
     .font(.caption2)

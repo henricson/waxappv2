@@ -14,7 +14,7 @@ struct TemperatureLens: View {
   /// The temperature at the centre of the lens; fractional while scrolling.
   var temperature: Double
 
-  static let diameter: CGFloat = 70
+  static let diameter: CGFloat = 66
   static let magnification: CGFloat = 1.9
 
   private var display: TemperatureDisplay { TemperatureDisplay() }
@@ -27,17 +27,25 @@ struct TemperatureLens: View {
     ZStack {
       ForEach((nearest - 2)...(nearest + 2), id: \.self) { degree in
         mark(for: degree, isCentre: degree == nearest)
-          .position(x: xPosition(for: degree), y: d / 2 + 2)
+          .position(x: xPosition(for: degree), y: d / 2 + 3)
       }
     }
     .frame(width: d, height: d)
-    .clipShape(Circle())
-    // Clear glass: the page shows through, refracted, under the magnified
-    // scale. The axis fades its own labels out beneath the lens so nothing
-    // is drawn twice.
-    .glassEffect(.clear, in: .circle)
-    .overlay { rim }
-    .shadow(color: .black.opacity(0.16), radius: 9, y: 5)
+    // Edge fade, so numbers slide out under the rim instead of being cut.
+    .mask {
+      RadialGradient(
+        colors: [.black, .black, .black.opacity(0)],
+        center: .center, startRadius: 0, endRadius: d / 2)
+    }
+    .glassEffect(.regular, in: .circle)
+    // A small point on the underside, where the scrub line hangs from.
+    .overlay(alignment: .bottom) {
+      Triangle()
+        .fill(.regularMaterial)
+        .frame(width: 10, height: 6)
+        .offset(y: 5)
+    }
+    .shadow(color: .black.opacity(0.10), radius: 8, y: 4)
     .accessibilityHidden(true)
   }
 
@@ -53,26 +61,27 @@ struct TemperatureLens: View {
 
     return VStack(spacing: 5) {
       Text(label)
-        .font(.system(size: 21, weight: isCentre ? .bold : .medium, design: .rounded))
+        .font(.system(size: 22, weight: isCentre ? .semibold : .regular, design: .rounded))
         .monospacedDigit()
-        .foregroundStyle(isCentre ? Color.primary : Color.secondary)
+        .foregroundStyle(isCentre ? Color.primary : Color.secondary.opacity(0.7))
         .opacity(isMajor || isCentre ? 1 : 0)
         .fixedSize()
       Capsule()
-        .fill(Color.secondary.opacity(isMajor ? 0.7 : 0.35))
-        .frame(width: 1.6, height: isMajor ? 14 : 8)
+        .fill(isCentre ? Color.primary.opacity(0.6) : Color.secondary.opacity(isMajor ? 0.45 : 0.25))
+        .frame(width: 1.2, height: isCentre ? 12 : 8)
     }
   }
 
-  /// Bright where the light hits the top, darker underneath, so it reads as
-  /// a lump of glass rather than a flat disc.
-  private var rim: some View {
-    Circle()
-      .strokeBorder(
-        LinearGradient(
-          colors: [.white.opacity(0.95), .white.opacity(0.2), .black.opacity(0.15)],
-          startPoint: .top, endPoint: .bottom),
-        lineWidth: 1.3)
+}
+
+private nonisolated struct Triangle: Shape {
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+    path.closeSubpath()
+    return path
   }
 }
 
