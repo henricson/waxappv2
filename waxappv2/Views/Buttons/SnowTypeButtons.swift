@@ -37,9 +37,11 @@ struct SnowTypeButtons: View {
 
   private var selectedID: String? { choices.first(where: \.isSelected)?.id }
 
-  /// The chip currently in the middle of the row.
-  @State private var centredID: String?
+  /// Scroll position of the row; its view id is the chip in the middle.
+  @State private var position = ScrollPosition(idType: String.self)
+  private var centredID: String? { position.viewID(type: String.self) }
   @State private var isScrolling = false
+  @State private var pendingSelection: Task<Void, Never>?
 
 
   var body: some View {
@@ -60,7 +62,7 @@ struct SnowTypeButtons: View {
                 .accessibilityIdentifier("snowType_\(choice.id)")
                 .accessibilityAddTraits(choice.isSelected ? [.isSelected] : [])
                 .onTapGesture {
-                  withAnimation(.smooth(duration: 0.3)) { centredID = choice.id }
+                  centre(on: choice.id, animated: true)
                   select(choice)
                 }
             }
@@ -69,24 +71,51 @@ struct SnowTypeButtons: View {
         }
       }
       .scrollIndicators(.hidden)
-      // Room on each side for the first and last chip to reach the middle.
-      .contentMargins(.horizontal, max(16, geo.size.width / 2 - 44), for: .scrollContent)
+      // Centre-anchored snapping lines a chip's centre up with the edge of
+      // the content margin, so the margin must be exactly half the width.
+      // That also lets the first and last chip reach the middle.
+      .contentMargins(.horizontal, geo.size.width / 2, for: .scrollContent)
       .scrollTargetBehavior(.viewAligned(anchor: .center))
-      .scrollPosition(id: $centredID, anchor: .center)
+      .scrollPosition($position, anchor: .center)
       .onScrollPhaseChange { _, phase in
         isScrolling = phase != .idle
-        // Select only once the wheel has come to rest.
-        if phase == .idle, let id = centredID, let choice = choices.first(where: { $0.id == id }) {
-          select(choice)
+        guard phase == .idle, let id = centredID else { return }
+        // The system's snap lands a chip near the middle; finish the last
+        // few points so it sits exactly in the centre, as a tap does.
+        centre(on: id, animated: true)
+        selectCentred()
+      }
+      // Like a picker wheel, the selection follows the chip passing through
+      // the middle, so it never waits for the scroll to coast to a stop.
+      .onChange(of: centredID) { _, _ in
+        guard isScrolling else { return }
+        pendingSelection?.cancel()
+        pendingSelection = Task {
+          try? await Task.sleep(for: .milliseconds(90))
+          guard !Task.isCancelled else { return }
+          selectCentred()
         }
       }
-      .onAppear { centredID = selectedID }
+      .onAppear { if let selectedID { centre(on: selectedID, animated: false) } }
       .onChange(of: selectedID) { _, newValue in
-        guard !isScrolling, centredID != newValue else { return }
-        withAnimation(.smooth(duration: 0.35)) { centredID = newValue }
+        guard !isScrolling, let newValue, centredID != newValue else { return }
+        centre(on: newValue, animated: true)
       }
       .sensoryFeedback(.selection, trigger: centredID)
     }
+  }
+
+  private func centre(on id: String, animated: Bool) {
+    if animated {
+      withAnimation(.smooth(duration: 0.3)) { position.scrollTo(id: id, anchor: .center) }
+    } else {
+      position.scrollTo(id: id, anchor: .center)
+    }
+  }
+
+  private func selectCentred() {
+    guard let id = centredID, let choice = choices.first(where: { $0.id == id }) else { return }
+    select(choice)
   }
 
   private func select(_ choice: Choice) {
