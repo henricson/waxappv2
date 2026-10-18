@@ -405,6 +405,13 @@ private struct RegionKitBanner: View {
     return String(localized: "A sensible everyday kit")
   }
 
+  private var detail: String {
+    if let country = RegionalWaxKit.countryName(for: region) {
+      return String(localized: "Onboarding_Kit_Detail_Country \(country)")
+    }
+    return String(localized: "Onboarding_Kit_Detail")
+  }
+
   var body: some View {
     HStack(alignment: .top, spacing: 12) {
       Image(systemName: "sparkles")
@@ -414,7 +421,7 @@ private struct RegionKitBanner: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(title)
           .font(.subheadline.weight(.semibold))
-        Text("Onboarding_Kit_Detail")
+        Text(detail)
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)

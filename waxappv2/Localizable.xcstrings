@@ -3752,31 +3752,65 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "We've ticked the lines most skiers there carry. Change anything below, or just continue."
+            "value" : "We've ticked the wax lines that are easiest to buy. Change anything below, or just continue."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valitsimme sarjat, joita useimmat hiihtäjät siellä käyttävät. Muuta alla tai jatka suoraan."
+            "value" : "Valitsimme voiteet, joita on helpoin ostaa. Muuta alla tai jatka suoraan."
           }
         },
         "is" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Við höfum valið það sem flest skíðafólk þar notar. Breyttu hverju sem er hér að neðan, eða haltu bara áfram."
+            "value" : "Við höfum valið áburðinn sem auðveldast er að kaupa. Breyttu hverju sem er hér að neðan, eða haltu bara áfram."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vi har krysset av det de fleste der har i sekken. Endre det du vil under, eller bare fortsett."
+            "value" : "Vi har krysset av smøringen som er enklest tilgjengelig for kjøp. Endre det du vil under, eller bare fortsett."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vi har bockat för det de flesta där har med sig. Ändra vad du vill nedan, eller fortsätt bara."
+            "value" : "Vi har bockat för vallan som är lättast att köpa. Ändra vad du vill nedan, eller fortsätt bara."
+          }
+        }
+      }
+    },
+    "Onboarding_Kit_Detail_Country %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We've ticked the wax lines that are easy to buy in %@. Change anything below, or just continue."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valitsimme voiteet, joita on helppo ostaa maassa %@. Muuta alla tai jatka suoraan."
+          }
+        },
+        "is" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Við höfum valið áburðinn sem auðvelt er að kaupa á %@. Breyttu hverju sem er hér að neðan, eða haltu bara áfram."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vi har krysset av smøringen som er enkelt tilgjengelig for kjøp i %@. Endre det du vil under, eller bare fortsett."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vi har bockat för vallan som är lätt att köpa i %@. Ändra vad du vill nedan, eller fortsätt bara."
           }
         }
       }
