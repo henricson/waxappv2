@@ -72,11 +72,6 @@ enum DemoMode {
     UserDefaults.standard.integer(forKey: "GGDemoOnboardingPage")
   }
 
-  /// Turns on "Explain recommendations" for the capture.
-  static var showsAdvanced: Bool {
-    UserDefaults.standard.bool(forKey: "GGDemoAdvanced")
-  }
-
   /// A screen to open over the main view: `library` or `map`.
   static var screen: String? {
     UserDefaults.standard.string(forKey: "GGDemoScreen")

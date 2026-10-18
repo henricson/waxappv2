@@ -272,7 +272,6 @@ struct Gantt: View {
       }
     }
     .frame(height: height)
-      legend
     }
     .task { await placeOnCurrentTemperature() }
     .onChange(of: liveDegree) { _, degree in
@@ -376,26 +375,6 @@ struct Gantt: View {
       .frame(width: 1, height: height - TemperatureLens.diameter - 10)
       .padding(.top, TemperatureLens.diameter + 10)
       .allowsHitTesting(false)
-  }
-
-  /// What the two bar strengths mean.
-  private var legend: some View {
-    HStack(spacing: 14) {
-      Label {
-        Text("Covers \(TemperatureDisplay().string(fromCelsius: temperature))")
-      } icon: {
-        Capsule().fill(Color.secondary).frame(width: 14, height: 6)
-      }
-      Label {
-        Text("Other temperatures")
-      } icon: {
-        Capsule().fill(Color.secondary.opacity(0.3)).frame(width: 14, height: 6)
-      }
-    }
-    .font(.caption2)
-    .foregroundStyle(.secondary)
-    .padding(.horizontal, 16)
-    .accessibilityHidden(true)
   }
 
   /// "-15…-8°", or "0°" for a single-point wax, in the user's unit.

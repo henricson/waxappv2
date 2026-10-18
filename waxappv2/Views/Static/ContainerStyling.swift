@@ -390,30 +390,6 @@ nonisolated struct CylinderTop: Shape {
   }
 }
 
-/// A curved band hanging under a cylinder's lower rim, for the shadow a lid
-/// casts on the body below it.
-nonisolated struct CylinderRimShadow: Shape {
-  var left: CGFloat
-  var right: CGFloat
-  var rimY: CGFloat
-  var rim: CGFloat
-  var depth: CGFloat
-
-  func path(in rect: CGRect) -> Path {
-    let bulge = rim * 4 / 3
-    var path = Path()
-    path.move(to: rect.unit(left, rimY - 0.01))
-    path.addLine(to: rect.unit(right, rimY - 0.01))
-    path.addLine(to: rect.unit(right, rimY + depth))
-    path.addCurve(
-      to: rect.unit(left, rimY + depth),
-      control1: rect.unit(right, rimY + depth + bulge),
-      control2: rect.unit(left, rimY + depth + bulge))
-    path.closeSubpath()
-    return path
-  }
-}
-
 extension Shape {
   /// Lighting for a short cylinder such as a lid: round across, with only a
   /// little occlusion at its lower edge. The tall-body pass darkens the top

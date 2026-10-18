@@ -146,10 +146,6 @@ struct AboutView: View {
 
   private var preferencesSection: some View {
     Section {
-      Toggle(isOn: advancedBinding) {
-        Label("Explain recommendations", systemImage: "text.magnifyingglass")
-      }
-
       Picker(selection: unitBinding) {
         ForEach(TemperatureUnit.allCases) { unit in
           Text(unit.symbol).tag(unit)
@@ -160,18 +156,7 @@ struct AboutView: View {
       .pickerStyle(.menu)
     } header: {
       Text("Preferences")
-    } footer: {
-      Text(
-        "Turn on explanations to see the temperature, snow and weather factors behind each pick."
-      )
     }
-  }
-
-  private var advancedBinding: Binding<Bool> {
-    Binding(
-      get: { recStore.isAdvancedMode },
-      set: { recStore.isAdvancedMode = $0 }
-    )
   }
 
   private var unitBinding: Binding<TemperatureUnit> {

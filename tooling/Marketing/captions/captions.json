@@ -103,28 +103,27 @@
       "launch": {
         "GGDemoDomain": "grip",
         "GGDemoTemperature": "-2",
-        "GGDemoSnowType": "5",
-        "GGDemoAdvanced": "YES"
+        "GGDemoSnowType": "5"
       },
       "en-US": {
         "headline": "Advanced snow algorithm",
-        "subhead": "See why – temperature, snow type and weather explained"
+        "subhead": "Snow type worked out from today's weather and the past ten days"
       },
       "no": {
         "headline": "Avansert snø-algoritme",
-        "subhead": "Se hvorfor – temperatur, snøtype og vær forklart"
+        "subhead": "Snøtypen utledes fra været nå og de siste ti dagene"
       },
       "sv": {
         "headline": "Avancerad snöalgoritm",
-        "subhead": "Se varför – temperatur, snötyp och väder förklarat"
+        "subhead": "Snötypen räknas ut från dagens väder och de senaste tio dagarna"
       },
       "fi": {
         "headline": "Edistynyt lumialgoritmi",
-        "subhead": "Näe miksi – lämpötila, lumityyppi ja sää selitettynä"
+        "subhead": "Lumityyppi päätellään tämän päivän ja kymmenen edellisen päivän säästä"
       },
       "is": {
         "headline": "Háþróað snjóreiknirit",
-        "subhead": "Sjáðu af hverju – hiti, snjógerð og veður útskýrt"
+        "subhead": "Snjógerðin fundin út frá veðri dagsins og síðustu tíu daga"
       }
     },
     {

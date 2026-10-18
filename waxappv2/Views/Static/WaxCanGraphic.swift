@@ -50,7 +50,6 @@ nonisolated enum TinGeometry {
 
   static let lidSide = CylinderSide(left: lidLeft, right: lidRight, top: lidTop, bottom: lidBottom, rim: rim)
   static let lidFace = CylinderTop(left: lidLeft, right: lidRight, top: lidTop, rim: rim)
-  static let lidShadow = CylinderRimShadow(left: bodyLeft, right: bodyRight, rimY: lidBottom, rim: rim, depth: 0.045)
 }
 
 /// The can body: a cylinder whose foot curves away from the eye on the same
@@ -89,12 +88,6 @@ private struct Tin<Print: View>: View {
         // Shading over the print, so the label curves with the tin.
         TinBody().cylinderLit()
 
-        // The lid overhangs and drops a shadow that follows its rim.
-        TinGeometry.lidShadow
-          .fill(LinearGradient(colors: [.black.opacity(0.32), .clear], startPoint: .top, endPoint: .bottom))
-          .blendMode(.multiply)
-          .mask(TinBody())
-
         TinBody().stroke(.black.opacity(0.20), lineWidth: line)
 
         // Lid skirt, then the face you look down on.
@@ -132,12 +125,8 @@ struct WaxCanGraphic: View {
   var body: some View {
     Tin(bodyColor: bodyColor, lidColor: .white) { body, height in
       let band = bandColor ?? bodyColor.opacity(0.6)
-      let stripe = bodyColor.isLight ? Color.black.opacity(0.18) : Color.white.opacity(0.85)
 
       ZStack(alignment: .topLeading) {
-        // Thin keylines either side of the band, then the band itself.
-        DiagonalBand(left: bandLeft - 0.025, right: bandRight - 0.025, thickness: bandThickness + 0.05)
-          .fill(stripe)
         DiagonalBand(left: bandLeft, right: bandRight, thickness: bandThickness)
           .fill(band)
 
@@ -209,10 +198,7 @@ struct RodeCanGraphic: View {
   var body: some View {
     Tin(bodyColor: Color(white: 0.97), lidColor: Color(white: 0.97)) { body, height in
       ZStack(alignment: .topLeading) {
-        // Grade colour frames the white panel: a strip under the lid and a
-        // deep band round the foot that carries the colour name.
-        Rectangle().fill(gradeColor)
-          .frame(width: body.width, height: body.height * 0.075)
+        // The grade colour is a deep band round the foot.
         Rectangle().fill(gradeColor)
           .frame(width: body.width, height: body.height * 0.27)
           .offset(y: body.height * 0.73)

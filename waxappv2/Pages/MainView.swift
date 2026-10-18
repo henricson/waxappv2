@@ -164,12 +164,6 @@ extension MainView {
                 height: horizontalSizeClass == .regular
                   ? LayoutConstants.regularHeroHeight : LayoutConstants.heroHeight)
 
-            if recStore.isAdvancedMode, let top = recStore.topPick {
-              RecommendationFactorsView(recommendation: top)
-                .padding(.horizontal)
-                .transition(.blurReplace)
-            }
-
             alternativesSection
           }
           .frame(maxWidth: horizontalSizeClass == .regular ? LayoutConstants.regularContentWidth : .infinity)

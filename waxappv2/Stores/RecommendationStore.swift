@@ -32,14 +32,6 @@ final class RecommendationStore {
     }
   }
 
-  /// When on, the UI explains *why* each recommendation scored as it did.
-  var isAdvancedMode: Bool {
-    didSet {
-      guard isAdvancedMode != oldValue else { return }
-      defaults.set(isAdvancedMode, forKey: AppConstants.PersistenceKeys.advancedMode)
-    }
-  }
-
   // MARK: - Initialization
 
   init(
@@ -53,7 +45,6 @@ final class RecommendationStore {
 
     let storedDomain = defaults.string(forKey: AppConstants.PersistenceKeys.activeDomain)
     self.activeDomain = storedDomain.flatMap(WaxDomain.init(rawValue:)) ?? .grip
-    self.isAdvancedMode = defaults.bool(forKey: AppConstants.PersistenceKeys.advancedMode)
   }
 
   // MARK: - Conditions
@@ -91,6 +82,15 @@ final class RecommendationStore {
   /// fixed list, so switching domain or turning a series off immediately
   /// stops offering conditions nothing can answer.
   var availableSnowTypes: [SnowType] {
+    // The snow the weather says it is is always offered, even when the
+    // library has nothing for it, so the picker never shows no selection.
+    let covered = coveredSnowTypes
+    return covered.contains(effectiveSnowType)
+      ? covered : (covered + [effectiveSnowType]).sorted { $0.rawValue < $1.rawValue }
+  }
+
+  /// Snow types at least one visible wax has a range for.
+  private var coveredSnowTypes: [SnowType] {
     let products = candidates.filter { !$0.kind.isPreparation }
     guard !products.isEmpty else { return SnowType.allCases }
 
@@ -103,7 +103,7 @@ final class RecommendationStore {
   /// Moves the selection onto a snow type that the current library covers.
   /// Called when the domain changes or the library is edited.
   func reconcileSnowType() {
-    let available = availableSnowTypes
+    let available = coveredSnowTypes
     guard !available.contains(effectiveSnowType), let fallback = available.first else { return }
 
     // Prefer the nearest neighbour by raw value so the jump feels small.
@@ -116,7 +116,11 @@ final class RecommendationStore {
 
   /// Ranked recommendations for the active domain, best first.
   var recommended: [WaxRecommendation] {
-    WaxRecommender.rank(products: candidates, conditions: conditions)
+    let ranked = WaxRecommender.rank(products: candidates, conditions: conditions)
+    if !ranked.isEmpty { return ranked }
+    // Nothing fits: show the closest wax as a "closest match" rather than
+    // leaving the screen empty.
+    return WaxRecommender.closest(products: candidates, conditions: conditions).map { [$0] } ?? []
   }
 
   /// The single best pick, used for the hero display and background tint.

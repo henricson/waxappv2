@@ -7,7 +7,7 @@
 //  they are drawn here.
 //
 //  Swix KX:  aluminium tube printed in the grade colour, with the classic
-//            diagonal "X" in the second colour, a black strip near the foot
+//            diagonal "X" in the second colour
 //            and a black knurled cap about half the tube's width.
 //  Swix KN:  "Nero" — a black tube with a big crossed X of two colours.
 //  Swix K:   universal klister in a silver tube with a red diagonal.
@@ -183,11 +183,6 @@ struct KlisterCanView: View {
         DiagonalBand(left: 0.64, right: 0.30, thickness: 0.085).fill(accent)
         DiagonalBand(left: 0.42, right: 0.66, thickness: 0.050).fill(accent)
 
-        // Black strip near the foot.
-        Rectangle().fill(Color(white: 0.08))
-          .frame(width: size.width, height: size.height * 0.030)
-          .offset(y: size.height * 0.735)
-
         if PrintDetail.showsText(height: size.height) {
           TubeCode(code: code, size: size, color: bodyColor.isLight ? .black.opacity(0.8) : .white, digitColor: accent)
         }
@@ -236,9 +231,6 @@ struct KlisterUniversalView: View {
           colors: [.white.opacity(0.0), .white.opacity(0.45), .white.opacity(0.0)],
           startPoint: .top, endPoint: .bottom)
         DiagonalBand(left: 0.60, right: 0.28, thickness: 0.070).fill(Self.swixRed)
-        if let stripeColor {
-          DiagonalBand(left: 0.70, right: 0.38, thickness: 0.022).fill(stripeColor)
-        }
 
         if PrintDetail.showsText(height: size.height) {
           TubeCode(code: code, size: size, color: Self.swixRed)
@@ -270,11 +262,6 @@ struct RodeKlisterView: View {
         Rectangle().fill(Color(white: 0.97))
           .frame(width: size.width, height: size.height * 0.120)
           .offset(y: size.height * 0.380)
-        if let accentColor {
-          Rectangle().fill(accentColor)
-            .frame(width: size.width, height: size.height * 0.014)
-            .offset(y: size.height * 0.486)
-        }
 
         // The big Rode snowflake, printed straight onto the tube.
         Image(systemName: "snowflake")

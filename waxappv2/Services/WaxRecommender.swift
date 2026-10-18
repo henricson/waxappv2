@@ -99,8 +99,19 @@ public nonisolated struct PreparationAdvice: Sendable, Equatable {
   /// kind and the advice names the type instead.
   public let product: WaxProduct?
   public let reason: Reason
+  /// False when the product is a suggestion to buy, not in the library.
+  public let isOwned: Bool
+
+  public init(product: WaxProduct?, reason: Reason, isOwned: Bool = true) {
+    self.product = product
+    self.reason = reason
+    self.isOwned = isOwned
+  }
 
   public var title: String {
+    if let product, !isOwned {
+      return String(localized: "Lay down \(product.brand.displayName) \(product.code) first")
+    }
     if let product { return String(localized: "Lay down \(product.code) first") }
     switch reason {
     case .klisterBase: return String(localized: "Prep_Generic_Klister")
@@ -111,6 +122,7 @@ public nonisolated struct PreparationAdvice: Sendable, Equatable {
 
   /// Why, in a sentence.
   public var detail: String {
+    if !isOwned { return String(localized: "Prep_NotOwned \(product?.name ?? "")") }
     switch reason {
     case .klisterBase: return String(localized: "Prep_Reason_Klister")
     case .hardwaxBase: return String(localized: "Prep_Reason_Hardwax")
@@ -158,7 +170,8 @@ public nonisolated enum WaxRecommender {
   public static func preparation(
     for top: WaxProduct,
     from products: [WaxProduct],
-    conditions: WaxConditions
+    conditions: WaxConditions,
+    catalogue: [WaxProduct] = WaxCatalog.all
   ) -> PreparationAdvice? {
     let bases = products.filter(\.kind.isPreparation)
 
@@ -169,8 +182,14 @@ public nonisolated enum WaxRecommender {
 
     switch top.kind {
     case .klister:
-      let product = best(bases.filter(\.isKlisterBase))
-      return PreparationAdvice(product: product, reason: .klisterBase)
+      if let owned = best(bases.filter(\.isKlisterBase)) {
+        return PreparationAdvice(product: owned, reason: .klisterBase)
+      }
+      // Klister always wants a base, so name one to get even when the user
+      // owns none: the same brand's, if it makes one.
+      let options = catalogue.filter(\.isKlisterBase)
+      let suggestion = options.first { $0.brand == top.brand } ?? options.first
+      return PreparationAdvice(product: suggestion, reason: .klisterBase, isOwned: false)
 
     case .hardwax:
       let abrasive: Set<SnowType> = [.oldGrained, .transformedMoistFine, .frozenCorn, .moistFineGrained]
@@ -190,6 +209,24 @@ public nonisolated enum WaxRecommender {
     case .binder, .glideBase:
       return nil
     }
+  }
+
+  /// The wax nearest to the conditions when none of them fits: closest in
+  /// temperature, preferring the same snow type and then neighbouring ones.
+  /// Always scored low, so it is shown as a "closest match".
+  public static func closest(products: [WaxProduct], conditions: WaxConditions) -> WaxRecommendation? {
+    var best: (product: WaxProduct, range: TempRangeC, cost: Int)?
+    for product in products where !product.kind.isPreparation {
+      for snowType in SnowType.allCases {
+        let snowSteps = abs(snowType.rawValue - conditions.snowType.rawValue)
+        for range in product.ranges(for: snowType) {
+          let cost = range.distance(to: conditions.temperatureC) + 3 * snowSteps
+          if best == nil || cost < best!.cost { best = (product, range, cost) }
+        }
+      }
+    }
+    guard let best else { return nil }
+    return WaxRecommendation(product: best.product, score: cutoff, matchedRange: best.range, factors: [])
   }
 
   /// Nearest temperature at which any of `products` has something to say.

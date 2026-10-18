@@ -132,6 +132,16 @@ struct WaxRecommenderTests {
     #expect(prep?.product?.code == "BIND")
   }
 
+  @Test("When nothing fits, the closest wax is still offered")
+  func closestFallback() {
+    let warm = WaxConditions(temperatureC: 9, snowType: .veryWetCorn)
+    let library = WaxCatalog.all.filter { $0.seriesID == "swix.V" }
+    #expect(WaxRecommender.rank(products: library, conditions: warm).isEmpty)
+    let fallback = WaxRecommender.closest(products: library, conditions: warm)
+    #expect(fallback != nil)
+    #expect((fallback?.score ?? 1) < WaxRecommender.confidentThreshold)
+  }
+
   @Test("Klister gets a klister base; hard wax never does")
   func basesMatchTheWaxOnTop() {
     let kx20 = WaxCatalog.product(withID: "swix.KX20")!
@@ -144,9 +154,9 @@ struct WaxRecommenderTests {
     #expect(WaxRecommender.preparation(for: kx65, from: library, conditions: wet)?.product?.code == "KX20")
     #expect(WaxRecommender.preparation(for: p60, from: library, conditions: wet)?.product?.code != "KX20")
 
-    // Klister without any base owned still gets the advice, naming the type.
+    // Klister without any base owned still gets the advice, naming one.
     let bare = WaxRecommender.preparation(for: kx65, from: [kx65], conditions: wet)
-    #expect(bare != nil && bare?.product == nil)
+    #expect(bare?.product?.code == "KX20" && bare?.isOwned == false)
 
     // Fresh snow doesn't need a hard-wax base.
     let fresh = WaxConditions(temperatureC: -8, snowType: .newFallen)

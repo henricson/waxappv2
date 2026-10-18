@@ -101,13 +101,18 @@ struct OnboardingView: View {
   /// Leaves with the regional kit already selected; nothing is lost by
   /// skipping, and the paywall still appears afterwards if it is needed.
   private var skipButton: some View {
-    Button("Skip") {
+    Button {
       waxStore.markOnboardingComplete()
       isPresented = false
+    } label: {
+      Text("Skip")
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .contentShape(.capsule)
     }
-    .font(.subheadline.weight(.semibold))
-    .padding(.horizontal, 16)
-    .padding(.vertical, 9)
+    .buttonStyle(.plain)
+    .foregroundStyle(.tint)
     .glassEffect(.regular.interactive(), in: .capsule)
     .accessibilityIdentifier("onboardingSkipButton")
     .accessibilityHint(Text("Onboarding_Skip_Hint"))
@@ -144,6 +149,7 @@ struct OnboardingView: View {
                 .font(.body.weight(.semibold))
                 .frame(width: 24, height: 24)
                 .padding(14)
+                .contentShape(.circle)
             }
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
@@ -155,10 +161,13 @@ struct OnboardingView: View {
           Button {
             advance()
           } label: {
+            // A plain button only hit-tests what it draws; without a shape
+            // the empty glass around the title ignored taps.
             Text(primaryTitle)
               .font(.headline)
               .frame(maxWidth: .infinity)
               .padding(.vertical, 16)
+              .contentShape(.capsule)
           }
           .buttonStyle(.plain)
           .foregroundStyle(.white)
@@ -304,10 +313,7 @@ private struct HowItWorksPage: View {
   var body: some View {
     OnboardingScaffold(
       title: String(localized: "How it works"),
-      subtitle: String(
-        localized:
-          "We read ten days of weather for your location, work out what the snow has become, and match it to the wax you own."
-      )
+      subtitle: String(localized: "Onboarding_HowItWorks_Subtitle")
     ) {
       VStack(alignment: .leading, spacing: 0) {
         StepRow(

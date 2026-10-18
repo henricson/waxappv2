@@ -58,7 +58,6 @@ final class AppState {
     storeManager.applyDemoAccess()
 
     recommendation.activeDomain = DemoMode.domain
-    recommendation.isAdvancedMode = DemoMode.showsAdvanced
     recommendation.effectiveTemperature = DemoMode.temperature
     recommendation.effectiveSnowType = DemoMode.snowType
 

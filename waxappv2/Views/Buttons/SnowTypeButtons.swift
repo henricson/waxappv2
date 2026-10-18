@@ -40,6 +40,7 @@ struct SnowTypeButtons: View {
   var body: some View {
     // Selection is by tap only, and the chosen chip is always brought to
     // the middle.
+    GeometryReader { geo in
     ScrollViewReader { proxy in
       ScrollView(.horizontal) {
         GlassEffectContainer(spacing: 0) {
@@ -63,7 +64,17 @@ struct SnowTypeButtons: View {
         }
       }
       .scrollIndicators(.hidden)
-      .contentMargins(.horizontal, 16, for: .scrollContent)
+      // Room on both sides for the first and last chip to reach the middle,
+      // like a picker wheel; selection is always centred.
+      .contentMargins(.horizontal, max(16, geo.size.width / 2 - 56), for: .scrollContent)
+      .onScrollPhaseChange { _, phase in
+        // After a manual scroll, settle back on the selected chip.
+        guard phase == .idle, let selectedID else { return }
+        Task {
+          try? await Task.sleep(for: .seconds(1.2))
+          withAnimation(.smooth(duration: 0.35)) { proxy.scrollTo(selectedID, anchor: .center) }
+        }
+      }
       .sensoryFeedback(.selection, trigger: selectedID)
       .task {
         await Task.yield()
@@ -79,6 +90,7 @@ struct SnowTypeButtons: View {
         if let selectedID { proxy.scrollTo(selectedID, anchor: .center) }
       }
       .onAppear { if let selectedID { proxy.scrollTo(selectedID, anchor: .center) } }
+    }
     }
   }
 }

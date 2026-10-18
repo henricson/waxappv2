@@ -19,8 +19,5 @@ enum AppConstants {
 
     /// The active domain (grip / glide) on the main screen.
     static let activeDomain = "app.activeDomain.v1"
-
-    /// Whether the user wants the extra detail in recommendations.
-    static let advancedMode = "app.advancedMode.v1"
   }
 }
