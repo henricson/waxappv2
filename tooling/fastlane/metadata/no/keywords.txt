@@ -1,1 +1,1 @@
-skismøring,klister,langrenn,festevoks,glidvoks,swix,rode,snø,smøretips,løype
+skismøring,klister,langrenn,festevoks,glidevoks,swix,rode,snø,smøretips,løype,widget,grunnvoks

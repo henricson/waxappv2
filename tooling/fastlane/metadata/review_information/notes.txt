@@ -16,3 +16,7 @@ Purchases restores either.
 Widgets: add "Wax of the Day" from the Home Screen widget gallery. Long-press
 it and choose Edit Widget to switch between current location and a fixed
 place, and between grip, glide or both.
+
+Settings (gear, top right of the main screen) holds the subscription
+status, the wax library, "Show introduction again" and Restore Purchases
+via the paywall.

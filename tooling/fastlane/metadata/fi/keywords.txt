@@ -1,1 +1,1 @@
-suksivoide,klisteri,hiihto,pitovoide,luistovoide,swix,rode,lumi,voitelu,latu
+suksivoide,klisteri,hiihto,pitovoide,luistovoide,swix,rode,lumi,voitelu,latu,widget,pohjavoide

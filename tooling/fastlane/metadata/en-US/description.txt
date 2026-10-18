@@ -1,34 +1,34 @@
-Pick the right wax in seconds.
+The right wax, worked out automatically.
 
-GetGrip reads ten days of weather for exactly where you ski, works out what the snow has actually become, and matches it to the wax you own. No guessing from an air temperature alone.
+GetGrip reads ten days of weather for exactly where you ski, works out what the snow has actually become, and matches it to the wax you own. No guessing from the air temperature alone.
 
-GRIP AND GLIDE
-Switch between kick wax and glide wax with one tap. Both get the same treatment: a clear first choice, the alternatives that also work, and the binder or base prep to lay down first.
+GRIP, KLISTER AND GLIDE
+One tap switches between kick wax and glide wax. Every recommendation gives you a clear first choice, the other waxes that also cover the temperature, and the base to lay down first — a klister base under klister, a base wax under hard wax on coarse snow, base prep under glide on abrasive or very cold snow.
 
-YOUR WAX BOX, NOT A CATALOGUE
-Tell GetGrip which lines you actually own — Swix V, VP, klister, Performance Speed, High Speed, Top Speed, Rode hard wax and klister — and it will only ever suggest something you can reach for. Sensible defaults out of the box, everything else one switch away.
+ACCOUNTS FOR LOCAL CONDITIONS
+Fresh snow, a thaw, rain on snow, a hard refreeze overnight: each leaves the snowpack in a different state and wants a different wax. GetGrip tracks snowfall, rain, thaw-freeze cycles, temperature trends and humidity to tell new snow from fine-grained from a refrozen crust. For glide you choose between new, fine-grained, coarse and wet snow — the distinctions that actually change a glide wax.
 
-IT KNOWS WHAT THE SNOW DID
-Fresh snow, a thaw, rain on snow, a hard refreeze overnight: each leaves the snowpack in a different state, and each wants a different wax. GetGrip tracks snowfall, rain, thaw-freeze cycles, temperature trends and humidity to tell new snow from fine-grained from a refrozen crust.
-
-SIMPLE OR DETAILED, YOUR CHOICE
-Most days you just want the answer. Turn on explanations and you get the reasoning too: how well the temperature fits, what the snow type does to the choice, and how rain, fresh snow or humidity moved the result.
+THE WAX YOU HAVE
+Tick the lines you own — Swix V, VP, universal, KX and Nero klister, Performance Speed, High Speed, Top Speed, base prep, and Rode hard wax and klister — and GetGrip only suggests something you can reach for. A kit that's easy to buy where you live is ticked for you from the start; tap Skip and you're ready.
 
 SCRUB THE TEMPERATURE
-Drag the chart to see how the recommendation changes degree by degree, so you can wax for the afternoon rather than the morning.
+Drag the chart under the glass loupe to see how the choice changes degree by degree, with a gentle tick for every degree. Wax for the afternoon rather than the morning.
 
-ON YOUR HOME SCREEN
-Widgets in every size show today's wax at a glance — grip, glide or both — for where you are, or for a trail you pick. Lock Screen widgets too.
+SEE WHY, WHEN YOU WANT TO
+Turn on explanations to see how well the temperature fits, what the snow type does to the choice, and how rain, fresh snow or humidity moved the result.
 
-SUBSCRIBE OR BUY ONCE
-Try everything free for 14 days, then choose a subscription or a single lifetime purchase.
+ON YOUR HOME AND LOCK SCREEN
+Widgets in every size show today's wax at a glance — grip, glide or both — for where you are, or for a trail you choose by name.
 
 ANYWHERE YOU SKI
 Use your location, or drop a pin on the map to check conditions at the trailhead before you leave home.
 
+SUBSCRIBE OR BUY ONCE
+Try everything free for 14 days. Then choose a monthly or yearly subscription, or unlock GetGrip for good with a single lifetime purchase. Purchases restore on all your devices with the same Apple Account.
+
 IN YOUR LANGUAGE
 English, Norwegian, Swedish, Finnish and Icelandic.
 
-Temperature ranges follow each manufacturer's published charts. Always test on snow — local conditions vary.
+Weather from Apple Weather. Temperature ranges follow each manufacturer's published charts. Always test on snow — local conditions vary.
 
 GetGrip is not affiliated with Swix or Rode.

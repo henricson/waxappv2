@@ -1,34 +1,34 @@
-Löydä oikea voide sekunneissa.
+Oikea voide, automaattisesti päätelty.
 
-GetGrip lukee kymmenen päivän sään juuri sieltä missä hiihdät, päättelee mitä lumesta on todella tullut ja sovittaa sen omistamiisi voiteisiin. Ei arvailua pelkän ilman lämpötilan perusteella.
+GetGrip lukee kymmenen päivän sään juuri sieltä, missä hiihdät, päättelee mitä lumesta on todella tullut ja sovittaa sen omiin voiteisiisi. Ei arvailua pelkän ilman lämpötilan perusteella.
 
-PITO JA LUISTO
-Vaihda pitovoiteen ja luistovoiteen välillä yhdellä napautuksella. Molemmat saavat saman kohtelun: selkeä ensisijainen valinta, toimivat vaihtoehdot ja pohjavoide, joka kannattaa levittää ensin.
+PITOVOITEET, KLISTERIT JA LUISTO
+Yksi napautus vaihtaa pidon ja luiston välillä. Jokainen suositus antaa selkeän ensisijaisen valinnan, muut lämpötilan kattavat voiteet ja pohjan, joka levitetään ensin – pohjaklisteri klisterin alle, pohjavoide pitovoiteen alle karkealla lumella ja pohjustus luistovoiteen alle kuluttavalla tai hyvin kylmällä lumella.
 
-OMA VOIDELAUKKUSI, EI TUOTELUETTELO
-Kerro mitkä sarjat todella omistat — Swix V, VP, klisteri, Performance Speed, High Speed, Top Speed, Roden pitovoiteet ja klisterit — niin sovellus ehdottaa vain sitä mihin voit tarttua. Järkevät oletukset heti, loput yhden kytkimen päässä.
+HUOMIOI PAIKALLISET OLOSUHTEET
+Uusi lumi, suojasää, vesisade lumelle, kova yön yli jäätyminen: jokainen jättää lumen eri tilaan ja vaatii eri voiteen. GetGrip seuraa lumisadetta, vesisadetta, suojasääjaksoja, lämpötilan kehitystä ja kosteutta erottaakseen uuden lumen hienojakoisesta ja uudelleen jäätyneestä hangesta. Luistolle valitset uuden, hienojakoisen, karkean tai märän lumen – erot, jotka todella muuttavat luistovoidetta.
 
-SE TIETÄÄ MITÄ LUMI ON TEHNYT
-Uusi lumi, suojasää, vesisade lumelle, kova yön yli jäätyminen: jokainen jättää lumen eri tilaan ja vaatii eri voiteen. GetGrip seuraa lumisadetta, vesisadetta, suojasääjaksoja, lämpötilan kehitystä ja kosteutta erottaakseen uuden lumen hienojakoisesta ja uudelleen jäätyneestä hangesta.
-
-YKSINKERTAINEN TAI YKSITYISKOHTAINEN
-Useimpina päivinä haluat vain vastauksen. Ota selitykset käyttöön, niin saat myös perustelut: kuinka hyvin lämpötila sopii, mitä lumityyppi merkitsee ja miten sade, uusi lumi tai kosteus vaikuttivat tulokseen.
+VOITEET, JOTKA SINULLA ON
+Valitse omistamasi sarjat – Swix V, VP, yleis-, KX- ja Nero-klisteri, Performance Speed, High Speed, Top Speed, pohjustus sekä Roden pitovoiteet ja klisterit – niin GetGrip ehdottaa vain sitä, mihin voit tarttua. Suomessa helposti saatavat voiteet on valittu valmiiksi; napauta Ohita ja olet valmis.
 
 VEDÄ LÄMPÖTILAA
-Vedä kaaviota nähdäksesi miten suositus muuttuu asteittain, jotta voit voidella iltapäivää varten aamun sijaan.
+Vedä kaaviota lasisen suurennuslasin alla ja näe, miten valinta muuttuu aste asteelta, pieni napsahdus jokaisella asteella. Voitele iltapäivää, ei vain aamua varten.
 
-KOTINÄYTÖLLÄ
-Kaikenkokoiset widgetit näyttävät päivän voiteen yhdellä silmäyksellä – pito, luisto tai molemmat – sijainnissasi tai valitsemallasi ladulla. Myös lukitusnäytöllä.
+NÄE MIKSI, KUN HALUAT
+Kytke selitykset päälle nähdäksesi, miten hyvin lämpötila sopii, mitä lumityyppi tarkoittaa valinnalle ja miten sade, uusi lumi tai kosteus vaikuttivat tulokseen.
 
-TILAA TAI OSTA KERRAN
-Kokeile kaikkea ilmaiseksi 14 päivää ja valitse sitten tilaus tai yksi elinikäinen osto.
+KOTI- JA LUKITUSNÄYTÖLLÄ
+Kaikenkokoiset widgetit näyttävät päivän voiteen yhdellä silmäyksellä – pito, luisto tai molemmat – sijainnissasi tai nimellä valitsemallasi ladulla.
 
 MISSÄ IKINÄ HIIHDÄTKIN
-Käytä sijaintiasi tai aseta nasta kartalle tarkistaaksesi olosuhteet ladun alussa ennen kotoa lähtöä.
+Käytä sijaintiasi tai pudota nasta kartalle ja tarkista ladun lähtöpaikan olosuhteet ennen kuin lähdet kotoa.
+
+TILAA TAI OSTA KERRAN
+Kokeile kaikkea ilmaiseksi 14 päivää. Valitse sitten kuukausi- tai vuositilaus, tai avaa GetGrip pysyvästi yhdellä elinikäisellä ostolla. Ostot palautuvat kaikille laitteillesi samalla Apple-tilillä.
 
 OMALLA KIELELLÄSI
-Suomi, norja, ruotsi, islanti ja englanti.
+Suomi, ruotsi, norja, islanti ja englanti.
 
-Lämpötila-alueet noudattavat valmistajien julkaisemia taulukoita. Testaa aina lumessa — olosuhteet vaihtelevat.
+Säätiedot Applen Sää-palvelusta. Lämpötila-alueet noudattavat valmistajien julkaisemia taulukoita. Testaa aina lumella – paikalliset olosuhteet vaihtelevat.
 
 GetGrip ei ole sidoksissa Swixiin tai Rodeen.

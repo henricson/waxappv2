@@ -1,13 +1,9 @@
-Glide wax, widgets and a lifetime unlock.
-
-• Home and Lock Screen widgets in every size — for where you are, or a trail you choose — showing grip, glide or both
-• Unlock GetGrip for good with a one-time purchase, or keep the subscription
-• Glide recommendations alongside grip, with a one-tap switch
-• Rode hard wax and klister join the Swix range
-• A rebuilt snow classifier that spots rain-on-snow and overnight refreezes
-• True-to-life illustrations of every tin, klister tube, glide pack, spray and powder
-• A wax kit picked for where you live — just tap Skip, or tick the lines you own
-• "Also works" now matches the chart exactly
-• Optional explanations showing why each wax was chosen
-• Now in Swedish, Finnish and Icelandic
-• Redesigned throughout for iOS 27
+• Grip, klister and glide recommendations from ten days of local weather
+• The right base layer for each wax: klister base, base wax or glide base prep
+• Snow choices made for glide wax: new, fine-grained, coarse and wet
+• Home and Lock Screen widgets for where you are, or a trail you choose
+• Swix and Rode, with only the wax lines you own
+• A wax kit that's easy to buy where you live, ticked for you
+• Drag the temperature under a glass loupe to see the choice change degree by degree
+• Explanations of why each wax was chosen
+• Subscribe monthly or yearly, or unlock GetGrip for good with one purchase
