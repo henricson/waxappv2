@@ -159,9 +159,10 @@ private enum GanttLayout {
     axisHeight + barsTopPadding + Double(max(rows, minimumRows)) * rowHeight + bottomPadding
   }
 
-  /// Narrowest a bar may be drawn and still show its icon and code.
-  static func minimumBarDegrees(forCode code: String) -> Double {
-    (50 + 9 * Double(code.count)) / pxPerDegree
+  /// Narrowest a bar may be drawn and still show its icon, code and range,
+  /// so every bar reads the same way.
+  static func minimumBarDegrees(forCode code: String, range: String) -> Double {
+    (62 + 9 * Double(code.count) + 7 * Double(range.count)) / pxPerDegree
   }
 }
 
@@ -220,7 +221,7 @@ struct Gantt: View {
   private func drawnExtent(for wax: WaxProduct, range r: TempRangeC) -> (start: Double, end: Double) {
     let start = Double(r.min) - 0.5
     let end = Double(r.max) + 0.5
-    let minimum = L.minimumBarDegrees(forCode: wax.code)
+    let minimum = L.minimumBarDegrees(forCode: wax.code, range: Self.rangeText(r))
     guard end - start < minimum else { return (start, end) }
     let middle = (start + end) / 2
     return (middle - minimum / 2, middle + minimum / 2)
@@ -333,7 +334,8 @@ struct Gantt: View {
         emphasis: emphasis(for: wax),
         // Keep the label on screen while the bar does; stop before it
         // would run off the bar's own end.
-        labelInset: min(max(0, visibleMinX + 8 - barX), max(0, barWidth - 90))
+        labelInset: min(max(0, visibleMinX + 8 - barX), max(0, barWidth - 64)),
+        rangeText: range.map(Self.rangeText) ?? ""
       )
       .frame(width: (end - start) * L.pxPerDegree, height: L.barHeight)
       .offset(
@@ -388,6 +390,13 @@ struct Gantt: View {
     .foregroundStyle(.secondary)
     .padding(.horizontal, 16)
     .accessibilityHidden(true)
+  }
+
+  /// "-15…-8°", or "0°" for a single-point wax, in the user's unit.
+  static func rangeText(_ range: TempRangeC) -> String {
+    let display = TemperatureDisplay()
+    if range.min == range.max { return display.degreesOnlyString(fromCelsius: range.min) }
+    return "\(display.value(fromCelsius: range.min))…\(display.degreesOnlyString(fromCelsius: range.max))"
   }
 
   // MARK: Helpers
@@ -490,6 +499,8 @@ struct GanttBarView: View {
   var emphasis: Emphasis = .match
   /// How far the label is pushed in from the bar's leading edge.
   var labelInset: Double = 0
+  /// The published range, the most useful thing to read off a bar.
+  var rangeText: String = ""
 
   enum Emphasis {
     /// The wax shown in the hero.
@@ -504,7 +515,7 @@ struct GanttBarView: View {
   private var textColor: Color { fill.isLight ? .black.opacity(0.85) : .white }
 
   private var code: some View {
-    Text(isPinpoint ? "\(wax.code) ·" : wax.code)
+    Text(verbatim: wax.code)
       .font(.caption.weight(.semibold))
       .foregroundStyle(textColor)
       .lineLimit(1)
@@ -518,12 +529,14 @@ struct GanttBarView: View {
 
       // The name only appears when the bar has room for all of it; a
       // truncated "Ro…" reads as clutter.
+      // Code and range when there's room, the code alone when not.
       ViewThatFits(in: .horizontal) {
         HStack(spacing: 6) {
           code
-          Text(wax.name)
-            .font(.caption2)
-            .foregroundStyle(textColor.opacity(0.75))
+          Text(verbatim: rangeText)
+            .font(.caption2.weight(.medium))
+            .monospacedDigit()
+            .foregroundStyle(textColor.opacity(0.8))
             .lineLimit(1)
             .fixedSize()
         }
@@ -553,7 +566,7 @@ struct GanttBarView: View {
     .animation(.smooth(duration: 0.25), value: emphasis)
     .contentShape(.capsule)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(wax.code), \(wax.name), \(wax.brand.displayName)")
+    .accessibilityLabel("\(wax.code), \(wax.name), \(rangeText), \(wax.brand.displayName)")
   }
 }
 

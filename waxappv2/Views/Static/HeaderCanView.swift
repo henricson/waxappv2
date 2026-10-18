@@ -83,8 +83,8 @@ struct HeaderCanView: View {
             .transition(.opacity)
         }
       }
-      .frame(height: 50)
-      .padding(.top, 6)
+      .frame(height: preparation == nil ? 0 : 50)
+      .padding(.top, preparation == nil ? 0 : 8)
       .animation(.smooth(duration: 0.25), value: preparation)
     }
     .padding(.horizontal, 20)

@@ -33,7 +33,7 @@ struct GanttScrollTip: Tip {
 // MARK: - Layout
 
 private enum LayoutConstants {
-  static let heroHeight: CGFloat = 330
+  static let heroHeight: CGFloat = 306
   /// iPad: a taller hero, and a column that doesn't stretch edge to edge.
   static let regularHeroHeight: CGFloat = 420
   static let regularContentWidth: CGFloat = 760
@@ -334,6 +334,7 @@ extension MainView {
 
     return VStack(alignment: .leading, spacing: 8) {
       SectionHeader("Also works")
+        .padding(.top, 8)
 
       ScrollView(.horizontal) {
         HStack(spacing: 10) {
