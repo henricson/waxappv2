@@ -107,6 +107,27 @@ struct PreviewRenderTests {
     }
   }
 
+  @Test("Render one of every series at the widgets' icon heights")
+  func renderWidgetSizes() {
+    var seen = Set<String>()
+    let products = WaxCatalog.all.filter { seen.insert($0.seriesID).inserted }
+
+    for height in [60, 66, 76, 96] as [CGFloat] {
+      render("widget-size-\(Int(height))", size: CGSize(width: 1400, height: height + 40), scale: 3) {
+        ZStack {
+          Color(white: 0.95)
+          HStack(alignment: .bottom, spacing: 10) {
+            ForEach(products) { product in
+              WaxIcon(product: product)
+                .frame(width: height * WaxIcon.aspect(for: product), height: height)
+            }
+          }
+          .padding(20)
+        }
+      }
+    }
+  }
+
   @Test("Render the klister tube on its own, light and dark")
   func renderKlister() {
     let klisters = WaxCatalog.all.filter { $0.kind == .klister }.prefix(6)

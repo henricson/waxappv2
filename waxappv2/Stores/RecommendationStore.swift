@@ -114,43 +114,31 @@ final class RecommendationStore {
       } ?? fallback
   }
 
-  /// Ranked recommendations for the active domain, best first.
-  var recommended: [WaxRecommendation] {
-    let ranked = WaxRecommender.rank(products: candidates, conditions: conditions)
-    if !ranked.isEmpty { return ranked }
-    // Nothing fits: show the closest wax as a "closest match" rather than
-    // leaving the screen empty.
-    return WaxRecommender.closest(products: candidates, conditions: conditions).map { [$0] } ?? []
+  /// The recommendation for the active domain — the same one the widgets
+  /// work out, so the app and the home screen never disagree.
+  var pick: WaxPick {
+    WaxRecommender.pick(products: candidates, conditions: conditions)
   }
+
+  /// Ranked recommendations for the active domain, best first. Never empty
+  /// while there is any wax: nothing fitting falls back to the closest match.
+  var recommended: [WaxRecommendation] { pick.ranked }
 
   /// The single best pick, used for the hero display and background tint.
-  var topPick: WaxRecommendation? { recommended.first }
+  var topPick: WaxRecommendation? { pick.top }
 
   /// Alternatives worth mentioning under the hero: the other waxes whose
-  /// published range covers the current temperature.
-  ///
-  /// This is deliberately the same test the chart draws — a bar under the
-  /// temperature line — so "Also works" never names a wax whose bar stops
-  /// short of it. Near misses can still score above the cutoff, which used
-  /// to make the list and the chart disagree.
-  var alternatives: [WaxRecommendation] {
-    let topID = topPick?.id
-    return Array(
-      recommended
-        .filter { $0.id != topID && coversCurrentTemperature($0.product) }
-        .prefix(3))
-  }
+  /// published range covers the current temperature — the same test the
+  /// chart draws, so "Also works" never names a wax whose bar stops short.
+  var alternatives: [WaxRecommendation] { pick.alternatives }
 
   /// True when the product's bar on the chart sits under the temperature line.
   func coversCurrentTemperature(_ product: WaxProduct) -> Bool {
     product.combinedRange(for: effectiveSnowType)?.contains(effectiveTemperature) ?? false
   }
 
-  /// Binder or base prep to lay down first, when the user has one visible.
-  var preparation: PreparationAdvice? {
-    guard let top = topPick?.product else { return nil }
-    return WaxRecommender.preparation(for: top, from: candidates, conditions: conditions)
-  }
+  /// Binder or base prep to lay down first.
+  var preparation: PreparationAdvice? { pick.preparation }
 
   /// True when the user has turned off every series in the active domain.
   var hasNoVisibleSeries: Bool {

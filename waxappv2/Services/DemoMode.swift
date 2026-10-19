@@ -57,6 +57,15 @@ enum DemoMode {
     return SnowType(rawValue: defaults.integer(forKey: "GGDemoSnowType")) ?? .fineGrained
   }
 
+  /// A snow type the weather "changes to" a moment after launch, as the
+  /// location button or a place picked on the map would, for checking that
+  /// the picker follows a change from outside.
+  static var laterSnowType: SnowType? {
+    let defaults = UserDefaults.standard
+    guard defaults.object(forKey: "GGDemoLaterSnowType") != nil else { return nil }
+    return SnowType(rawValue: defaults.integer(forKey: "GGDemoLaterSnowType"))
+  }
+
   static var domain: WaxDomain {
     let raw = UserDefaults.standard.string(forKey: "GGDemoDomain")
     return raw.flatMap(WaxDomain.init(rawValue:)) ?? .grip

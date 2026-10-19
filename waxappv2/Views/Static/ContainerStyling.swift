@@ -229,7 +229,9 @@ nonisolated extension CGRect {
 /// Print appears only once the artwork is large enough to read it. At list
 /// size it would be noise, and the code is always captioned alongside.
 nonisolated enum PrintDetail {
-  static func showsText(height: CGFloat) -> Bool { height >= 110 }
+  /// The printed code stays down to widget size, where it is still the
+  /// quickest way to tell one container from the next.
+  static func showsText(height: CGFloat) -> Bool { height >= 56 }
   static func showsFineDetail(height: CGFloat) -> Bool { height >= 44 }
 }
 

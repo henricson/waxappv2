@@ -160,21 +160,12 @@ struct WaxWidgetProvider: AppIntentTimelineProvider {
   }
 
   private func pick(_ domain: WaxDomain, shared: SharedAppState, conditions: WaxConditions) -> DomainPick {
-    let products = shared.visibleProducts(in: domain)
-    let ranked = WaxRecommender.rank(products: products, conditions: conditions)
-    let top = ranked.first
-    // Same rule as the app: alternatives are the waxes whose range covers
-    // the temperature, so the widget and the app's chart agree.
-    let covering = ranked.dropFirst().filter {
-      $0.product.combinedRange(for: conditions.snowType)?.contains(conditions.temperatureC) ?? false
-    }
+    // The app's own rule, closest-match fallback included, so the widget
+    // never shows a blank where the app shows a wax.
+    let pick = WaxRecommender.pick(products: shared.visibleProducts(in: domain), conditions: conditions)
     return DomainPick(
-      domain: domain,
-      top: top,
-      alternatives: covering.prefix(3).map(\.product),
-      preparation: top.flatMap {
-        WaxRecommender.preparation(for: $0.product, from: products, conditions: conditions)
-      })
+      domain: domain, top: pick.top,
+      alternatives: pick.alternatives.map(\.product), preparation: pick.preparation)
   }
 
   /// The device's location when the user has allowed widgets to use it,

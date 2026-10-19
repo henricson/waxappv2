@@ -112,6 +112,11 @@ struct MainView: View {
           recStore.reconcileSnowType()
         }
         .task {
+          guard DemoMode.isEnabled, let snowType = DemoMode.laterSnowType else { return }
+          try? await Task.sleep(for: .seconds(3))
+          recStore.effectiveSnowType = snowType
+        }
+        .task {
           guard DemoMode.isEnabled, DemoMode.screen != nil else { return }
           // Let the root view settle; a destination set during the first
           // layout pass is dropped.

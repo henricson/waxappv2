@@ -127,6 +127,16 @@ public nonisolated struct PreparationAdvice: Sendable, Equatable {
   }
 }
 
+/// The recommendation for one domain, as the app and the widgets show it.
+public nonisolated struct WaxPick: Sendable {
+  /// Best first; never empty while there is any wax to offer.
+  public let ranked: [WaxRecommendation]
+  public let alternatives: [WaxRecommendation]
+  public let preparation: PreparationAdvice?
+
+  public var top: WaxRecommendation? { ranked.first }
+}
+
 // MARK: - Recommender
 
 public nonisolated enum WaxRecommender {
@@ -151,6 +161,28 @@ public nonisolated enum WaxRecommender {
       .compactMap { score($0, conditions: conditions) }
       .filter { $0.score >= cutoff }
       .sorted(by: isBetter)
+  }
+
+  /// Everything a screen shows for one domain: the pick, the other waxes
+  /// that cover the temperature, and the base to lay down first. The app
+  /// and its widgets both build on this, so they always agree.
+  public static func pick(products: [WaxProduct], conditions: WaxConditions) -> WaxPick {
+    var ranked = rank(products: products, conditions: conditions)
+    // Nothing fits: offer the closest wax as a "closest match" rather than
+    // leaving the space empty.
+    if ranked.isEmpty, let closest = closest(products: products, conditions: conditions) {
+      ranked = [closest]
+    }
+    let top = ranked.first
+    // Alternatives are the waxes whose bar on the chart sits under the
+    // temperature line, so "Also works" never names one that stops short.
+    let alternatives = ranked.dropFirst().filter {
+      $0.product.combinedRange(for: conditions.snowType)?.contains(conditions.temperatureC) ?? false
+    }
+    return WaxPick(
+      ranked: ranked,
+      alternatives: Array(alternatives.prefix(3)),
+      preparation: top.flatMap { preparation(for: $0.product, from: products, conditions: conditions) })
   }
 
   /// What to lay down under the day's wax, if anything.

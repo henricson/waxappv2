@@ -36,13 +36,18 @@ struct SnowTypeButtons: View {
   }
 
   private var selectedID: String? { choices.first(where: \.isSelected)?.id }
+  private var choiceIDs: [String] { choices.map(\.id) }
 
   /// Scroll position of the row; its view id is the chip in the middle.
   @State private var position = ScrollPosition(idType: String.self)
   private var centredID: String? { position.viewID(type: String.self) }
   @State private var isScrolling = false
+  /// True from the moment the user's finger moves the row until it comes
+  /// to rest. Only then does the centred chip choose the snow: the row also
+  /// scrolls for a tap, the weather or a rebuild, and the chip it passes
+  /// then is not the user's choice.
+  @State private var isUserScroll = false
   @State private var pendingSelection: Task<Void, Never>?
-
 
   var body: some View {
     // A picker wheel: the chip that comes to rest in the middle is the
@@ -79,7 +84,10 @@ struct SnowTypeButtons: View {
       .scrollPosition($position, anchor: .center)
       .onScrollPhaseChange { _, phase in
         isScrolling = phase != .idle
-        guard phase == .idle, let id = centredID else { return }
+        if phase == .interacting { isUserScroll = true }
+        guard phase == .idle, isUserScroll else { return }
+        isUserScroll = false
+        guard let id = centredID else { return }
         // The system's snap lands a chip near the middle; finish the last
         // few points so it sits exactly in the centre, as a tap does.
         centre(on: id, animated: true)
@@ -88,7 +96,7 @@ struct SnowTypeButtons: View {
       // Like a picker wheel, the selection follows the chip passing through
       // the middle, so it never waits for the scroll to coast to a stop.
       .onChange(of: centredID) { _, _ in
-        guard isScrolling else { return }
+        guard isUserScroll else { return }
         pendingSelection?.cancel()
         pendingSelection = Task {
           try? await Task.sleep(for: .milliseconds(90))
@@ -97,17 +105,24 @@ struct SnowTypeButtons: View {
         }
       }
       .onAppear { if let selectedID { centre(on: selectedID, animated: false) } }
+      // A change from outside — the location button, a place picked on the
+      // map, the first weather — is centred after the chips it brings have
+      // been laid out. The scroll view's idea of the centred chip can be
+      // stale then, so it is not trusted to skip the move.
       .onChange(of: selectedID) { _, newValue in
-        guard !isScrolling, let newValue, centredID != newValue else { return }
-        centre(on: newValue, animated: true)
+        guard !isScrolling, let newValue else { return }
+        Task { centre(on: newValue, animated: true) }
       }
       .sensoryFeedback(.selection, trigger: centredID)
-      // Grip and glide have different chips. Swapping them under a live
-      // scroll offset leaves it pointing past the new content, so the row
-      // looks empty until it is dragged; a fresh row per domain starts centred.
-      .id(store.activeDomain)
-      .onChange(of: store.activeDomain) { _, _ in
+      // A different set of chips — grip or glide, or weather that brings a
+      // snow type the library doesn't cover — gets a fresh row. Swapping
+      // chips under a live scroll offset leaves it pointing past them, so
+      // the row looks empty or off-centre until dragged; a new row starts
+      // centred on the selection.
+      .id(choiceIDs)
+      .onChange(of: choiceIDs) { _, _ in
         isScrolling = false
+        isUserScroll = false
         pendingSelection?.cancel()
       }
     }
