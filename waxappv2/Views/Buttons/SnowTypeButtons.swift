@@ -102,6 +102,14 @@ struct SnowTypeButtons: View {
         centre(on: newValue, animated: true)
       }
       .sensoryFeedback(.selection, trigger: centredID)
+      // Grip and glide have different chips. Swapping them under a live
+      // scroll offset leaves it pointing past the new content, so the row
+      // looks empty until it is dragged; a fresh row per domain starts centred.
+      .id(store.activeDomain)
+      .onChange(of: store.activeDomain) { _, _ in
+        isScrolling = false
+        pendingSelection?.cancel()
+      }
     }
   }
 
