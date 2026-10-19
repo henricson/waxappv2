@@ -29,3 +29,6 @@ Norsk, svensk, finsk, islandsk og engelsk.
 Værdata fra Apple Vær. Temperaturområdene følger produsentenes publiserte tabeller. Test alltid i snøen – lokale forhold varierer.
 
 GetGrip er ikke tilknyttet Swix eller Rode.
+
+Bruksvilkår (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Personvernerklæring: https://www.squarewave.no/apps/getgrip/privacy

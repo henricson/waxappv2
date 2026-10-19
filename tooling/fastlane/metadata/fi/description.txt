@@ -29,3 +29,6 @@ Suomi, ruotsi, norja, islanti ja englanti.
 Säätiedot Applen Sää-palvelusta. Lämpötila-alueet noudattavat valmistajien julkaisemia taulukoita. Testaa aina lumella – paikalliset olosuhteet vaihtelevat.
 
 GetGrip ei ole sidoksissa Swixiin tai Rodeen.
+
+Käyttöehdot (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Tietosuojakäytäntö: https://www.squarewave.no/apps/getgrip/privacy
